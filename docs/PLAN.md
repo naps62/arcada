@@ -72,4 +72,20 @@ educação, transportes, justiça, ambiente, administração, …
 - screenservices endpoints may change / rate-limit → tolerant parsing + PDF-artifact fallback.
 - LLM mis-summary of legal text → full text + citation always one click away; the
   validate toggle is the human safety net before anything is trusted.
+
+## v2 — municipal decisions ("o que decidiu a minha câmara?")
+
+Same engine, different source. Câmara / assembleia municipal **deliberações** live in
+buried PDFs across 308 municipalities; this is the *exact* scrape → classify → summarize →
+register pipeline pointed at local government instead of Diário da República.
+
+- **Why a v2 and not its own project:** reuses the entire ingestion/summarization/UI
+  skeleton; the only new parts are per-municipality source adapters and a "município"
+  dimension on the data model.
+- **GTM principle:** one district deep (Braga) first, not 308 shallow — PDF layouts vary
+  wildly per município, so each source is a small adapter, seeded from one.
+- **Accountability angle:** local government is the level citizens can actually act on;
+  "what did my câmara decide and spend this month?" is a sharper hook than national DRE.
+- **Data-model impact:** add `municipality` (+ source adapter registry) alongside
+  `editions`; acts/summaries gain a municipal scope. Defer until the DRE MVP is solid.
 ```
