@@ -13,13 +13,13 @@ community review / provenance promotion (the 👥 and ✓ rungs). MVP ships only
 
 ## Constraints / decisions
 
-- **Ingestion:** build our own scraper (no reuse of Apify/`hgg/dre`, though they confirm feasibility).
-- **Audience:** private only. Hosted on `example.internal`, VPN-gated.
+- **Ingestion:** build our own scraper (no reuse of Apify/`hgg/dre`, though they confirm feasibility). **Pure HTTP** (Req) — recon confirmed no browser runtime is needed in production (see `endpoints.md`).
+- **Audience:** private only. Hosted on `example.internal`, VPN-gated. **No app-level auth in MVP** — network gating only.
 - **Stack:** Elixir / **Phoenix + LiveView**, Postgres. No SPA / React. LiveView only where it makes the UI snappier.
-- **LLM provider:** undecided. Summarization is abstracted behind a behaviour so the
-  adapter can be swapped — hosted API, local model, or even a **manual / SSH-driven
-  session** (drive a personal Claude subscription live and write summaries back).
-  Provider choice deferred; the pipeline must not assume a synchronous API call.
+- **App structure:** **single Phoenix app**. Extract the crawl/classify/summarize pipeline into a shared lib only when `filho-em-portugal` actually consumes it (YAGNI — no umbrella up front).
+- **LLM provider:** **Claude API** for the MVP (default model **Sonnet 4.6** — legal text rewards nuance and Série I volume is tiny, so cost stays coffee-sized; revisit Haiku if cost grows). Summarization stays abstracted behind a behaviour with `api | local | manual` adapters; the `manual` (SSH-driven) adapter is the backfill/escape hatch. The pipeline must not assume a synchronous API call. Model + `prompt_version` recorded per summary.
+- **Classification:** done in the **same LLM call** as the summary (one prompt → `{plain_text, domains[]}`), not a separate pass.
+- **Deployment:** **Dokploy** on `example.internal` — Dockerized Elixir release; Dokploy-managed Postgres; secrets (Claude API key) via Dokploy env.
 - **Validation:** in scope for MVP — a private "mark validated" toggle.
 
 ## Source reality (recon)
