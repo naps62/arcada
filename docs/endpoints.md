@@ -1,120 +1,121 @@
-# DRE endpoint recon (issue #3)
+# DRE endpoint recon (issue #3) — COMPLETE
 
-> Reverse-engineering of `diariodarepublica.pt` ingestion endpoints. Status: **endpoint
-> catalog + auth mechanism confirmed via HTTP; live response shapes still need a browser
-> capture** (see [Blocker](#blocker)).
+> All three target endpoints reverse-engineered **and confirmed end-to-end with a pure
+> HTTP client** (no browser needed in production). The OutSystems SPA was driven once in a
+> headless Chromium to capture the exact request envelopes; everything below replays with
+> plain `Req`/curl. Capture scripts: `/tmp/.../capture*.js` (throwaway).
 
-## Summary of the site
+## Site shape
 
-- `diariodarepublica.pt` is an **OutSystems Reactive (React) SPA**. Every route
-  (`/dr/home`, `/dr/detalhe/...`) returns the same ~2.3 KB bootstrap shell; **no SSR**.
-- App module: **`dr`** (`environmentName: "DRE Production"`, OutSystems).
-- All data is fetched at runtime via **`screenservices`** POST endpoints
-  (`/dr/screenservices/<Module>/<Screen>/<DataAction>`).
-- **No official API.** PDFs under `files.diariodarepublica.pt` are the stable
-  citation/fallback artifact.
+- `diariodarepublica.pt` is an **OutSystems Reactive (React) SPA**. Every route returns a
+  ~2.3 KB bootstrap shell; **no SSR**. App module: **`dr`**.
+- All data comes from **`screenservices`** POST endpoints:
+  `/dr/screenservices/<Module>/<Screen>/<DataAction>`.
+- Official PDFs on `files.diariodarepublica.pt` are **open** (no auth) — the stable
+  citation + full-text fallback. `data.dre.pt/eli/...` is just a redirect back into the
+  SPA (a stable identifier, **not** a separate API).
 
-## How the SPA discovers its endpoints (for the scraper)
+## Session + request contract (confirmed)
 
-1. `GET /dr/moduleservices/moduleversioninfo` → `{"versionToken":"<hash>"}`.
-   This is the **`moduleVersion`** sent in every data-action request. Rotates on deploy.
-2. `GET /dr/moduleservices/moduleinfo` → JSON `{manifest, data}`.
-   - `manifest.urlVersions` — map of every JS module → versioned URL (498 entries).
-   - `manifest.urlMappings` — route → `index.html` (24 routes; all SPA-served).
-3. Per-screen module JS (e.g. `dr.Home.WB_Serie1_List.mvc.js`) contains the
-   `callDataAction(name, url, apiVersion, ...)` calls. The **3rd arg is the per-action
-   `apiVersion`** hash sent alongside `moduleVersion`.
+1. **Cookies/CSRF:** POST any screenservices path once (even `{}`); the response sets
+   `nr1Users` + `nr2Users`. URL-decode `nr2Users`, take the **`crf`** field → send it as
+   header **`X-CSRFToken`** on every call. Reuse the cookie jar.
+2. **Version tokens:**
+   - `moduleVersion`: `GET /dr/moduleservices/moduleversioninfo` → `{"versionToken":"…"}`
+     (currently `lsbpmahlas4g2WWC0IKDXA`; rotates on DRE deploy).
+   - `apiVersion`: per data-action; the 3rd arg of `callDataAction(...)` in each screen's
+     `*.mvc.js`. (Hashes below; re-derive on version change.)
+3. **Envelope (this was the crux):** data actions take **`screenData.variables`** +
+   **`clientVariables`**, *not* a flat `inputParameters`. Sending `inputParameters` yields
+   `"No role validation found"`. `clientVariables.Session_GUID` can be a **self-generated
+   UUID** — no server-side bootstrap required.
 
-A robust scraper re-derives `moduleVersion` + `apiVersion` from steps 1–3 rather than
-hard-coding them, so it survives DRE redeploys.
-
-## Auth / anti-CSRF mechanism (confirmed)
-
-- First request to any `screenservices` path sets two cookies:
-  - `nr1Users` — anonymous session.
-  - `nr2Users=crf%3d<TOKEN>%3buid%3d0%3bunm%3d` — the **`crf`** field (URL-decoded) is
-    the CSRF token.
-- Every data-action POST must send that token as header **`X-CSRFToken: <crf>`** plus the
-  cookies. Confirmed working: the server accepts the token and version info
-  (`hasModuleVersionChanged:false`, `hasApiVersionChanged:false`).
-
-### Request envelope (OutSystems data action)
-
-```
+```http
 POST /dr/screenservices/<Module>/<Screen>/<DataAction>
 Content-Type: application/json; charset=UTF-8
-X-CSRFToken: <crf from nr2Users cookie>
+X-CSRFToken: <crf from nr2Users>
 X-Requested-With: XMLHttpRequest
 
-{"versionInfo":{"moduleVersion":"<versionToken>","apiVersion":"<action hash>"},
- "inputParameters":{ ... }}
+{"versionInfo":{"moduleVersion":"<token>","apiVersion":"<hash>"},
+ "viewName":"<Screen view>",
+ "screenData":{"variables":{ <inputs + their _<x>DataFetchStatus:1 flags> }},
+ "clientVariables":{ "Session_GUID":"<uuid>", "Data":"<YYYY-MM-DD>", ... }}
 ```
+Response: `{"versionInfo":{...},"data":{...},"exception":null}`.
 
-Response envelope:
-```json
-{"versionInfo":{"hasModuleVersionChanged":false,"hasApiVersionChanged":false},
- "data":{ ... },"exception":null}
-```
+## The pipeline (all confirmed against 2026-06-24, DR n.º 120/2026 Série I)
 
-## The three target endpoints
+### 1+2 — Editions + their acts for a day  ⟶ one call
+`POST /dr/screenservices/dr/Home/WB_Serie1_List/DataActionGetDataAndApplicationSettings`
+apiVersion `1ZNbiINloOPj8IhEJxM3QA`, `viewName:"Home.home"`.
+Input variables: `DataSelecionada` (`YYYY-MM-DD`), `IsSumarioCompleto:false`,
+`IsPageTracked:false` (+ matching `_…DataFetchStatus:1`).
+Returns `data.DiarioByDiaList.List[]` — each edition:
+`Title`, `DiarioRepublicaId` (DbId), `Numero` (`120`), `DataPublicacao`, and
+`DiplomaLegiList.List[]` of acts. Each **act**:
+`DbId`, `Numero` (`84/2026`), `Emissor` (`Presidência da República`),
+`ConteudoTitle` (`Decreto do Presidente da República n.º 84/2026`),
+`Sumario` (HTML), **`LinkSitemap`** = exact detail path
+(`/dr/detalhe/decreto-presidente-republica/84-2026-1138160247`).
+→ This single call already yields the register skeleton (edition + acts + sumário).
 
-### 1. List Série I editions for a day
-- **URL:** `/dr/screenservices/dr/Home/WB_Serie1_List/DataActionGetDataAndApplicationSettings`
-- **apiVersion:** `1ZNbiINloOPj8IhEJxM3QA`
-- **Input:** `DataSelecionada` (Date, `YYYY-MM-DD`); also accepts `IsSumarioCompleto`,
-  `IsSuplemento` (bool).
-- **Returns (from JS):** `diarioByDiaListOut` (the day's diários/editions) +
-  `environmentNameOut`.
-- Related: `WB_Serie1_List/ActionFriendlyURL` builds the public URL as
-  `friendlyURL("serie-1", <date>, ...)`.
+Alt edition lister (Elasticsearch hits, both séries): `Home/home/DataActionGetDRByDataCalendario`
+(apiVersion `A00rktBtkSvxDLsFy+6mgg`) → `dbId`, `numero`, `conteudoTitle`
+(`…Série I de 2026-06-24`), per-série bucket counts. Useful to detect *whether* Série I
+published on a date.
 
-### 2. Sumário → acts for an edition (diário detail)
-- **Screen:** `Legislacao_Conteudos/Conteudo_Det_Diario`. Data actions:
-  - `DataActionGetDadosAndApplicationSettings` — apiVersion `r2HCK_WYkdDO5ao7yWPCBw` (main payload: edition + its acts)
-  - `DataActionGetLinks` — `CgO+rxO79iS7v+IeXgUgxw`
-  - `DataActionGetPaginacaoValues` — `xbenG1hrOTlPoYfQvRA_Iw`
-  - `DataActionGetSyncInfo` — `XE4_yYFKxcznnEi1ZhyszA`
-- Sumário HTML rendered via `Legislacao_Conteudos/SumarioHTML` screen.
-- **Input:** edition id (from the list in #1). Exact param name TBD in browser capture.
+### Edition detail (acts list with canonical links)
+`POST …/dr/Legislacao_Conteudos/Conteudo_Det_Diario/DataActionGetDadosAndApplicationSettings`
+apiVersion `r2HCK_WYkdDO5ao7yWPCBw`, `viewName:"Legislacao_Conteudos.Conteudo_Det_Diario"`.
+Inputs: `Tipo:"diario-republica"`, `Key:"120-2026-1138160245"`.
+Returns the acts each with `LinkSitemap` (authoritative slug+key — prefer over
+reconstructing). Companion actions on same screen: `DataActionGetLinks`
+(`CgO+rxO79iS7v+IeXgUgxw`), `GetPaginacaoValues` (`xbenG1hrOTlPoYfQvRA_Iw`),
+`GetSyncInfo` (`XE4_yYFKxcznnEi1ZhyszA`).
 
-### 3. Act / diploma detail + full text
-- **Screen:** `Legislacao_Conteudos/Conteudo_Det_Diploma` (full diploma view) and
-  `Conteudo_Detalhe`. PDF + source URLs assembled by the shared controller actions
-  `ActionIteratingGetPDFURLForDRorDL`, `ActionGetFullURL`
-  (`/dr/screenservices/dr/<Action>`).
-- **Input:** diploma id (from #2). Exact param names + the GetPDFURL contract TBD in
-  browser capture.
+### 3 — Act detail / full text + PDF
+`POST …/dr/Legislacao_Conteudos/Conteudo_Detalhe/DataActionGetAllConteudoDetalheData`
+apiVersion `CMMMWnKmYa2KRIcPVVt9uQ`, `viewName:"Legislacao_Conteudos.Conteudo_Detalhe"`.
+Inputs: `Tipo` (slug) + `Key` (`<numero>-<year>-<dbid>`) — both taken straight from the
+act's `LinkSitemap`. Returns `data.…DetalheConteudo`:
+`Titulo`, `Numero`, `Emissor`/`EmissorAcronimo` (`PR`), `TipoDiploma`/`…Acronimo`
+(`decpresrep`), `Serie` (`I`), `Sumario` (**plain text**), `Texto` + `TextoFormatado`
+(full text, HTML), `DataPublicacao`, `Pagina`, **`URL_PDF`**, **`ELI`**.
+(Helpers on screen: `GetURLInfo` `0Xe1Eq968Dp8zCmSEuAfyg`, `GetEmissoresAndPartes`
+`78jRreiPPaBOPlsMQZf5Fg`.)
 
-## PDF / citation artifact
-- `files.diariodarepublica.pt` hosts the official PDFs (stable citation/fallback).
-- Exact path is produced server-side by `ActionIteratingGetPDFURLForDRorDL` /
-  `ActionGetFullURL`; needs a real diploma id to confirm the pattern. Blind path guesses
-  301 to `/dr/error`.
+Example resolved artifacts:
+- `URL_PDF` → `https://files.diariodarepublica.pt/1s/2026/06/12000/0000300003.pdf` (open, 200).
+- `ELI` → `https://data.dre.pt/eli/decpresrep/84/2026/06/24/p/dre/pt/html`.
 
-## Blocker
+### Key/slug rules
+- `Key = "<Numero with '/'→'-'>" + "-" + <DbId>` (e.g. `84/2026` + `1138160247` →
+  `84-2026-1138160247`). Edition uses its own number+DbId.
+- `Tipo` slug from `convertTipoDiploma` (e.g. `decreto-presidente-republica`). **Don't
+  reconstruct** — read `LinkSitemap` from the list/edition response and split it.
 
-Replaying the data actions over plain HTTP returns:
-```json
-{"exception":{"specificType":"System.InvalidOperationException",
-              "message":"No role validation found"}}
-```
-…for **every** input/envelope variant. Version tokens and CSRF are accepted, so this is a
-**server-side role/session gate** that the SPA establishes via a bootstrap step on first
-real screen load (anonymous-role assignment keyed to the session). A synthetic
-cookie-only session doesn't carry it.
+## Recommended scraper recipe (for issue #4)
 
-**Next step (the plan's intended method):** drive the live site once in a browser with
-DevTools open and capture, for a real edition + diploma:
-1. any bootstrap/role call that precedes the first data action,
-2. the exact request bodies (input param names) for endpoints #2 and #3,
-3. the real response JSON shapes (so we can map them to `editions`/`acts`),
-4. the resolved `files.diariodarepublica.pt` PDF URL.
+1. Bootstrap session: POST `{}` once → grab cookies + `crf`; GET `moduleversioninfo` →
+   `moduleVersion`; self-gen `Session_GUID`.
+2. For date `D`: call **WB_Serie1_List** (`DataSelecionada=D`). If no Série I edition,
+   skip (use `GetDRByDataCalendario` série buckets to check cheaply).
+3. Upsert editions; upsert acts by **`DbId`** (unique) from `DiplomaLegiList`, storing
+   `Numero`, `Emissor`, `ConteudoTitle`, `Sumario`, `LinkSitemap`.
+4. Per act: split `LinkSitemap` → `Tipo`,`Key` → **GetAllConteudoDetalheData** for
+   `Texto`/`TextoFormatado`, `URL_PDF`, `ELI`, `Pagina`. Fetch the PDF as the citation
+   artifact / full-text fallback.
+5. Tolerant parsing + re-derive `moduleVersion`/`apiVersion` on a version-changed flag so
+   the scraper survives DRE redeploys. Idempotent on re-run.
 
-Then replay with Req in the scraper (issue #4). Requires the Claude Chrome extension to be
-connected (it was not, this session), or a manual HAR capture.
+## apiVersion hash table (re-derive on deploy)
+| action | apiVersion |
+|---|---|
+| Home/WB_Serie1_List/DataActionGetDataAndApplicationSettings | `1ZNbiINloOPj8IhEJxM3QA` |
+| Home/home/DataActionGetDRByDataCalendario | `A00rktBtkSvxDLsFy+6mgg` |
+| Legislacao_Conteudos/Conteudo_Det_Diario/DataActionGetDadosAndApplicationSettings | `r2HCK_WYkdDO5ao7yWPCBw` |
+| Legislacao_Conteudos/Conteudo_Detalhe/DataActionGetAllConteudoDetalheData | `CMMMWnKmYa2KRIcPVVt9uQ` |
+| Legislacao_Conteudos/Conteudo_Detalhe/DataActionGetURLInfo | `0Xe1Eq968Dp8zCmSEuAfyg` |
 
-## Confirmed facts (replayable now)
-- Module version: `GET /dr/moduleservices/moduleversioninfo`.
-- CSRF: read `crf` from `nr2Users` cookie → send as `X-CSRFToken`.
-- Endpoint URLs + apiVersion hashes above.
-- Série I input param: `DataSelecionada` (`YYYY-MM-DD`).
+> `moduleVersion` and all `apiVersion` hashes change on each DRE deployment. The scraper
+> must re-derive them (steps 2/3 above), never hard-code long-term.
