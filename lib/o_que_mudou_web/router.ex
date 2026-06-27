@@ -17,7 +17,7 @@ defmodule OQueMudouWeb.Router do
   scope "/", OQueMudouWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    live "/", RegisterLive, :index
   end
 
   # Other scopes may use custom stacks.
