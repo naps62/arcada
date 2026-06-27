@@ -1,0 +1,92 @@
+defmodule OQueMudou.RegisterQueryTest do
+  use OQueMudou.DataCase, async: true
+
+  alias OQueMudou.Repo
+  alias OQueMudou.Register
+  alias OQueMudou.Register.{Edition, Act, Summary}
+
+  defp edition do
+    %Edition{}
+    |> Edition.changeset(%{serie: "I", number: "120/2026", date: ~D[2026-06-24]})
+    |> Repo.insert!()
+  end
+
+  defp act(ed, dre_id, published_at) do
+    %Act{}
+    |> Act.changeset(%{edition_id: ed.id, dre_id: dre_id, published_at: published_at})
+    |> Repo.insert!()
+  end
+
+  defp summarize(act, domains) do
+    %Summary{}
+    |> Summary.changeset(%{act_id: act.id, plain_text: "...", domains: domains})
+    |> Repo.insert!()
+  end
+
+  describe "fetch_domain/1" do
+    test "accepts taxonomy members (atom or string)" do
+      assert Register.fetch_domain("fiscal") == {:ok, :fiscal}
+      assert Register.fetch_domain(:habitação) == {:ok, :habitação}
+    end
+
+    test "rejects non-members" do
+      assert Register.fetch_domain("cripto") == :error
+      assert Register.fetch_domain(:nope) == :error
+    end
+  end
+
+  describe "domain_counts/0" do
+    test "returns the full taxonomy with per-domain act counts" do
+      ed = edition()
+      summarize(act(ed, "1", ~D[2026-06-24]), [:fiscal, :trabalho])
+      summarize(act(ed, "2", ~D[2026-06-24]), [:fiscal])
+
+      counts = Register.domain_counts()
+
+      assert counts["fiscal"] == 2
+      assert counts["trabalho"] == 1
+      assert counts["saúde"] == 0
+      # every taxonomy entry is present
+      assert MapSet.new(Map.keys(counts)) == MapSet.new(Register.life_domains())
+    end
+  end
+
+  describe "list_acts/1" do
+    setup do
+      ed = edition()
+      a1 = act(ed, "1", ~D[2026-06-22])
+      a2 = act(ed, "2", ~D[2026-06-24])
+      summarize(a1, [:fiscal])
+      summarize(a2, [:trabalho, :saúde])
+      %{a1: a1, a2: a2}
+    end
+
+    test "returns all acts newest-first by default", %{a1: a1, a2: a2} do
+      ids = Register.list_acts() |> Enum.map(& &1.id)
+      assert ids == [a2.id, a1.id]
+    end
+
+    test "filters by domain", %{a1: a1, a2: a2} do
+      assert [act] = Register.list_acts(domain: :fiscal)
+      assert act.id == a1.id
+
+      assert [act2] = Register.list_acts(domain: "saúde")
+      assert act2.id == a2.id
+    end
+
+    test "unknown domain matches nothing" do
+      assert Register.list_acts(domain: "cripto") == []
+    end
+
+    test "respects :limit", %{a2: a2} do
+      assert [act] = Register.list_acts(limit: 1)
+      assert act.id == a2.id
+    end
+
+    test "preloads edition and summaries", %{} do
+      [act | _] = Register.list_acts()
+      assert %Edition{} = act.edition
+      assert [%Summary{} | _] = act.summaries
+    end
+  end
+end

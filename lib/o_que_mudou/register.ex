@@ -7,8 +7,10 @@ defmodule OQueMudou.Register do
   See `docs/PLAN.md`.
   """
 
+  import Ecto.Query, warn: false
+
   alias OQueMudou.Repo
-  alias OQueMudou.Register.{Edition, Act}
+  alias OQueMudou.Register.{Edition, Act, Summary}
 
   @life_domains ~w(fiscal trabalho saúde família habitação educação transportes justiça ambiente administração)
 
@@ -17,6 +19,70 @@ defmodule OQueMudou.Register do
 
   @doc "The provenance-ladder statuses a summary can hold (MVP ships only `:unreviewed`)."
   def statuses, do: [:unreviewed, :community_reviewed, :verified]
+
+  @doc "Validate a domain string/atom against the fixed taxonomy. Returns `{:ok, atom}` or `:error`."
+  def fetch_domain(domain) when is_atom(domain), do: fetch_domain(Atom.to_string(domain))
+
+  def fetch_domain(domain) when is_binary(domain) do
+    if domain in @life_domains, do: {:ok, String.to_existing_atom(domain)}, else: :error
+  end
+
+  @doc """
+  Count acts tagged with each life-domain (via their summaries) — drives the
+  UI's domain filter badges. Returns a map of `domain_string => count`,
+  including domains with zero acts so the filter always shows the full taxonomy.
+  """
+  def domain_counts do
+    counted =
+      from(s in Summary,
+        select: {fragment("unnest(?)", s.domains), count(s.act_id, :distinct)},
+        group_by: fragment("unnest(?)", s.domains)
+      )
+      |> Repo.all()
+      |> Map.new()
+
+    Map.new(@life_domains, fn d -> {d, Map.get(counted, d, 0)} end)
+  end
+
+  @doc """
+  List acts, newest first, optionally filtered to those whose summary carries a
+  given life-domain. `opts`: `:domain` (string|atom, validated against the
+  taxonomy — an unknown domain yields no results) and `:limit`.
+  """
+  def list_acts(opts \\ []) do
+    base =
+      from(a in Act,
+        order_by: [desc: a.published_at, desc: a.id],
+        preload: [:edition, :summaries]
+      )
+
+    base
+    |> maybe_filter_domain(opts[:domain])
+    |> maybe_limit(opts[:limit])
+    |> Repo.all()
+  end
+
+  defp maybe_filter_domain(query, nil), do: query
+
+  defp maybe_filter_domain(query, domain) do
+    case fetch_domain(domain) do
+      {:ok, atom} ->
+        d = Atom.to_string(atom)
+
+        from(a in query,
+          join: s in assoc(a, :summaries),
+          where: fragment("? = ANY(?)", ^d, s.domains),
+          distinct: true
+        )
+
+      :error ->
+        # Unknown domain → match nothing rather than ignoring the filter.
+        from(a in query, where: false)
+    end
+  end
+
+  defp maybe_limit(query, nil), do: query
+  defp maybe_limit(query, limit) when is_integer(limit), do: from(q in query, limit: ^limit)
 
   @doc """
   Idempotently insert-or-update an edition, keyed on `(serie, number)`.
