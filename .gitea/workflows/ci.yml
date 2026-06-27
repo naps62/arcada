@@ -16,6 +16,9 @@ jobs:
 
     env:
       MIX_ENV: test
+      # The runner uses host networking, so localhost:5432 collides with the
+      # gitea host's own Postgres. Run our throwaway CI DB on 5433 instead.
+      DATABASE_PORT: "5433"
 
     steps:
       # Everything below runs *inside* the elixir container:
@@ -30,15 +33,17 @@ jobs:
           curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
           apt-get install -y --no-install-recommends nodejs
 
-      - name: Start PostgreSQL (localhost, trust auth)
+      - name: Start PostgreSQL (localhost:5433, trust auth)
         run: |
           PGVER=$(ls /etc/postgresql)
-          HBA=/etc/postgresql/$PGVER/main/pg_hba.conf
-          # Trust local connections — this is a throwaway CI database, and it
-          # makes the postgres/postgres credentials in config/test.exs irrelevant.
-          printf 'local all all trust\nhost all all 127.0.0.1/32 trust\nhost all all ::1/128 trust\n' > "$HBA"
+          CONF=/etc/postgresql/$PGVER/main
+          # Trust local connections (throwaway CI DB) and move off 5432, which
+          # the gitea host already occupies under the runner's host networking.
+          printf 'local all all trust\nhost all all 127.0.0.1/32 trust\nhost all all ::1/128 trust\n' > "$CONF/pg_hba.conf"
+          printf "\nport = 5433\nlisten_addresses = 'localhost'\n" >> "$CONF/postgresql.conf"
           pg_ctlcluster "$PGVER" main restart
-          for i in $(seq 1 30); do pg_isready -h localhost -U postgres && break; sleep 1; done
+          for i in $(seq 1 30); do pg_isready -h localhost -p 5433 -U postgres && break; sleep 1; done
+          pg_isready -h localhost -p 5433 -U postgres
 
       - uses: actions/checkout@v4
 
