@@ -33,11 +33,17 @@ jobs:
       DATABASE_PASS: postgres
 
     steps:
-      - uses: actions/checkout@v4
+      # JS-based actions (checkout, cache) run *inside* this container, which has
+      # no Node.js — install it (and git, for the heroicons GitHub dep) first, via
+      # bash, before any action that needs node. Runs before checkout on purpose.
+      - name: Install Node.js + git
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates curl gnupg git
+          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+          apt-get install -y --no-install-recommends nodejs
 
-      # git is needed to fetch the heroicons GitHub dependency.
-      - name: Install git
-        run: apt-get update && apt-get install -y --no-install-recommends git
+      - uses: actions/checkout@v4
 
       - name: Install hex + rebar
         run: |
