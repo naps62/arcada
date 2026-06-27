@@ -107,7 +107,11 @@ defmodule OQueMudouWeb.RegisterLive do
   defp act_row(assigns) do
     ~H"""
     <div class="flex items-start justify-between gap-3">
-      <h3 class="font-medium text-zinc-900">{@act.title || @act.tipo}</h3>
+      <h3 class="font-medium text-zinc-900">
+        <.link navigate={~p"/acts/#{@act.id}"} class="hover:underline">
+          {@act.title || @act.tipo}
+        </.link>
+      </h3>
       <.status_badge summary={@summary} />
     </div>
     <p :if={@act.emitter} class="mt-0.5 text-xs text-zinc-500">{@act.emitter}</p>

@@ -130,4 +130,23 @@ defmodule OQueMudou.Register do
     )
     |> Repo.all()
   end
+
+  @doc "Fetch one act with its edition + summaries preloaded. Raises if not found."
+  def get_act!(id) do
+    Act
+    |> Repo.get!(id)
+    |> Repo.preload([:edition, :summaries])
+  end
+
+  @doc """
+  Set or clear a summary's `validated_at` — the private human safety net.
+  `validate?` true stamps it now, false clears it. Returns `{:ok, summary}`.
+  """
+  def set_validated(summary, validate?) do
+    at = if validate?, do: DateTime.utc_now() |> DateTime.truncate(:second), else: nil
+
+    summary
+    |> Summary.changeset(%{validated_at: at})
+    |> Repo.update()
+  end
 end

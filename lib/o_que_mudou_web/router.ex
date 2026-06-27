@@ -18,6 +18,7 @@ defmodule OQueMudouWeb.Router do
     pipe_through :browser
 
     live "/", RegisterLive, :index
+    live "/acts/:id", ActLive, :show
   end
 
   # Other scopes may use custom stacks.
