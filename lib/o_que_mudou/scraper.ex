@@ -32,6 +32,21 @@ defmodule OQueMudou.Scraper do
     end
   end
 
+  @doc """
+  Enqueue an `IngestWorker` job for each date in a range (inclusive). Backfill
+  helper — safe to run repeatedly since each day's ingest is idempotent.
+  Returns the list of `Oban.insert/1` results.
+  """
+  def backfill(%Date.Range{} = range) do
+    Enum.map(range, fn date ->
+      %{date: Date.to_iso8601(date)}
+      |> OQueMudou.Scraper.IngestWorker.new()
+      |> Oban.insert()
+    end)
+  end
+
+  def backfill(%Date{} = from, %Date{} = to), do: backfill(Date.range(from, to))
+
   defp ensure_client(opts) do
     case Keyword.get(opts, :client) do
       nil -> Client.new() |> Client.bootstrap()

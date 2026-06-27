@@ -120,4 +120,14 @@ defmodule OQueMudou.Register do
     present = Enum.filter(@act_mutable, fn key -> not is_nil(Map.get(attrs, key)) end)
     [:updated_at | present]
   end
+
+  @doc "Acts published on `date` with no summary yet — what the daily cron enqueues for summarization."
+  def acts_without_summary(%Date{} = date) do
+    from(a in Act,
+      join: e in assoc(a, :edition),
+      left_join: s in assoc(a, :summaries),
+      where: e.date == ^date and is_nil(s.id)
+    )
+    |> Repo.all()
+  end
 end
