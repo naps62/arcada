@@ -30,10 +30,14 @@ jobs:
           curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
           apt-get install -y --no-install-recommends nodejs
 
-      - name: Start PostgreSQL (localhost)
+      - name: Start PostgreSQL (localhost, trust auth)
         run: |
-          service postgresql start
-          su - postgres -c "psql -c \"ALTER USER postgres PASSWORD 'postgres';\""
+          PGVER=$(ls /etc/postgresql)
+          HBA=/etc/postgresql/$PGVER/main/pg_hba.conf
+          # Trust local connections — this is a throwaway CI database, and it
+          # makes the postgres/postgres credentials in config/test.exs irrelevant.
+          printf 'local all all trust\nhost all all 127.0.0.1/32 trust\nhost all all ::1/128 trust\n' > "$HBA"
+          pg_ctlcluster "$PGVER" main restart
           for i in $(seq 1 30); do pg_isready -h localhost -U postgres && break; sleep 1; done
 
       - uses: actions/checkout@v4
