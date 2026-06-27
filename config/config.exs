@@ -19,6 +19,13 @@ config :o_que_mudou, OQueMudou.Scraper.Client,
   list_api_version: "1ZNbiINloOPj8IhEJxM3QA",
   detail_api_version: "CMMMWnKmYa2KRIcPVVt9uQ"
 
+# Summarizer adapter selection. MVP default is `:manual` (no external calls);
+# switch to `:api` once ANTHROPIC_API_KEY is configured (see runtime.exs).
+config :o_que_mudou, OQueMudou.Summarizer, adapter: :manual
+
+# Claude API adapter. Model pinned to Sonnet 4.6 per docs/PLAN.md.
+config :o_que_mudou, OQueMudou.Summarizer.Adapters.Api, model: "claude-sonnet-4-6"
+
 # Configures Oban (background jobs + daily cron).
 # The DRE scraper runs on a daily cron; see docs/PLAN.md.
 config :o_que_mudou, Oban,

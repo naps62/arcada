@@ -20,6 +20,22 @@ if System.get_env("PHX_SERVER") do
   config :o_que_mudou, OQueMudouWeb.Endpoint, server: true
 end
 
+# Summarizer (Claude API). Set ANTHROPIC_API_KEY to use the `:api` adapter;
+# without it the adapter returns {:error, :missing_api_key} and the manual
+# default applies. Read at runtime in every env so it works for releases + dev.
+if api_key = System.get_env("ANTHROPIC_API_KEY") do
+  config :o_que_mudou, OQueMudou.Summarizer.Adapters.Api, api_key: api_key
+
+  # If a key is present, default to the api adapter unless overridden.
+  if System.get_env("SUMMARIZER_ADAPTER") in [nil, "api"] do
+    config :o_que_mudou, OQueMudou.Summarizer, adapter: :api
+  end
+end
+
+if adapter = System.get_env("SUMMARIZER_ADAPTER") do
+  config :o_que_mudou, OQueMudou.Summarizer, adapter: String.to_atom(adapter)
+end
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||
