@@ -35,3 +35,6 @@ o_que_mudou-*.tar
 npm-debug.log
 /assets/node_modules/
 
+
+# Local git worktrees
+/worktrees/
