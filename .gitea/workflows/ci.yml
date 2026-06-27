@@ -14,34 +14,27 @@ jobs:
     container:
       image: elixir:1.17.3-otp-25
 
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     env:
       MIX_ENV: test
-      DATABASE_HOST: postgres
-      DATABASE_USER: postgres
-      DATABASE_PASS: postgres
 
     steps:
-      # JS-based actions (checkout, cache) run *inside* this container, which has
-      # no Node.js — install it (and git, for the heroicons GitHub dep) first, via
-      # bash, before any action that needs node. Runs before checkout on purpose.
-      - name: Install Node.js + git
+      # Everything below runs *inside* the elixir container:
+      #  - JS-based actions (checkout, cache) need Node.js, which the image lacks.
+      #  - git is needed for the heroicons GitHub dep.
+      #  - Postgres runs locally on localhost to avoid Gitea service-container DNS
+      #    (a service named `postgres` doesn't resolve from this job container).
+      - name: Install system deps (Node.js, git, PostgreSQL)
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends ca-certificates curl gnupg git
+          apt-get install -y --no-install-recommends ca-certificates curl gnupg git postgresql
           curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
           apt-get install -y --no-install-recommends nodejs
+
+      - name: Start PostgreSQL (localhost)
+        run: |
+          service postgresql start
+          su - postgres -c "psql -c \"ALTER USER postgres PASSWORD 'postgres';\""
+          for i in $(seq 1 30); do pg_isready -h localhost -U postgres && break; sleep 1; done
 
       - uses: actions/checkout@v4
 
