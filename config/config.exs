@@ -11,6 +11,14 @@ config :o_que_mudou,
   ecto_repos: [OQueMudou.Repo],
   generators: [timestamp_type: :utc_datetime]
 
+# DRE scraper. apiVersion hashes rotate on each DRE deploy; these are the
+# last-known-good values from recon (docs/endpoints.md). The list action is
+# load-bearing; the detail action degrades gracefully when its hash drifts.
+config :o_que_mudou, OQueMudou.Scraper.Client,
+  base_url: "https://diariodarepublica.pt",
+  list_api_version: "1ZNbiINloOPj8IhEJxM3QA",
+  detail_api_version: "CMMMWnKmYa2KRIcPVVt9uQ"
+
 # Configures Oban (background jobs + daily cron).
 # The DRE scraper runs on a daily cron; see docs/PLAN.md.
 config :o_que_mudou, Oban,
