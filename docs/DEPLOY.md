@@ -113,15 +113,20 @@ lifecycle is logged via `Oban.Telemetry.attach_default_logger/1`. `LOG_LEVEL`
 aren't logged). Plugins: Application, Beam, Phoenix, Ecto, Oban,
 PhoenixLiveView (~60 metric families, all prefixed `o_que_mudou_prom_ex_*`).
 
-Point Prometheus at the container **over `dokploy-network`** — this bypasses
-Traefik entirely (no ACL to satisfy, no TLS):
+Scraping is **opt-in via container labels**, not a static target. Grafana
+Alloy (`infra/alloy` → `config.alloy`) discovers Docker containers and only
+scrapes ones carrying these labels, hitting `<container>:<prometheus.port>/metrics`
+over `dokploy-network` (bypasses Traefik — no ACL, no TLS):
 
-```yaml
-scrape_configs:
-  - job_name: arcada-app
-    static_configs:
-      - targets: ["arcada-app-byl8ru:4000"]
+```dockerfile
+# Dockerfile (runner stage) — already set:
+LABEL prometheus.scrape="true"
+LABEL prometheus.port="4000"
 ```
+
+This mirrors how other scraped services (e.g. `example-service`) opt in, so no edits to
+the shared Alloy config are needed when this app is redeployed. Metrics land in
+Prometheus prefixed `o_que_mudou_prom_ex_*` within ~15s of a deploy.
 
 `/metrics` is *also* reachable at `https://oqm.example.internal/metrics`, but it
 inherits the host's `vpn-allowlist@file` ipAllowList (the router
