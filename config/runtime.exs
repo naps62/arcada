@@ -20,6 +20,13 @@ if System.get_env("PHX_SERVER") do
   config :o_que_mudou, OQueMudouWeb.Endpoint, server: true
 end
 
+# Umami analytics (privacy-preserving, cookieless). Both vars must be set for
+# the tracking tag to render (see OQueMudouWeb.Layouts.umami/0). Read in every
+# env so it works for releases; left unset in dev and the VPN deployment.
+config :o_que_mudou, :umami,
+  script_url: System.get_env("UMAMI_SCRIPT_URL"),
+  website_id: System.get_env("UMAMI_WEBSITE_ID")
+
 # Summarizer (Claude API). Set ANTHROPIC_API_KEY to use the `:api` adapter;
 # without it the adapter returns {:error, :missing_api_key} and the manual
 # default applies. Read at runtime in every env so it works for releases + dev.
