@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-28T00:00:00.000Z",
+  "title": "Design System: O que mudou",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Ink Blue",
+        "canonical": "oklch(0.46 0.12 255)",
+        "tonalRamp": ["oklch(0.20 0.06 255)", "oklch(0.28 0.09 255)", "oklch(0.36 0.11 255)", "oklch(0.46 0.12 255)", "oklch(0.58 0.12 255)", "oklch(0.70 0.10 255)", "oklch(0.82 0.07 255)", "oklch(0.93 0.03 255)"]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Newsprint Paper",
+        "canonical": "oklch(0.965 0.008 85)",
+        "tonalRamp": ["oklch(0.18 0.006 70)", "oklch(0.23 0.012 60)", "oklch(0.45 0.014 65)", "oklch(0.62 0.013 75)", "oklch(0.84 0.012 80)", "oklch(0.925 0.011 85)", "oklch(0.945 0.01 85)", "oklch(0.965 0.008 85)"]
+      },
+      "state-unreviewed": {
+        "role": "tertiary",
+        "displayName": "Unreviewed Amber",
+        "canonical": "oklch(0.68 0.13 80)",
+        "tonalRamp": ["oklch(0.35 0.08 70)", "oklch(0.42 0.11 60)", "oklch(0.56 0.13 75)", "oklch(0.68 0.13 80)", "oklch(0.78 0.11 80)", "oklch(0.86 0.08 80)", "oklch(0.91 0.07 80)", "oklch(0.93 0.06 80)"]
+      },
+      "state-community": {
+        "role": "secondary",
+        "displayName": "Community Blue",
+        "canonical": "oklch(0.50 0.11 250)",
+        "tonalRamp": ["oklch(0.28 0.07 255)", "oklch(0.37 0.10 255)", "oklch(0.50 0.11 250)", "oklch(0.60 0.11 250)", "oklch(0.70 0.09 250)", "oklch(0.82 0.06 250)", "oklch(0.90 0.05 250)", "oklch(0.93 0.04 250)"]
+      },
+      "state-verified": {
+        "role": "secondary",
+        "displayName": "Verified Green",
+        "canonical": "oklch(0.52 0.12 150)",
+        "tonalRamp": ["oklch(0.30 0.08 150)", "oklch(0.35 0.10 150)", "oklch(0.52 0.12 150)", "oklch(0.62 0.11 150)", "oklch(0.72 0.09 150)", "oklch(0.83 0.06 150)", "oklch(0.90 0.05 150)", "oklch(0.93 0.05 150)"]
+      }
+    },
+    "typographyMeta": {
+      "nameplate": { "displayName": "Nameplate", "purpose": "Fraunces 900 masthead wordmark. Centered, with heavy rule below." },
+      "deck": { "displayName": "Deck", "purpose": "Fraunces light italic standfirst under the masthead." },
+      "headline": { "displayName": "Headline", "purpose": "Fraunces 600 — each act's title. Display only, never UI." },
+      "reading": { "displayName": "Reading (serif)", "purpose": "Newsreader — plain-language summary and act prose only." },
+      "kicker": { "displayName": "Kicker", "purpose": "Inter 600 uppercase — issuing body, section bar, flags, date dividers." }
+    },
+    "shadows": [
+      { "name": "floating", "value": "0 8px 24px -8px oklch(0.23 0.012 60 / 0.22)", "purpose": "Dropdowns and dialogs only. Stories and date sections use rules, never shadow." }
+    ],
+    "motion": [
+      { "name": "ease-out-quart", "value": "cubic-bezier(0.25, 1, 0.5, 1)", "purpose": "Default easing for state transitions (hover, focus, selection)." },
+      { "name": "duration-fast", "value": "150ms", "purpose": "Most UI state changes; users are in a task." },
+      { "name": "reduced-motion", "value": "0ms / opacity-only", "purpose": "prefers-reduced-motion alternative: crossfade or instant." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ],
+    "themes": {
+      "strategy": "auto via prefers-color-scheme; both shipped",
+      "light": { "bg": "oklch(0.965 0.008 85)", "ink": "oklch(0.23 0.012 60)", "primary": "oklch(0.46 0.12 255)" },
+      "dark": { "bg": "oklch(0.18 0.006 70)", "ink": "oklch(0.92 0.01 85)", "primary": "oklch(0.74 0.11 250)" }
+    }
+  },
+  "components": [
+    {
+      "name": "Nameplate",
+      "kind": "nav",
+      "refersTo": "nameplate",
+      "description": "The masthead wordmark, centered Fraunces 900 with a heavy rule below.",
+      "html": "<div class=\"ds-masthead\"><div class=\"ds-masthead__kicker\"><span>Diário da República · Série I</span><span>Novo a cada dia útil</span></div><a class=\"ds-masthead__name\" href=\"/\">O que mudou</a><div class=\"ds-masthead__rule\"></div></div>",
+      "css": ".ds-masthead { font-family: Inter, system-ui, sans-serif; } .ds-masthead__kicker { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid oklch(0.84 0.012 80); font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: oklch(0.45 0.014 65); } .ds-masthead__name { display: block; padding: 20px 0; text-align: center; font-family: Fraunces, Georgia, serif; font-weight: 900; font-size: 3.25rem; line-height: 1; letter-spacing: -0.02em; color: oklch(0.23 0.012 60); text-decoration: none; } .ds-masthead__rule { border-top: 2px solid oklch(0.23 0.012 60); }"
+    },
+    {
+      "name": "Section link (active)",
+      "kind": "nav",
+      "refersTo": "section-link-active",
+      "description": "Domain filter as a newspaper section bar; active link is ink with an under-rule.",
+      "html": "<a class=\"ds-section ds-section--active\" href=\"#\">Habitação <span class=\"ds-section__count\">12</span></a>",
+      "css": ".ds-section { display: inline-flex; align-items: baseline; gap: 4px; padding: 8px 0; font-family: Inter, system-ui, sans-serif; font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: oklch(0.45 0.014 65); text-decoration: none; } .ds-section:hover { color: oklch(0.23 0.012 60); } .ds-section--active { color: oklch(0.23 0.012 60); border-bottom: 2px solid oklch(0.23 0.012 60); padding-bottom: 2px; } .ds-section__count { font-size: 0.625rem; font-weight: 400; text-transform: none; color: oklch(0.45 0.014 65); }"
+    },
+    {
+      "name": "Provenance flag — Verified",
+      "kind": "custom",
+      "refersTo": "flag-verified",
+      "description": "Top of the provenance ladder. Uppercase flag: icon + word + color.",
+      "html": "<span class=\"ds-flag ds-flag--verified\"><svg viewBox=\"0 0 16 16\" width=\"12\" height=\"12\" aria-hidden=\"true\"><path fill=\"currentColor\" d=\"M6.5 10.6 3.9 8l-1 1 3.6 3.6L13.1 6 12.1 5l-5.6 5.6Z\"/></svg>verificado</span>",
+      "css": ".ds-flag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 3px; font-family: Inter, system-ui, sans-serif; font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; } .ds-flag--verified { background: oklch(0.93 0.05 150); color: oklch(0.35 0.10 150); }"
+    },
+    {
+      "name": "Story entry (act)",
+      "kind": "card",
+      "refersTo": "story-entry",
+      "description": "A ruled register story: kicker (issuing body) → Fraunces headline → Newsreader standfirst → flags + source. No card, no shadow.",
+      "html": "<article class=\"ds-story\"><div class=\"ds-story__head\"><div><p class=\"ds-story__kicker\">Presidência do Conselho de Ministros</p><h3 class=\"ds-story__title\"><a href=\"#\">Decreto-Lei n.º 123/2026</a></h3></div><span class=\"ds-flag ds-flag--unreviewed\">não revisto</span></div><p class=\"ds-story__standfirst\">Alarga o apoio ao arrendamento a agregados com rendimentos até ao 4.º escalão, com efeitos a partir de 1 de julho.</p><div class=\"ds-story__foot\"><span class=\"ds-tag\">habitação</span><a href=\"#\">fonte oficial</a></div></article>",
+      "css": ".ds-story { padding: 20px 0; border-bottom: 1px solid oklch(0.84 0.012 80); } .ds-story__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; } .ds-story__kicker { margin: 0; font-family: Inter, system-ui, sans-serif; font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.09em; color: oklch(0.45 0.014 65); } .ds-story__title { margin: 6px 0 0; font-family: Fraunces, Georgia, serif; font-size: 1.375rem; font-weight: 600; line-height: 1.25; } .ds-story__title a { color: oklch(0.23 0.012 60); text-decoration: none; } .ds-story__title a:hover { color: oklch(0.46 0.12 255); } .ds-story__standfirst { margin: 10px 0 0; max-width: 70ch; font-family: Newsreader, Georgia, serif; font-size: 1.0625rem; line-height: 1.6; color: oklch(0.23 0.012 60); } .ds-story__foot { display: flex; align-items: center; gap: 16px; margin-top: 12px; font-family: Inter, system-ui, sans-serif; font-size: 0.8125rem; } .ds-story__foot a { color: oklch(0.45 0.014 65); text-decoration: none; } .ds-story__foot a:hover { color: oklch(0.46 0.12 255); } .ds-tag { font-size: 0.6875rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; color: oklch(0.45 0.014 65); background: oklch(0.925 0.011 85); border-radius: 3px; padding: 2px 6px; } .ds-flag { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 3px; font-family: Inter, system-ui, sans-serif; font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; } .ds-flag--unreviewed { background: oklch(0.93 0.06 80); color: oklch(0.42 0.11 60); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Plain-Language Broadsheet",
+    "overview": "A daily paper for the law. Warm newsprint stock, a high-contrast serif nameplate, hairline rules between stories, and a kicker over every headline naming who issued it. Every story is a diploma from Diário da República, Série I; the standfirst beneath each headline is the plain-language summary. A product surface dressed as editorial, it serves citizens and journalists, and earns trust the way a paper of record does — sourced kickers, a visible última verificação, a refusal to oversell. A signpost, not an authority.",
+    "keyCharacteristics": [
+      "Warm newsprint paper, never pure white; a warm evening-edition dark.",
+      "Fraunces display headlines, Newsreader reading prose, Inter furniture.",
+      "Stories are ruled, not carded — hairline dividers, kicker -> headline -> standfirst.",
+      "Color is a signal, never decoration — reserved for the three provenance flags.",
+      "Built for reach: large serif headlines, 17px prose, auto light/dark, full keyboard paths."
+    ],
+    "rules": [
+      { "name": "The Signal-Only Rule", "body": "Saturated color is forbidden as decoration. If a colored element is not a link, a primary action, a focus state, or a provenance flag, its color is a bug.", "section": "colors" },
+      { "name": "The Colour-Is-Never-Alone Rule", "body": "Every provenance flag pairs a hue with an icon and a word. Remove the color and the state must still be unambiguous.", "section": "colors" },
+      { "name": "The Headlines-Are-Fraunces Rule", "body": "Fraunces is display only — nameplate, deck, headlines. Never set body or a control in Fraunces; never set a headline in Inter.", "section": "typography" },
+      { "name": "The Ruled-Not-Carded Rule", "body": "Stories are separated by hairline rules, not boxed in cards. A resting card with radius and shadow in the feed is wrong.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep the page in ink, muted, and rule until an element earns color — a link, a primary action, focus, or a provenance flag.",
+      "Do set headlines in Fraunces, reading prose in Newsreader, everything else in Inter.",
+      "Do divide stories with hairline rules; open date sections and the nameplate with the heavy rule-strong.",
+      "Do render every provenance flag as icon + word + color, surviving with color removed.",
+      "Do hold muted text at >=4.5:1 on paper; never let a grey go faint.",
+      "Do size for reach: >=44px controls, 17px reading prose, visible focus rings, reduced-motion fallbacks, respect prefers-color-scheme.",
+      "Do keep the official source and the última verificação date visible on every act."
+    ],
+    "donts": [
+      "Don't box stories in rounded cards with shadows — rules divide; the page is flat.",
+      "Don't reintroduce default Phoenix scaffold (orange #FD4F00 pill, logo, @elixirphoenix / GitHub links).",
+      "Don't use a pure-white body — the stock is warm newsprint; don't push it into saturated AI cream (chroma <= ~0.012).",
+      "Don't use corporate-SaaS gradients, hero metrics, or glassmorphism.",
+      "Don't signal urgency like a news site — no breaking-news red, no countdowns, no alarm.",
+      "Don't use the Portuguese flag's green/red as identity; status green is a provenance signal.",
+      "Don't put a colored border-left stripe on a story — full-width hairline rules only.",
+      "Don't set a headline in Inter or a control/label in Fraunces."
+    ]
+  }
+}

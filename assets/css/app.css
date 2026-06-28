@@ -2,4 +2,139 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
-/* This file is for your main application CSS */
+/* ── Fonts (self-hosted, privacy-respecting — no third-party CDN) ──────────── */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("/fonts/inter-latin-wght-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("/fonts/fraunces-latin-wght-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: italic;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("/fonts/fraunces-latin-wght-italic.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Newsreader";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url("/fonts/newsreader-latin-wght-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Newsreader";
+  font-style: italic;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url("/fonts/newsreader-latin-wght-italic.woff2") format("woff2");
+}
+
+/* ── Design tokens — "The National Archive Reading Room" ──────────────────────
+   Light is canonical; dark mirrors it. Theme is automatic (prefers-color-scheme),
+   no manual toggle. All values OKLCH. See DESIGN.md. */
+:root {
+  /* Newsprint — warm paper stock, warm printing-ink text. */
+  --bg: oklch(0.965 0.008 85);
+  --surface: oklch(0.945 0.01 85);
+  --surface-inset: oklch(0.925 0.011 85);
+  --ink: oklch(0.23 0.012 60);
+  --muted: oklch(0.45 0.014 65);
+  --border: oklch(0.84 0.012 80);
+  --rule-strong: oklch(0.23 0.012 60);
+  --primary: oklch(0.46 0.12 255);
+  --primary-hover: oklch(0.4 0.12 255);
+  --on-primary: oklch(0.97 0.008 85);
+
+  /* Provenance ladder — the only saturated color on the page */
+  --state-unreviewed-bg: oklch(0.93 0.06 80);
+  --state-unreviewed-ink: oklch(0.42 0.11 60);
+  --state-community-bg: oklch(0.93 0.04 250);
+  --state-community-ink: oklch(0.37 0.10 255);
+  --state-verified-bg: oklch(0.93 0.05 150);
+  --state-verified-ink: oklch(0.35 0.10 150);
+  --state-error-bg: oklch(0.93 0.05 27);
+  --state-error-ink: oklch(0.47 0.16 27);
+
+  --shadow-floating: 0 8px 24px -8px oklch(0.23 0.012 60 / 0.22);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Evening edition — warm near-black, warm off-white ink. */
+    --bg: oklch(0.18 0.006 70);
+    --surface: oklch(0.22 0.008 70);
+    --surface-inset: oklch(0.25 0.009 70);
+    --ink: oklch(0.92 0.01 85);
+    --muted: oklch(0.68 0.012 80);
+    --border: oklch(0.32 0.01 75);
+    --rule-strong: oklch(0.62 0.012 80);
+    --primary: oklch(0.74 0.11 250);
+    --primary-hover: oklch(0.82 0.1 250);
+    --on-primary: oklch(0.18 0.006 70);
+
+    --state-unreviewed-bg: oklch(0.32 0.05 70 / 0.6);
+    --state-unreviewed-ink: oklch(0.85 0.1 80);
+    --state-community-bg: oklch(0.32 0.05 255 / 0.6);
+    --state-community-ink: oklch(0.83 0.08 255);
+    --state-verified-bg: oklch(0.32 0.05 152 / 0.55);
+    --state-verified-ink: oklch(0.83 0.1 155);
+    --state-error-bg: oklch(0.33 0.07 27 / 0.6);
+    --state-error-ink: oklch(0.81 0.13 27);
+
+    --shadow-floating: 0 8px 28px -8px oklch(0 0 0 / 0.6);
+  }
+}
+
+/* ── Base ─────────────────────────────────────────────────────────────────── */
+@layer base {
+  html {
+    scrollbar-gutter: stable;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background-color: var(--bg);
+    color: var(--ink);
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+    font-feature-settings: "cv05" 1, "ss01" 1; /* humanist l, single-storey a */
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* One visible, consistent focus ring everywhere — keyboard reach matters. */
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  ::selection {
+    background-color: var(--primary);
+    color: var(--on-primary);
+  }
+}
+
+/* Honour reduced-motion globally; component transitions stay short by default. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -14,8 +14,45 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        brand: "#FD4F00",
-      }
+        // Semantic tokens — resolve to OKLCH custom properties (light/dark auto).
+        // See assets/css/app.css and DESIGN.md.
+        bg: "var(--bg)",
+        surface: "var(--surface)",
+        "surface-inset": "var(--surface-inset)",
+        ink: "var(--ink)",
+        muted: "var(--muted)",
+        border: "var(--border)",
+        "rule-strong": "var(--rule-strong)",
+        primary: {
+          DEFAULT: "var(--primary)",
+          hover: "var(--primary-hover)",
+          fg: "var(--on-primary)",
+        },
+        state: {
+          "unreviewed-bg": "var(--state-unreviewed-bg)",
+          "unreviewed-ink": "var(--state-unreviewed-ink)",
+          "community-bg": "var(--state-community-bg)",
+          "community-ink": "var(--state-community-ink)",
+          "verified-bg": "var(--state-verified-bg)",
+          "verified-ink": "var(--state-verified-ink)",
+          "error-bg": "var(--state-error-bg)",
+          "error-ink": "var(--state-error-ink)",
+        },
+      },
+      fontFamily: {
+        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        serif: ["Newsreader", "Georgia", "Times New Roman", "serif"],
+        display: ["Fraunces", "Newsreader", "Georgia", "serif"],
+      },
+      boxShadow: {
+        floating: "var(--shadow-floating)",
+      },
+      transitionTimingFunction: {
+        "out-quart": "var(--ease-out-quart)",
+      },
+      maxWidth: {
+        reading: "70ch",
+      },
     },
   },
   plugins: [

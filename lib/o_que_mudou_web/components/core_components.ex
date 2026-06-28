@@ -115,20 +115,32 @@ defmodule OQueMudouWeb.CoreComponents do
       phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
       role="alert"
       class={[
-        "fixed top-2 right-2 mr-2 w-80 sm:w-96 z-50 rounded-lg p-3 ring-1",
-        @kind == :info && "bg-emerald-50 text-emerald-800 ring-emerald-500 fill-cyan-900",
-        @kind == :error && "bg-rose-50 text-rose-900 shadow-md ring-rose-500 fill-rose-900"
+        "fixed right-4 top-4 z-50 w-[calc(100vw-2rem)] max-w-96 rounded-md border bg-surface p-4 pr-10 shadow-floating",
+        @kind == :info && "border-border text-ink",
+        @kind == :error && "border-state-error-ink/35 text-ink"
       ]}
       {@rest}
     >
-      <p :if={@title} class="flex items-center gap-1.5 text-sm font-semibold leading-6">
-        <.icon :if={@kind == :info} name="hero-information-circle-mini" class="h-4 w-4" />
-        <.icon :if={@kind == :error} name="hero-exclamation-circle-mini" class="h-4 w-4" />
-        {@title}
+      <p :if={@title} class="flex items-center gap-1.5 text-sm font-semibold leading-5">
+        <.icon
+          :if={@kind == :info}
+          name="hero-information-circle-mini"
+          class="size-4 shrink-0 text-primary"
+        />
+        <.icon
+          :if={@kind == :error}
+          name="hero-exclamation-triangle-mini"
+          class="size-4 shrink-0 text-state-error-ink"
+        />
+        <span class={[@kind == :error && "text-state-error-ink"]}>{@title}</span>
       </p>
-      <p class="mt-2 text-sm leading-5">{msg}</p>
-      <button type="button" class="group absolute top-1 right-1 p-2" aria-label={gettext("close")}>
-        <.icon name="hero-x-mark-solid" class="h-5 w-5 opacity-40 group-hover:opacity-70" />
+      <p class="mt-1.5 text-sm leading-5 text-muted">{msg}</p>
+      <button
+        type="button"
+        class="group absolute right-1.5 top-1.5 rounded p-2 text-muted hover:text-ink"
+        aria-label={gettext("fechar")}
+      >
+        <.icon name="hero-x-mark-mini" class="size-4" />
       </button>
     </div>
     """
@@ -147,30 +159,30 @@ defmodule OQueMudouWeb.CoreComponents do
   def flash_group(assigns) do
     ~H"""
     <div id={@id}>
-      <.flash kind={:info} title={gettext("Success!")} flash={@flash} />
-      <.flash kind={:error} title={gettext("Error!")} flash={@flash} />
+      <.flash kind={:info} title={gettext("Feito")} flash={@flash} />
+      <.flash kind={:error} title={gettext("Erro")} flash={@flash} />
       <.flash
         id="client-error"
         kind={:error}
-        title={gettext("We can't find the internet")}
+        title={gettext("Sem ligação")}
         phx-disconnected={show(".phx-client-error #client-error")}
         phx-connected={hide("#client-error")}
         hidden
       >
-        {gettext("Attempting to reconnect")}
-        <.icon name="hero-arrow-path" class="ml-1 h-3 w-3 animate-spin" />
+        {gettext("A tentar reconectar")}
+        <.icon name="hero-arrow-path" class="ml-1 size-3 animate-spin" />
       </.flash>
 
       <.flash
         id="server-error"
         kind={:error}
-        title={gettext("Something went wrong!")}
+        title={gettext("Algo correu mal")}
         phx-disconnected={show(".phx-server-error #server-error")}
         phx-connected={hide("#server-error")}
         hidden
       >
-        {gettext("Hang in there while we get back on track")}
-        <.icon name="hero-arrow-path" class="ml-1 h-3 w-3 animate-spin" />
+        {gettext("Aguarde enquanto repomos o serviço")}
+        <.icon name="hero-arrow-path" class="ml-1 size-3 animate-spin" />
       </.flash>
     </div>
     """
@@ -594,6 +606,72 @@ defmodule OQueMudouWeb.CoreComponents do
   def icon(%{name: "hero-" <> _} = assigns) do
     ~H"""
     <span class={[@name, @class]} />
+    """
+  end
+
+  @doc """
+  The provenance badge — the one place color carries meaning on the page.
+
+  Resolves a summary to one rung of the provenance ladder and renders it as
+  icon + word + color (never color alone). A human `validated_at` stamp is the
+  strongest trust signal and reads as verified; otherwise the summary's `status`
+  drives it. A nil summary renders nothing (the caller shows a "por gerar" note).
+  """
+  attr :summary, :any, default: nil
+  attr :class, :string, default: nil
+
+  def provenance_badge(assigns) do
+    assigns = assign(assigns, :state, provenance_state(assigns.summary))
+
+    ~H"""
+    <span
+      :if={@state}
+      title={provenance_title(@state)}
+      class={[
+        "inline-flex shrink-0 items-center gap-1 rounded-[3px] px-2 py-0.5 text-[0.6875rem] font-semibold uppercase tracking-[0.06em]",
+        @state == :unreviewed && "bg-state-unreviewed-bg text-state-unreviewed-ink",
+        @state == :community && "bg-state-community-bg text-state-community-ink",
+        @state == :verified && "bg-state-verified-bg text-state-verified-ink",
+        @class
+      ]}
+    >
+      <.icon name={provenance_icon(@state)} class="size-3.5" />
+      {provenance_label(@state)}
+    </span>
+    """
+  end
+
+  @doc "Resolve a summary to a provenance rung: `:unreviewed | :community | :verified | nil`."
+  def provenance_state(nil), do: nil
+  def provenance_state(%{validated_at: %DateTime{}}), do: :verified
+  def provenance_state(%{status: :verified}), do: :verified
+  def provenance_state(%{status: :community_reviewed}), do: :community
+  def provenance_state(_summary), do: :unreviewed
+
+  defp provenance_icon(:unreviewed), do: "hero-cpu-chip-micro"
+  defp provenance_icon(:community), do: "hero-users-micro"
+  defp provenance_icon(:verified), do: "hero-check-badge-micro"
+
+  defp provenance_label(:unreviewed), do: "não revisto"
+  defp provenance_label(:community), do: "comunidade"
+  defp provenance_label(:verified), do: "verificado"
+
+  defp provenance_title(:unreviewed), do: "Resumo gerado por modelo, ainda não revisto por uma pessoa."
+  defp provenance_title(:community), do: "Revisto pela comunidade."
+  defp provenance_title(:verified), do: "Verificado por um revisor."
+
+  @doc "A life-domain tag — quiet, neutral, never a status color."
+  attr :label, :string, required: true
+  attr :class, :string, default: nil
+
+  def domain_tag(assigns) do
+    ~H"""
+    <span class={[
+      "inline-flex items-center rounded-[3px] bg-surface-inset px-1.5 py-0.5 text-[0.6875rem] font-medium uppercase tracking-[0.04em] text-muted",
+      @class
+    ]}>
+      {@label}
+    </span>
     """
   end
 

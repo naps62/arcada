@@ -1,8 +1,8 @@
 defmodule OQueMudouWeb.RegisterLive do
   @moduledoc """
   The private register: acts grouped by publication date, with a static
-  life-domain filter. Each act shows its plain-language summary (labelled
-  🤖 não revisto until a human validates it). See `docs/PLAN.md` build order #4.
+  life-domain filter. Each act shows its plain-language summary (labelled by its
+  provenance rung until a human validates it). See `docs/PLAN.md` build order #4.
   """
   use OQueMudouWeb, :live_view
 
@@ -12,7 +12,6 @@ defmodule OQueMudouWeb.RegisterLive do
   def mount(_params, _session, socket) do
     {:ok,
      assign(socket,
-       page_title: "O que mudou",
        domains: Register.life_domains(),
        domain_counts: Register.domain_counts()
      )}
@@ -21,8 +20,16 @@ defmodule OQueMudouWeb.RegisterLive do
   @impl true
   def handle_params(params, _uri, socket) do
     domain = params["domain"]
-    groups = Register.list_acts(domain: domain, limit: 300) |> group_by_date()
-    {:noreply, assign(socket, active_domain: domain, groups: groups)}
+    acts = Register.list_acts(domain: domain, limit: 300)
+    groups = group_by_date(acts)
+
+    {:noreply,
+     assign(socket,
+       active_domain: domain,
+       groups: groups,
+       total: length(acts),
+       page_title: domain && to_string(domain)
+     )}
   end
 
   # Group acts by their edition's publication date, newest day first.
@@ -43,41 +50,69 @@ defmodule OQueMudouWeb.RegisterLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="mx-auto max-w-3xl px-4 py-8">
-      <header class="mb-6">
-        <h1 class="text-2xl font-bold text-zinc-900">O que mudou</h1>
-        <p class="text-sm text-zinc-500">
-          Diário da República, Série I — em linguagem simples.
-          <span class="italic">Isto não é aconselhamento jurídico.</span>
-        </p>
-      </header>
-
-      <nav class="mb-8 flex flex-wrap gap-2" aria-label="Filtrar por domínio">
-        <.domain_pill label="Tudo" patch={~p"/"} active={is_nil(@active_domain)} />
-        <.domain_pill
-          :for={d <- @domains}
-          label={d}
-          count={@domain_counts[d]}
-          patch={~p"/?#{[domain: d]}"}
-          active={@active_domain == d}
-        />
-      </nav>
-
-      <p :if={@groups == []} class="rounded-lg bg-zinc-50 p-6 text-center text-zinc-500">
-        Nada a mostrar <span :if={@active_domain}>para o domínio "{@active_domain}"</span>.
+    <section class="border-b border-border pb-7 text-center">
+      <h1 class="font-display text-[1.6rem] font-light italic leading-tight text-ink sm:text-[2rem]">
+        Todos os dias, o que mudou<br class="hidden sm:inline" /> na lei portuguesa.
+      </h1>
+      <p class="mx-auto mt-3 max-w-[52ch] text-pretty text-[0.9375rem] leading-relaxed text-muted">
+        Para quem muda, e a partir de quando — em linguagem simples, com a fonte
+        oficial de cada alteração sempre à mão.
       </p>
+      <p class="mx-auto mt-3 inline-flex items-center gap-1.5 text-xs text-muted">
+        <.icon name="hero-information-circle-micro" class="size-4 shrink-0" />
+        <span>Isto não é aconselhamento jurídico — um sinal, não uma autoridade.</span>
+      </p>
+    </section>
 
-      <section :for={{date, acts} <- @groups} class="mb-8">
-        <h2 class="mb-3 border-b border-zinc-200 pb-1 text-sm font-semibold uppercase tracking-wide text-zinc-500">
-          {format_date(date)}
-        </h2>
-        <ul class="space-y-4">
-          <li :for={act <- acts} class="rounded-lg border border-zinc-200 p-4">
-            <.act_row act={act} summary={latest_summary(act)} />
-          </li>
-        </ul>
-      </section>
+    <nav class="border-b border-border" aria-label="Filtrar por domínio">
+      <h2 class="sr-only">Domínios</h2>
+      <ul class="flex flex-wrap items-center gap-x-5 gap-y-1 py-3">
+        <li>
+          <.section_link label="Tudo" patch={~p"/"} active={is_nil(@active_domain)} />
+        </li>
+        <li :for={d <- @domains}>
+          <.section_link
+            label={d}
+            count={@domain_counts[d]}
+            patch={~p"/?#{[domain: d]}"}
+            active={@active_domain == d}
+          />
+        </li>
+      </ul>
+    </nav>
+
+    <div :if={@groups == []} class="border-b border-border py-16 text-center">
+      <.icon name="hero-document-magnifying-glass" class="mx-auto size-8 text-muted" />
+      <p class="mt-3 font-display text-lg text-ink">
+        Nada a mostrar<span :if={@active_domain}> em "{@active_domain}"</span>.
+      </p>
+      <p :if={@active_domain} class="mt-1 text-sm text-muted">
+        Ainda não há diplomas resumidos neste domínio.
+      </p>
+      <.link
+        :if={@active_domain}
+        patch={~p"/"}
+        class="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+      >
+        Ver tudo
+      </.link>
     </div>
+
+    <section :for={{date, acts} <- @groups} class="mt-8 first:mt-7">
+      <div class="mb-1 flex items-baseline justify-between gap-3 border-b-2 border-rule-strong pb-1.5">
+        <h2 class="font-display text-[0.8125rem] font-bold uppercase tracking-[0.08em] text-ink">
+          <time datetime={Date.to_iso8601(date)}>{format_date(date)}</time>
+        </h2>
+        <span class="text-xs text-muted">
+          {length(acts)} {if length(acts) == 1, do: "diploma", else: "diplomas"}
+        </span>
+      </div>
+      <ul class="divide-y divide-border">
+        <li :for={act <- acts}>
+          <.act_entry act={act} summary={latest_summary(act)} />
+        </li>
+      </ul>
+    </section>
     """
   end
 
@@ -86,17 +121,23 @@ defmodule OQueMudouWeb.RegisterLive do
   attr :active, :boolean, default: false
   attr :count, :integer, default: nil
 
-  defp domain_pill(assigns) do
+  defp section_link(assigns) do
     ~H"""
     <.link
       patch={@patch}
+      aria-current={@active && "true"}
       class={[
-        "rounded-full px-3 py-1 text-sm font-medium transition",
-        @active && "bg-zinc-900 text-white",
-        !@active && "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+        "group inline-flex min-h-[2.25rem] items-baseline gap-1 py-2.5 text-[0.6875rem] font-semibold uppercase tracking-[0.1em]",
+        "transition-colors duration-150 ease-out-quart",
+        @active && "text-ink",
+        !@active && "text-muted hover:text-ink",
+        !@active && @count == 0 && "opacity-50"
       ]}
     >
-      {@label}<span :if={@count} class="ml-1 text-xs opacity-70">{@count}</span>
+      <span class={["pb-0.5", @active && "border-b-2 border-ink"]}>{@label}</span>
+      <span :if={@count} class="text-[0.625rem] font-normal normal-case tabular-nums text-muted">
+        {@count}
+      </span>
     </.link>
     """
   end
@@ -104,63 +145,71 @@ defmodule OQueMudouWeb.RegisterLive do
   attr :act, :map, required: true
   attr :summary, :map, default: nil
 
-  defp act_row(assigns) do
+  # No summary yet: a quiet, ruled one-line brief so it recedes and the
+  # summarised stories carry the page. Content leads, chrome recedes.
+  defp act_entry(%{summary: nil} = assigns) do
     ~H"""
-    <div class="flex items-start justify-between gap-3">
-      <h3 class="font-medium text-zinc-900">
-        <.link navigate={~p"/acts/#{@act.id}"} class="hover:underline">
-          {@act.title || @act.tipo}
-        </.link>
-      </h3>
-      <.status_badge summary={@summary} />
-    </div>
-    <p :if={@act.emitter} class="mt-0.5 text-xs text-zinc-500">{@act.emitter}</p>
-
-    <p :if={@summary} class="mt-2 text-sm text-zinc-700">{@summary.plain_text}</p>
-    <p :if={is_nil(@summary)} class="mt-2 text-sm italic text-zinc-400">Resumo por gerar.</p>
-
-    <div :if={@summary && @summary.domains != []} class="mt-2 flex flex-wrap gap-1">
-      <span
-        :for={d <- @summary.domains}
-        class="rounded bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600"
-      >
-        {d}
+    <.link
+      navigate={~p"/acts/#{@act.id}"}
+      class="group flex items-baseline justify-between gap-4 py-3"
+    >
+      <span class="min-w-0 font-display text-[0.9375rem] text-ink group-hover:text-primary">
+        {@act.title || @act.tipo}
       </span>
-    </div>
-
-    <div class="mt-2 flex gap-3 text-xs">
-      <a
-        :if={@act.source_url}
-        href={@act.source_url}
-        target="_blank"
-        class="text-zinc-500 hover:underline"
-      >
-        fonte oficial
-      </a>
-      <a :if={@act.pdf_url} href={@act.pdf_url} target="_blank" class="text-zinc-500 hover:underline">
-        PDF
-      </a>
-    </div>
+      <span class="shrink-0 text-[0.625rem] uppercase tracking-[0.09em] text-muted">
+        por gerar
+      </span>
+    </.link>
     """
   end
 
-  attr :summary, :map, default: nil
-
-  defp status_badge(%{summary: nil} = assigns), do: ~H""
-
-  defp status_badge(%{summary: %{validated_at: at}} = assigns) when not is_nil(at) do
+  defp act_entry(assigns) do
     ~H"""
-    <span class="shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
-      ✓ validado
-    </span>
-    """
-  end
+    <article class="py-5">
+      <div class="flex items-start justify-between gap-4">
+        <div class="min-w-0">
+          <p class="text-[0.6875rem] font-semibold uppercase tracking-[0.09em] text-muted">
+            {@act.emitter || @act.tipo}
+          </p>
+          <h3 class="mt-1.5 text-pretty font-display text-xl font-semibold leading-snug text-ink sm:text-[1.375rem]">
+            <.link navigate={~p"/acts/#{@act.id}"} class="rounded-sm hover:text-primary">
+              {@act.title || @act.tipo}
+            </.link>
+          </h3>
+        </div>
+        <.provenance_badge summary={@summary} class="mt-0.5" />
+      </div>
 
-  defp status_badge(assigns) do
-    ~H"""
-    <span class="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-      🤖 não revisto
-    </span>
+      <p class="mt-2.5 max-w-reading text-pretty font-serif text-[1.0625rem] leading-relaxed text-ink">
+        {@summary.plain_text}
+      </p>
+
+      <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+        <div :if={@summary.domains != []} class="flex flex-wrap gap-1.5">
+          <.domain_tag :for={d <- @summary.domains} label={to_string(d)} />
+        </div>
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.8125rem]">
+          <a
+            :if={@act.source_url}
+            href={@act.source_url}
+            target="_blank"
+            rel="noopener"
+            class="inline-flex items-center gap-1 text-muted hover:text-primary hover:underline"
+          >
+            <.icon name="hero-arrow-top-right-on-square-micro" class="size-3.5" /> fonte oficial
+          </a>
+          <a
+            :if={@act.pdf_url}
+            href={@act.pdf_url}
+            target="_blank"
+            rel="noopener"
+            class="inline-flex items-center gap-1 text-muted hover:text-primary hover:underline"
+          >
+            <.icon name="hero-document-text-micro" class="size-3.5" /> PDF
+          </a>
+        </div>
+      </div>
+    </article>
     """
   end
 

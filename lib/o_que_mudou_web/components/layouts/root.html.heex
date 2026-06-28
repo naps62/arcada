@@ -1,19 +1,24 @@
 <!DOCTYPE html>
-<html lang="en" class="[scrollbar-gutter:stable]">
+<html lang="pt" class="[scrollbar-gutter:stable]">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content={get_csrf_token()} />
-    <.live_title default="OQueMudou" suffix=" · Phoenix Framework">
+    <meta name="theme-color" content="#f5f1e9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#16140f" media="(prefers-color-scheme: dark)" />
+    <.live_title default="O que mudou — Diário da República em linguagem simples" suffix=" · O que mudou">
       {assigns[:page_title]}
     </.live_title>
+    <link rel="preload" href={~p"/fonts/fraunces-latin-wght-normal.woff2"} as="font" type="font/woff2" crossorigin="anonymous" />
+    <link rel="preload" href={~p"/fonts/inter-latin-wght-normal.woff2"} as="font" type="font/woff2" crossorigin="anonymous" />
+    <link rel="preload" href={~p"/fonts/newsreader-latin-wght-normal.woff2"} as="font" type="font/woff2" crossorigin="anonymous" />
     <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
     <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
     </script>
     <script :if={umami = umami()} defer src={umami.script_url} data-website-id={umami.website_id}>
     </script>
   </head>
-  <body class="bg-white">
+  <body class="bg-bg text-ink antialiased">
     {@inner_content}
   </body>
 </html>
