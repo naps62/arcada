@@ -31,7 +31,7 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
   alias OQueMudou.Register
   alias OQueMudou.Register.Act
 
-  @prompt_version "2026-06-28.ssh.1"
+  @prompt_version "2026-06-28.ssh.2"
   @default_model "claude-cli"
   @default_claude_cmd "claude -p --output-format json"
   # Cap the act text so giant diplomas (huge annexes/tables — some run to ~1M+
@@ -39,12 +39,9 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
   # diploma is near the start; the tail is typically annexes.
   @max_text_chars 80_000
 
-  @system """
-  És um assistente que resume diplomas legais do Diário da República em português \
-  claro e acessível, para uma pessoa comum perceber o que mudou, para quem, e a \
-  partir de quando. Não dês aconselhamento jurídico. Sê conciso (2-4 frases) e \
-  factual, e classifica o diploma em um ou mais domínios de vida.
-
+  # Output-format wiring appended to the shared system prompt. `claude -p` has no
+  # structured-output mode, so we ask for raw JSON and validate on parse.
+  @json_format """
   Responde APENAS com um objeto JSON válido, sem texto antes ou depois, no formato:
   {"plain_text": "<resumo>", "domains": ["<dominio>", ...]}
   Os domínios válidos são EXATAMENTE: #{Enum.join(OQueMudou.Register.life_domains(), ", ")}.
@@ -61,8 +58,8 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
 
   defp build_prompt(act) do
     """
-    #{@system}
-
+    #{OQueMudou.Summarizer.base_system_prompt()}
+    #{@json_format}
     ---
     Tipo: #{act.tipo}
     Emissor: #{act.emitter}

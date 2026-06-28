@@ -22,16 +22,9 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
   @anthropic_version "2023-06-01"
   @default_model "claude-sonnet-4-6"
   # Bump when the prompt/schema change so summaries record which version produced them.
-  @prompt_version "2026-06-27.1"
+  @prompt_version "2026-06-28.2"
   # Cap act text so oversized diplomas don't exceed the model's context limit.
   @max_text_chars 80_000
-
-  @system """
-  És um assistente que resume diplomas legais do Diário da República em português \
-  claro e acessível, para uma pessoa comum perceber o que mudou, para quem, e a \
-  partir de quando. Não dês aconselhamento jurídico. Sê conciso (2-4 frases) e \
-  factual. Classifica o diploma em um ou mais domínios de vida da taxonomia fixa.
-  """
 
   @impl true
   def summarize(%Act{} = act) do
@@ -61,7 +54,7 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
     %{
       "model" => model(),
       "max_tokens" => 1024,
-      "system" => @system,
+      "system" => OQueMudou.Summarizer.base_system_prompt(),
       "messages" => [%{"role" => "user", "content" => act_prompt(act)}],
       "output_config" => %{"format" => %{"type" => "json_schema", "schema" => schema()}}
     }
