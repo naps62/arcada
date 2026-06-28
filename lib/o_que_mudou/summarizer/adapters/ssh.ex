@@ -19,9 +19,10 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
         model: "claude-cli",
         ssh_extra: ["-o", "StrictHostKeyChecking=accept-new", "-o", "BatchMode=yes"]
 
-  Safety: the act text is base64-encoded and piped to the remote `claude` via
-  `echo <b64> | base64 -d | claude …`, so no act content is ever interpolated
-  into a shell command (no injection, no quoting hazards).
+  Safety/robustness: the prompt is written to a temp file and piped to the remote
+  `claude` over SSH stdin (`ssh … claude -p < tmpfile`). No act content is ever
+  interpolated into a command line, so there's no injection risk and no command
+  argument-length limit (long diplomas previously blew MAX_ARG_STRLEN).
   """
   @behaviour OQueMudou.Summarizer.Adapter
 
@@ -76,52 +77,55 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
     end
   end
 
+  @default_ssh_extra [
+    "-o",
+    "StrictHostKeyChecking=accept-new",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "UserKnownHostsFile=/dev/null"
+  ]
+
   defp default_run(prompt) do
     cfg = config()
 
     case cfg[:host] do
-      host when is_binary(host) and host != "" ->
-        args = ssh_args(cfg, host, prompt)
-
-        # Don't merge stderr — ssh diagnostics (e.g. known_hosts warnings) would
-        # otherwise pollute stdout and break JSON parsing. stdout is claude's
-        # JSON envelope; stderr is dropped (exit code carries failure).
-        case System.cmd("ssh", args, stderr_to_stdout: false) do
-          {out, 0} ->
-            {:ok, out}
-
-          {out, code} ->
-            # `claude` may exit non-zero while still printing a JSON error envelope
-            # to stdout — surface it so failures are diagnosable.
-            Logger.warning("ssh summarizer exit #{code}: #{String.slice(out, 0, 600)}")
-            {:error, {:ssh_exit, code}}
-        end
-
-      _ ->
-        {:error, :missing_ssh_host}
+      host when is_binary(host) and host != "" -> run_via_ssh(cfg, host, prompt)
+      _ -> {:error, :missing_ssh_host}
     end
   end
 
-  defp ssh_args(cfg, host, prompt) do
+  # Pipe the prompt over SSH stdin (not the command line). Embedding it as an
+  # argument blew Linux's single-argument size limit (MAX_ARG_STRLEN ~128KB) for
+  # long diplomas — the remote shell failed to exec, yielding an empty exit 7.
+  # The prompt is written to a temp file and redirected into ssh; no act content
+  # ever appears in any command line (no injection, no size limit).
+  defp run_via_ssh(cfg, host, prompt) do
+    tmp = Path.join(System.tmp_dir!(), "oqm_prompt_#{System.unique_integer([:positive])}")
+    File.write!(tmp, prompt)
+
+    try do
+      case System.cmd("sh", ["-c", ssh_command(cfg, host, tmp)], stderr_to_stdout: false) do
+        {out, 0} ->
+          {:ok, out}
+
+        {out, code} ->
+          Logger.warning("ssh summarizer exit #{code}: #{String.slice(out, 0, 600)}")
+          {:error, {:ssh_exit, code}}
+      end
+    after
+      File.rm(tmp)
+    end
+  end
+
+  defp ssh_command(cfg, host, tmpfile) do
     user = cfg[:user] || "claude"
     claude_cmd = cfg[:claude_cmd] || @default_claude_cmd
-    b64 = Base.encode64(prompt)
-    remote = "echo #{b64} | base64 -d | #{claude_cmd}"
-
-    identity = if f = cfg[:identity_file], do: ["-i", f], else: []
-
-    extra =
-      cfg[:ssh_extra] ||
-        [
-          "-o",
-          "StrictHostKeyChecking=accept-new",
-          "-o",
-          "BatchMode=yes",
-          "-o",
-          "UserKnownHostsFile=/dev/null"
-        ]
-
-    identity ++ extra ++ ["#{user}@#{host}", remote]
+    identity = if f = cfg[:identity_file], do: "-i #{f} ", else: ""
+    extra = Enum.join(cfg[:ssh_extra] || @default_ssh_extra, " ")
+    # claude_cmd / flags / paths are operator config (no untrusted content); the
+    # prompt is in tmpfile, piped via stdin.
+    "ssh #{identity}#{extra} #{user}@#{host} #{claude_cmd} < #{tmpfile}"
   end
 
   # `claude -p --output-format json` wraps the response in an envelope whose
