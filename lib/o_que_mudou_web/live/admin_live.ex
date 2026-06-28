@@ -79,51 +79,60 @@ defmodule OQueMudouWeb.AdminLive do
         </p>
       </header>
 
-      <.simple_form
+      <.form
         id="summarizer-form"
         for={@form}
         as={:setting}
         phx-change="validate"
         phx-submit="save"
+        class="mt-8 space-y-8"
       >
-        <.input
-          field={@form[:summarizer_adapter]}
-          type="select"
-          label="Adaptador"
-          prompt="— usar defeito (env) —"
-          options={Setting.adapters()}
-        />
+        <.field field={@form[:summarizer_adapter]} type="select" label="Adaptador">
+          <option value="">— usar defeito (env) —</option>
+          <option
+            :for={a <- Setting.adapters()}
+            value={a}
+            selected={to_string(@form[:summarizer_adapter].value) == a}
+          >
+            {a}
+          </option>
+        </.field>
 
-        <fieldset class="border-t border-border pt-5">
+        <fieldset class="space-y-5 border-t border-border pt-6">
           <legend class="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-muted">
             Claude API
           </legend>
-          <.input field={@form[:api_model]} label="Modelo (api)" placeholder="claude-sonnet-4-6" />
-          <.input
-            type="password"
+          <.field field={@form[:api_model]} label="Modelo (api)" placeholder="claude-sonnet-4-6" />
+          <.field
             name="setting[api_key]"
+            type="password"
             value=""
-            label={"API key " <> if(@api_key_set?, do: "(guardada — deixar vazio para manter)", else: "(nenhuma)")}
             autocomplete="off"
+            label={"API key " <> if(@api_key_set?, do: "(guardada — deixar vazio para manter)", else: "(nenhuma)")}
           />
         </fieldset>
 
-        <fieldset class="border-t border-border pt-5">
+        <fieldset class="space-y-5 border-t border-border pt-6">
           <legend class="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-muted">
             SSH (claude -p)
           </legend>
-          <.input field={@form[:ssh_host]} label="Host" placeholder="192.0.2.10" />
-          <.input field={@form[:ssh_user]} label="Utilizador" placeholder="naps62" />
-          <.input
+          <.field field={@form[:ssh_host]} label="Host" placeholder="192.0.2.10" />
+          <.field field={@form[:ssh_user]} label="Utilizador" placeholder="naps62" />
+          <.field
             field={@form[:ssh_claude_cmd]}
             label="Comando claude"
             placeholder="claude -p --output-format json"
           />
-          <.input field={@form[:ssh_model]} label="Modelo (ssh)" placeholder="claude-cli" />
+          <.field field={@form[:ssh_model]} label="Modelo (ssh)" placeholder="claude-cli" />
         </fieldset>
 
-        <:actions>
-          <.button>Guardar</.button>
+        <div class="flex items-center justify-between gap-6 border-t border-border pt-6">
+          <button
+            type="submit"
+            class="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-bg hover:opacity-90"
+          >
+            Guardar
+          </button>
           <button
             type="button"
             phx-click="test_summarize"
@@ -131,8 +140,8 @@ defmodule OQueMudouWeb.AdminLive do
           >
             Testar: resumir o diploma mais recente
           </button>
-        </:actions>
-      </.simple_form>
+        </div>
+      </.form>
 
       <p class="mt-6 text-xs text-muted">
         Nota: a concorrência da fila de resumos é fixada no arranque — mudar de
@@ -140,5 +149,56 @@ defmodule OQueMudouWeb.AdminLive do
       </p>
     </div>
     """
+  end
+
+  # Theme-aware form field (the default core_components input hardcodes
+  # bg-white/zinc, which breaks dark mode). Uses the app's semantic tokens.
+  attr :field, Phoenix.HTML.FormField, default: nil
+  attr :label, :string, required: true
+  attr :type, :string, default: "text"
+  attr :name, :string, default: nil
+  attr :id, :string, default: nil
+  attr :value, :string, default: nil
+  attr :rest, :global, include: ~w(placeholder autocomplete)
+  slot :inner_block
+
+  defp field(assigns) do
+    assigns =
+      assigns
+      |> assign(:name, assigns.name || (assigns.field && assigns.field.name))
+      |> assign(:id, assigns.id || (assigns.field && assigns.field.id))
+      |> assign(
+        :resolved_value,
+        if(is_nil(assigns.value) and assigns.field, do: assigns.field.value, else: assigns.value)
+      )
+
+    ~H"""
+    <div>
+      <label for={@id} class="block text-sm font-medium text-ink">{@label}</label>
+      <select
+        :if={@type == "select"}
+        id={@id}
+        name={@name}
+        class={input_class()}
+        {@rest}
+      >
+        {render_slot(@inner_block)}
+      </select>
+      <input
+        :if={@type != "select"}
+        type={@type}
+        id={@id}
+        name={@name}
+        value={@resolved_value}
+        class={input_class()}
+        {@rest}
+      />
+    </div>
+    """
+  end
+
+  defp input_class do
+    "mt-1.5 block w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-ink " <>
+      "placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
   end
 end
