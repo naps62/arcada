@@ -93,7 +93,8 @@ public Traefik domain / Let's Encrypt cert. Options:
   ```
 - **Manual summary backfill** (manual adapter): use
   `OQueMudou.Summarizer.create_summary/2` from `bin/o_que_mudou remote`.
-- The daily cron runs automatically at 09:00 UTC on weekdays once the release is up.
+- The ingest cron runs automatically every 2 hours, 07:00–19:00 UTC on weekdays
+  (`0 7-19/2 * * 1-5`), once the release is up. Idempotent, so re-runs are free.
 
 ## Observability (Loki + Prometheus)
 

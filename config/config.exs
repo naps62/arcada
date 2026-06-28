@@ -55,10 +55,12 @@ config :o_que_mudou, Oban,
   queues: [default: 10, scrape: 1, summarize: 5],
   plugins: [
     {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
-    # Daily ingestion: business-day mornings, after Série I publication.
-    # 09:00 UTC (~09:00–10:00 Lisbon); UTC avoids a tzdata dependency.
-    # IngestWorker defaults to today's date and is idempotent on re-run.
-    {Oban.Plugins.Cron, crontab: [{"0 9 * * 1-5", OQueMudou.Scraper.IngestWorker}]}
+    # Série I publishes on business days only (no weekends) — mostly the morning,
+    # but same-day Suplementos land through the day. Poll every 2 hours across the
+    # working day so supplements/late editions are picked up the same day.
+    # 07:00–19:00 UTC (~08:00–20:00 Lisbon in summer); UTC avoids a tzdata dep.
+    # IngestWorker defaults to today's date and is idempotent, so re-runs are free.
+    {Oban.Plugins.Cron, crontab: [{"0 7-19/2 * * 1-5", OQueMudou.Scraper.IngestWorker}]}
   ]
 
 # Configures the endpoint
