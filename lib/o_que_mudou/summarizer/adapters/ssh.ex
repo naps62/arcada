@@ -87,8 +87,14 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
         # otherwise pollute stdout and break JSON parsing. stdout is claude's
         # JSON envelope; stderr is dropped (exit code carries failure).
         case System.cmd("ssh", args, stderr_to_stdout: false) do
-          {out, 0} -> {:ok, out}
-          {_out, code} -> {:error, {:ssh_exit, code}}
+          {out, 0} ->
+            {:ok, out}
+
+          {out, code} ->
+            # `claude` may exit non-zero while still printing a JSON error envelope
+            # to stdout — surface it so failures are diagnosable.
+            Logger.warning("ssh summarizer exit #{code}: #{String.slice(out, 0, 600)}")
+            {:error, {:ssh_exit, code}}
         end
 
       _ ->
