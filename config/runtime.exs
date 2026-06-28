@@ -56,6 +56,26 @@ if adapter = System.get_env("SUMMARIZER_ADAPTER") do
   config :o_que_mudou, OQueMudou.Summarizer, adapter: String.to_atom(adapter)
 end
 
+# Summarize-queue concurrency follows the adapter. The :ssh adapter shells out to
+# a full `claude` CLI session per job — those must NOT run concurrently (one SSH
+# session at a time), so default it to 1. API-style providers can fan out, so
+# they keep a higher default. Override explicitly with SUMMARIZER_CONCURRENCY.
+effective_adapter =
+  cond do
+    a = System.get_env("SUMMARIZER_ADAPTER") -> a
+    System.get_env("ANTHROPIC_API_KEY") -> "api"
+    true -> "manual"
+  end
+
+summarize_concurrency =
+  case System.get_env("SUMMARIZER_CONCURRENCY") do
+    nil -> if effective_adapter == "ssh", do: 1, else: 5
+    v -> String.to_integer(v)
+  end
+
+# Deep-merges into the Oban queues list from config.exs (keeps default/scrape).
+config :o_que_mudou, Oban, queues: [summarize: summarize_concurrency]
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||
