@@ -75,7 +75,7 @@ reconstructing). Companion actions on same screen: `DataActionGetLinks`
 
 ### 3 — Act detail / full text + PDF
 `POST …/dr/Legislacao_Conteudos/Conteudo_Detalhe/DataActionGetAllConteudoDetalheData`
-apiVersion `CMMMWnKmYa2KRIcPVVt9uQ`, `viewName:"Legislacao_Conteudos.Conteudo_Detalhe"`.
+apiVersion `f6iEozloG7S5uAiM9ydqeQ`, `viewName:"Legislacao_Conteudos.Conteudo_Detalhe"`.
 Inputs: `Tipo` (slug) + `Key` (`<numero>-<year>-<dbid>`) — both taken straight from the
 act's `LinkSitemap`. Returns `data.…DetalheConteudo`:
 `Titulo`, `Numero`, `Emissor`/`EmissorAcronimo` (`PR`), `TipoDiploma`/`…Acronimo`
@@ -114,7 +114,7 @@ Example resolved artifacts:
 | Home/WB_Serie1_List/DataActionGetDataAndApplicationSettings | `1ZNbiINloOPj8IhEJxM3QA` |
 | Home/home/DataActionGetDRByDataCalendario | `A00rktBtkSvxDLsFy+6mgg` |
 | Legislacao_Conteudos/Conteudo_Det_Diario/DataActionGetDadosAndApplicationSettings | `r2HCK_WYkdDO5ao7yWPCBw` |
-| Legislacao_Conteudos/Conteudo_Detalhe/DataActionGetAllConteudoDetalheData | `CMMMWnKmYa2KRIcPVVt9uQ` |
+| Legislacao_Conteudos/Conteudo_Detalhe/DataActionGetAllConteudoDetalheData | `f6iEozloG7S5uAiM9ydqeQ` |
 | Legislacao_Conteudos/Conteudo_Detalhe/DataActionGetURLInfo | `0Xe1Eq968Dp8zCmSEuAfyg` |
 
 > `moduleVersion` and all `apiVersion` hashes change on each DRE deployment. The scraper

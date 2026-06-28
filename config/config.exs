@@ -17,7 +17,9 @@ config :o_que_mudou,
 config :o_que_mudou, OQueMudou.Scraper.Client,
   base_url: "https://diariodarepublica.pt",
   list_api_version: "1ZNbiINloOPj8IhEJxM3QA",
-  detail_api_version: "CMMMWnKmYa2KRIcPVVt9uQ"
+  # Re-derived 2026-06-28 (rotated from CMMMWnKmYa2KRIcPVVt9uQ). See issue for
+  # self-healing re-derivation so this stops needing manual updates on DRE deploys.
+  detail_api_version: "f6iEozloG7S5uAiM9ydqeQ"
 
 # Summarizer adapter selection. MVP default is `:manual` (no external calls);
 # switch to `:api` once ANTHROPIC_API_KEY is configured (see runtime.exs).
