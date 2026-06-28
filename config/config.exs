@@ -21,12 +21,9 @@ config :o_que_mudou, OQueMudou.Scraper.Client,
   # self-healing re-derivation so this stops needing manual updates on DRE deploys.
   detail_api_version: "f6iEozloG7S5uAiM9ydqeQ"
 
-# Summarizer adapter selection. MVP default is `:manual` (no external calls);
-# switch to `:api` once ANTHROPIC_API_KEY is configured (see runtime.exs).
-config :o_que_mudou, OQueMudou.Summarizer, adapter: :manual
-
-# Claude API adapter. Model pinned to Sonnet 4.6 per docs/PLAN.md.
-config :o_que_mudou, OQueMudou.Summarizer.Adapters.Api, model: "claude-sonnet-4-6"
+# Summarizer providers are configured at runtime in the DB (see issue #20 and
+# the /admin page); the active provider+model drives auto-summarize. There's no
+# compile-time adapter selection any more.
 
 # SSH adapter — runs `claude -p` on a remote host that has the CLI logged in
 # (no ANTHROPIC_API_KEY needed in the app). host/identity come from env at

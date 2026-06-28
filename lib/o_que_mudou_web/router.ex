@@ -34,6 +34,9 @@ defmodule OQueMudouWeb.Router do
 
     live "/", AdminLive, :index
     live "/summarizer", AdminLive, :index
+    live "/providers/new", ProviderFormLive, :new
+    live "/providers/:id/edit", ProviderFormLive, :edit
+    live "/acts/:id", AdminActLive, :show
   end
 
   # Other scopes may use custom stacks.

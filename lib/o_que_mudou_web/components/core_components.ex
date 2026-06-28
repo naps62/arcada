@@ -686,6 +686,64 @@ defmodule OQueMudouWeb.CoreComponents do
 
   def partial_summary_badge(assigns), do: ~H""
 
+  @doc """
+  Theme-aware form field (the default `input` hardcodes bg-white/zinc, which
+  breaks dark mode). Uses the app's semantic tokens. Pass `field` (a FormField)
+  or an explicit `name`. For a select, set `type="select"` and provide options
+  as the inner block of `<option>`s.
+  """
+  attr :field, Phoenix.HTML.FormField, default: nil
+  attr :label, :string, required: true
+  attr :type, :string, default: "text"
+  attr :name, :string, default: nil
+  attr :id, :string, default: nil
+  attr :value, :string, default: nil
+  attr :hint, :string, default: nil
+  attr :rest, :global, include: ~w(placeholder autocomplete rows)
+  slot :inner_block
+
+  def admin_field(assigns) do
+    assigns =
+      assigns
+      |> assign(:name, assigns.name || (assigns.field && assigns.field.name))
+      |> assign(:id, assigns.id || (assigns.field && assigns.field.id))
+      |> assign(
+        :resolved_value,
+        if(is_nil(assigns.value) and assigns.field, do: assigns.field.value, else: assigns.value)
+      )
+
+    ~H"""
+    <div>
+      <label for={@id} class="block text-sm font-medium text-ink">{@label}</label>
+      <p :if={@hint} class="text-xs text-muted">{@hint}</p>
+      <select :if={@type == "select"} id={@id} name={@name} class={admin_input_class()} {@rest}>
+        {render_slot(@inner_block)}
+      </select>
+      <textarea
+        :if={@type == "textarea"}
+        id={@id}
+        name={@name}
+        class={admin_input_class()}
+        {@rest}
+      >{@resolved_value}</textarea>
+      <input
+        :if={@type not in ["select", "textarea"]}
+        type={@type}
+        id={@id}
+        name={@name}
+        value={@resolved_value}
+        class={admin_input_class()}
+        {@rest}
+      />
+    </div>
+    """
+  end
+
+  defp admin_input_class do
+    "mt-1.5 block w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-ink " <>
+      "placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+  end
+
   @doc "A life-domain tag — quiet, neutral, never a status color."
   attr :label, :string, required: true
   attr :class, :string, default: nil

@@ -1,15 +1,9 @@
 defmodule OQueMudou.Summarizer.Adapters.Api do
   @moduledoc """
-  Claude API adapter. One call produces both the plain-language summary and the
-  life-domain classification (see `docs/PLAN.md`: classification shares the
-  summary call), constrained to a JSON schema via structured outputs so the
-  domains are guaranteed to be members of the fixed taxonomy.
-
-  Config (`config/runtime.exs`):
-
-      config :o_que_mudou, OQueMudou.Summarizer.Adapters.Api,
-        api_key: System.get_env("ANTHROPIC_API_KEY"),
-        model: "claude-sonnet-4-6"
+  Anthropic (Claude) Messages API adapter — `provider.kind == :anthropic`. One
+  call produces the plain-language summary and the life-domain classification,
+  constrained to a JSON schema via structured outputs so the domains stay within
+  the fixed taxonomy. Uses `provider.api_key` (falls back to `ANTHROPIC_API_KEY`).
   """
   @behaviour OQueMudou.Summarizer.Adapter
 
@@ -17,6 +11,7 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
 
   alias OQueMudou.Register
   alias OQueMudou.Register.Act
+  alias OQueMudou.Providers.Provider
 
   @endpoint "https://api.anthropic.com/v1/messages"
   @anthropic_version "2023-06-01"
@@ -27,16 +22,18 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
   @max_text_chars 80_000
 
   @impl true
-  def summarize(%Act{} = act) do
-    with {:ok, key} <- api_key(),
-         body = request_body(act),
+  def summarize(%Act{} = act, %Provider{} = provider, model) do
+    model = model || @default_model
+
+    with {:ok, key} <- api_key(provider),
+         body = request_body(act, model),
          {:ok, %{status: 200} = resp} <- post(key, body),
          {:ok, parsed} <- parse(resp.body) do
       {:ok,
        %{
          plain_text: parsed["plain_text"],
          domains: Enum.map(parsed["domains"] || [], &String.to_existing_atom/1),
-         model: model(),
+         model: model,
          prompt_version: @prompt_version,
          truncated: OQueMudou.Summarizer.truncated?(act.full_text || act.title, @max_text_chars)
        }}
@@ -50,9 +47,9 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
     end
   end
 
-  defp request_body(act) do
+  defp request_body(act, model) do
     %{
-      "model" => model(),
+      "model" => model,
       "max_tokens" => 1024,
       "system" => OQueMudou.Summarizer.base_system_prompt(),
       "messages" => [%{"role" => "user", "content" => act_prompt(act)}],
@@ -89,10 +86,7 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
   defp post(key, body) do
     Req.post(@endpoint,
       json: body,
-      headers: [
-        {"x-api-key", key},
-        {"anthropic-version", @anthropic_version}
-      ],
+      headers: [{"x-api-key", key}, {"anthropic-version", @anthropic_version}],
       retry: :transient
     )
   end
@@ -107,17 +101,12 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
 
   defp parse(_), do: {:error, :unexpected_response}
 
-  defp model do
-    config()[:model] || @default_model
-  end
+  defp api_key(%Provider{api_key: key}) when is_binary(key) and key != "", do: {:ok, key}
 
-  defp api_key do
-    case config()[:api_key] || System.get_env("ANTHROPIC_API_KEY") do
+  defp api_key(_provider) do
+    case System.get_env("ANTHROPIC_API_KEY") do
       key when is_binary(key) and key != "" -> {:ok, key}
       _ -> {:error, :missing_api_key}
     end
   end
-
-  # Env config overlaid with runtime admin overrides (model, api_key).
-  defp config, do: OQueMudou.Admin.adapter_config(__MODULE__)
 end

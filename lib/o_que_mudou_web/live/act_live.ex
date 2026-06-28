@@ -12,7 +12,7 @@ defmodule OQueMudouWeb.ActLive do
   @impl true
   def mount(%{"id" => id}, _session, socket) do
     act = Register.get_act!(id)
-    {:ok, assign(socket, act: act, summary: latest_summary(act), show_full: false)}
+    {:ok, assign(socket, act: act, summary: Register.published_summary(act), show_full: false)}
   end
 
   @impl true
@@ -38,10 +38,6 @@ defmodule OQueMudouWeb.ActLive do
     {:noreply, assign(socket, show_full: !socket.assigns.show_full)}
   end
 
-  defp latest_summary(%{summaries: summaries}) do
-    summaries |> Enum.sort_by(& &1.generated_at, {:desc, DateTime}) |> List.first()
-  end
-
   @impl true
   def render(assigns) do
     ~H"""
@@ -54,7 +50,10 @@ defmodule OQueMudouWeb.ActLive do
       </.link>
 
       <header class="mt-6 border-b-2 border-rule-strong pb-5">
-        <p :if={@act.tipo} class="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-muted">
+        <p
+          :if={@act.tipo}
+          class="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-muted"
+        >
           {@act.tipo}
         </p>
         <h1 class="mt-1.5 text-pretty font-display text-[1.75rem] font-semibold leading-tight text-ink sm:text-[2.25rem]">
@@ -69,8 +68,7 @@ defmodule OQueMudouWeb.ActLive do
       <section class="mt-7">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <h2 class="flex items-center gap-2 text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-muted">
-            Em linguagem simples
-            <.provenance_badge summary={@summary} />
+            Em linguagem simples <.provenance_badge summary={@summary} />
             <.partial_summary_badge summary={@summary} />
           </h2>
           <.validation_control summary={@summary} />
@@ -116,7 +114,8 @@ defmodule OQueMudouWeb.ActLive do
             rel="noopener"
             class="inline-flex min-h-[2.75rem] items-center gap-1.5 rounded-md border border-border px-3.5 py-2 font-medium text-ink hover:bg-surface"
           >
-            <.icon name="hero-arrow-top-right-on-square-micro" class="size-4 text-muted" /> Fonte oficial
+            <.icon name="hero-arrow-top-right-on-square-micro" class="size-4 text-muted" />
+            Fonte oficial
           </a>
           <a
             :if={@act.pdf_url}
@@ -176,6 +175,9 @@ defmodule OQueMudouWeb.ActLive do
     </button>
     """
   end
+
+  defp model_line(%{provider: %{name: name}, model: model}) when is_binary(model),
+    do: "Gerado por #{name} · #{model}"
 
   defp model_line(%{model: model, prompt_version: pv}) when is_binary(model),
     do: "Gerado por #{model} · prompt #{pv}"

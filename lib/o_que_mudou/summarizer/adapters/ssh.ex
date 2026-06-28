@@ -1,28 +1,14 @@
 defmodule OQueMudou.Summarizer.Adapters.Ssh do
   @moduledoc """
-  Summarize by SSHing to a host that has the `claude` CLI and running
-  `claude -p` — the SSH-driven escape hatch from `docs/PLAN.md`. An alternative
-  to the `:api` adapter that needs no `ANTHROPIC_API_KEY` in the app (auth lives
-  on the remote machine where `claude` is already logged in).
+  Summarize by SSHing to a host that has a CLI like `claude -p` and running it —
+  `provider.kind == :ssh`. Needs no API key in the app (auth lives on the remote
+  host). Connection comes from the provider: `ssh_host`, `ssh_user`,
+  `ssh_identity_file`, `ssh_claude_cmd` (default `claude -p --output-format json`).
 
-  One call yields both the plain-language summary and the life-domain
-  classification, constrained to strict JSON (parsed from `claude -p
-  --output-format json`).
-
-  Config (`config/runtime.exs`, env-driven):
-
-      config :o_que_mudou, OQueMudou.Summarizer.Adapters.Ssh,
-        host: "10.6.10.x",            # SUMMARIZER_SSH_HOST
-        user: "claude",              # SUMMARIZER_SSH_USER
-        identity_file: "/app/.ssh/id_ed25519",
-        claude_cmd: "claude -p --output-format json",
-        model: "claude-cli",
-        ssh_extra: ["-o", "StrictHostKeyChecking=accept-new", "-o", "BatchMode=yes"]
-
-  Safety/robustness: the prompt is written to a temp file and piped to the remote
-  `claude` over SSH stdin (`ssh … claude -p < tmpfile`). No act content is ever
-  interpolated into a command line, so there's no injection risk and no command
-  argument-length limit (long diplomas previously blew MAX_ARG_STRLEN).
+  Robustness: the prompt is written to a temp file and piped to the remote command
+  over SSH stdin (`ssh … <cmd> < tmpfile`). No act content is ever interpolated
+  into a command line — no injection, no MAX_ARG_STRLEN limit for long diplomas.
+  Tests inject `:runner` via `Application.put_env(:o_que_mudou, __MODULE__, ...)`.
   """
   @behaviour OQueMudou.Summarizer.Adapter
 
@@ -30,27 +16,32 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
 
   alias OQueMudou.Register
   alias OQueMudou.Register.Act
+  alias OQueMudou.Providers.Provider
 
   @prompt_version "2026-06-28.ssh.2"
   @default_model "claude-cli"
   @default_claude_cmd "claude -p --output-format json"
-  # Cap the act text so giant diplomas (huge annexes/tables — some run to ~1M+
-  # tokens) don't exceed the model's context limit. The operative content of a
-  # diploma is near the start; the tail is typically annexes.
   @max_text_chars 80_000
 
-  # Output-format wiring appended to the shared system prompt. `claude -p` has no
-  # structured-output mode, so we ask for raw JSON and validate on parse.
   @json_format """
   Responde APENAS com um objeto JSON válido, sem texto antes ou depois, no formato:
   {"plain_text": "<resumo>", "domains": ["<dominio>", ...]}
   Os domínios válidos são EXATAMENTE: #{Enum.join(OQueMudou.Register.life_domains(), ", ")}.
   """
 
+  @default_ssh_extra [
+    "-o",
+    "StrictHostKeyChecking=accept-new",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "UserKnownHostsFile=/dev/null"
+  ]
+
   @impl true
-  def summarize(%Act{} = act) do
-    with {:ok, stdout} <- run(build_prompt(act)),
-         {:ok, attrs} <- parse(stdout) do
+  def summarize(%Act{} = act, %Provider{} = provider, model) do
+    with {:ok, stdout} <- run(build_prompt(act), provider),
+         {:ok, attrs} <- parse(stdout, model || @default_model) do
       truncated = OQueMudou.Summarizer.truncated?(act.full_text || act.title, @max_text_chars)
       {:ok, Map.put(attrs, :truncated, truncated)}
     end
@@ -70,44 +61,27 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
     """
   end
 
-  # Run the prompt and return `{:ok, raw_stdout}` | `{:error, reason}`.
-  # Tests inject `:runner` to avoid a real SSH.
-  defp run(prompt) do
-    case config()[:runner] do
+  # `:runner` (test injection) takes precedence over a real SSH call.
+  defp run(prompt, provider) do
+    case Application.get_env(:o_que_mudou, __MODULE__, [])[:runner] do
       fun when is_function(fun, 1) -> fun.(prompt)
-      _ -> default_run(prompt)
+      _ -> default_run(prompt, provider)
     end
   end
 
-  @default_ssh_extra [
-    "-o",
-    "StrictHostKeyChecking=accept-new",
-    "-o",
-    "BatchMode=yes",
-    "-o",
-    "UserKnownHostsFile=/dev/null"
-  ]
-
-  defp default_run(prompt) do
-    cfg = config()
-
-    case cfg[:host] do
-      host when is_binary(host) and host != "" -> run_via_ssh(cfg, host, prompt)
-      _ -> {:error, :missing_ssh_host}
-    end
+  defp default_run(prompt, %Provider{ssh_host: host} = provider)
+       when is_binary(host) and host != "" do
+    run_via_ssh(provider, prompt)
   end
 
-  # Pipe the prompt over SSH stdin (not the command line). Embedding it as an
-  # argument blew Linux's single-argument size limit (MAX_ARG_STRLEN ~128KB) for
-  # long diplomas — the remote shell failed to exec, yielding an empty exit 7.
-  # The prompt is written to a temp file and redirected into ssh; no act content
-  # ever appears in any command line (no injection, no size limit).
-  defp run_via_ssh(cfg, host, prompt) do
+  defp default_run(_prompt, _provider), do: {:error, :missing_ssh_host}
+
+  defp run_via_ssh(provider, prompt) do
     tmp = Path.join(System.tmp_dir!(), "oqm_prompt_#{System.unique_integer([:positive])}")
     File.write!(tmp, prompt)
 
     try do
-      case System.cmd("sh", ["-c", ssh_command(cfg, host, tmp)], stderr_to_stdout: false) do
+      case System.cmd("sh", ["-c", ssh_command(provider, tmp)], stderr_to_stdout: false) do
         {out, 0} ->
           {:ok, out}
 
@@ -120,19 +94,17 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
     end
   end
 
-  defp ssh_command(cfg, host, tmpfile) do
-    user = cfg[:user] || "claude"
-    claude_cmd = cfg[:claude_cmd] || @default_claude_cmd
-    identity = if f = cfg[:identity_file], do: "-i #{f} ", else: ""
-    extra = Enum.join(cfg[:ssh_extra] || @default_ssh_extra, " ")
-    # claude_cmd / flags / paths are operator config (no untrusted content); the
-    # prompt is in tmpfile, piped via stdin.
-    "ssh #{identity}#{extra} #{user}@#{host} #{claude_cmd} < #{tmpfile}"
+  defp ssh_command(%Provider{} = p, tmpfile) do
+    user = p.ssh_user || "claude"
+    claude_cmd = p.ssh_claude_cmd || @default_claude_cmd
+    identity = if f = p.ssh_identity_file, do: "-i #{f} ", else: ""
+    extra = Enum.join(@default_ssh_extra, " ")
+    "ssh #{identity}#{extra} #{user}@#{p.ssh_host} #{claude_cmd} < #{tmpfile}"
   end
 
   # `claude -p --output-format json` wraps the response in an envelope whose
   # `result` field is our JSON string. Tolerate code fences around either layer.
-  defp parse(stdout) do
+  defp parse(stdout, model) do
     with {:ok, envelope} <- decode_json(stdout),
          result when is_binary(result) <- Map.get(envelope, "result", stdout),
          {:ok, obj} <- decode_json(result),
@@ -141,7 +113,7 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
        %{
          plain_text: text,
          domains: valid_domains(obj["domains"]),
-         model: model(),
+         model: model,
          prompt_version: @prompt_version
        }}
     else
@@ -154,10 +126,7 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
     end
   end
 
-  defp decode_json(str) when is_binary(str) do
-    str |> strip_fences() |> Jason.decode()
-  end
-
+  defp decode_json(str) when is_binary(str), do: str |> strip_fences() |> Jason.decode()
   defp decode_json(_), do: :error
 
   defp strip_fences(str) do
@@ -180,8 +149,4 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
   end
 
   defp valid_domains(_), do: []
-
-  defp model, do: config()[:model] || @default_model
-  # Env config overlaid with runtime admin overrides (host, user, claude_cmd, model).
-  defp config, do: OQueMudou.Admin.adapter_config(__MODULE__)
 end

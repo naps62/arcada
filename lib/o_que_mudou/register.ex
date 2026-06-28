@@ -199,11 +199,35 @@ defmodule OQueMudou.Register do
     |> Repo.all()
   end
 
-  @doc "Fetch one act with its edition + summaries preloaded. Raises if not found."
+  @doc "Fetch one act with edition + summaries (each with its provider) preloaded."
   def get_act!(id) do
     Act
     |> Repo.get!(id)
-    |> Repo.preload([:edition, :summaries])
+    |> Repo.preload([:edition, summaries: :provider])
+  end
+
+  @doc """
+  The canonical summary shown publicly for an act: the explicitly-published one
+  if set, else the most recently generated. Expects `:summaries` preloaded.
+  """
+  def published_summary(%Act{published_summary_id: pid, summaries: summaries})
+      when is_integer(pid) and is_list(summaries) do
+    Enum.find(summaries, &(&1.id == pid)) || latest_summary(summaries)
+  end
+
+  def published_summary(%Act{summaries: summaries}) when is_list(summaries),
+    do: latest_summary(summaries)
+
+  def published_summary(_act), do: nil
+
+  defp latest_summary(summaries),
+    do: summaries |> Enum.sort_by(& &1.generated_at, {:desc, DateTime}) |> List.first()
+
+  @doc "Mark `summary` as the published one for `act` (or pass nil to clear)."
+  def set_published(%Act{} = act, summary) do
+    act
+    |> Act.changeset(%{published_summary_id: summary && summary.id})
+    |> Repo.update()
   end
 
   @doc """

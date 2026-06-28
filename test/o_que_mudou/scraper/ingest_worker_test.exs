@@ -3,24 +3,24 @@ defmodule OQueMudou.Scraper.IngestWorkerTest do
   use OQueMudou.DataCase, async: false
   use Oban.Testing, repo: OQueMudou.Repo
 
-  alias OQueMudou.Repo
+  import OQueMudou.SummarizerHelpers
+
+  alias OQueMudou.{Admin, Repo}
   alias OQueMudou.Scraper
   alias OQueMudou.Scraper.{Client, IngestWorker}
   alias OQueMudou.Register.{Edition, Act, Summary}
-  alias OQueMudou.Summarizer
 
   @list_fixture Path.join([__DIR__, "..", "..", "support", "fixtures", "dre_list_2026-06-24.json"])
 
-  # A summarizer adapter that returns a synchronous result, so the enqueued
-  # summarization jobs (run inline in test) actually persist summaries.
-  defmodule SyncAdapter do
-    @behaviour OQueMudou.Summarizer.Adapter
-    @impl true
-    def summarize(_act),
-      do: {:ok, %{plain_text: "...", domains: [:fiscal], model: "m", prompt_version: "v"}}
-  end
-
   setup do
+    # Active SSH provider + stubbed runner so the inline summarize jobs persist
+    # summaries without hitting the network.
+    stub_ssh_runner(fn _ -> {:ok, claude_envelope("...", ["fiscal"])} end)
+    provider = ssh_provider()
+
+    {:ok, _} =
+      Admin.update_settings(%{"active_provider_id" => provider.id, "active_model" => "claude-cli"})
+
     fixture = @list_fixture |> File.read!() |> Jason.decode!()
 
     Req.Test.stub(OQueMudou.IngestStub, fn conn ->
@@ -37,22 +37,13 @@ defmodule OQueMudou.Scraper.IngestWorkerTest do
     }
 
     prev_client = Application.get_env(:o_que_mudou, :ingest_client)
-    prev_adapter = Application.get_env(:o_que_mudou, Summarizer, [])
     # enrich: false — the stub only serves the list call; skip per-act detail.
     Application.put_env(:o_que_mudou, :ingest_client, %{client | detail_api_version: nil})
-
-    Application.put_env(
-      :o_que_mudou,
-      Summarizer,
-      Keyword.put(prev_adapter, :adapter, SyncAdapter)
-    )
 
     on_exit(fn ->
       if prev_client,
         do: Application.put_env(:o_que_mudou, :ingest_client, prev_client),
         else: Application.delete_env(:o_que_mudou, :ingest_client)
-
-      Application.put_env(:o_que_mudou, Summarizer, prev_adapter)
     end)
 
     :ok

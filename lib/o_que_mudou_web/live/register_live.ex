@@ -45,11 +45,10 @@ defmodule OQueMudouWeb.RegisterLive do
     |> Enum.sort_by(fn {date, _} -> date end, {:desc, Date})
   end
 
-  defp latest_summary(%{summaries: summaries}) when is_list(summaries) do
-    summaries
-    |> Enum.sort_by(& &1.generated_at, {:desc, DateTime})
-    |> List.first()
-  end
+  # Show the published summary (falls back to the latest) so the homepage
+  # reflects the admin's published choice.
+  defp latest_summary(%{summaries: summaries} = act) when is_list(summaries),
+    do: OQueMudou.Register.published_summary(act)
 
   defp latest_summary(_), do: nil
 

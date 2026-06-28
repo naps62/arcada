@@ -1,59 +1,39 @@
 defmodule OQueMudou.AdminTest do
   use OQueMudou.DataCase, async: true
 
+  import OQueMudou.SummarizerHelpers
+
   alias OQueMudou.Admin
-  alias OQueMudou.Summarizer.Adapters.{Api, Ssh}
 
-  describe "with no settings row" do
-    test "summarizer_adapter falls back to the env default" do
-      # whatever the test env configures (not crashing / not nil)
-      assert is_atom(Admin.summarizer_adapter())
-    end
-
-    test "adapter_config returns the env config untouched (no overrides)" do
-      env = Application.get_env(:o_que_mudou, Ssh, [])
-      assert Admin.adapter_config(Ssh) == env
-    end
+  test "no active provider by default" do
+    assert is_nil(Admin.active_provider())
+    assert is_nil(Admin.active_model())
   end
 
-  describe "with a settings row" do
-    test "DB adapter overrides the env default" do
-      {:ok, _} = Admin.update_settings(%{"summarizer_adapter" => "ssh"})
-      assert Admin.summarizer_adapter() == :ssh
-    end
+  test "sets and reads the active provider + model" do
+    provider = ssh_provider()
 
-    test "blank/invalid adapter is rejected and falls back to env" do
-      {:ok, _} = Admin.update_settings(%{"summarizer_adapter" => ""})
-      assert is_atom(Admin.summarizer_adapter())
-    end
+    {:ok, _} =
+      Admin.update_settings(%{"active_provider_id" => provider.id, "active_model" => "claude-cli"})
 
-    test "DB fields override the matching adapter config keys" do
-      {:ok, _} =
-        Admin.update_settings(%{
-          "api_model" => "claude-opus-4-8",
-          "ssh_host" => "10.0.0.9",
-          "ssh_model" => "claude-cli-x"
-        })
+    assert Admin.active_provider().id == provider.id
+    assert Admin.active_model() == "claude-cli"
+  end
 
-      assert Admin.adapter_config(Api)[:model] == "claude-opus-4-8"
-      assert Admin.adapter_config(Ssh)[:host] == "10.0.0.9"
-      assert Admin.adapter_config(Ssh)[:model] == "claude-cli-x"
-    end
+  test "settings stays a singleton" do
+    p1 = ssh_provider()
+    p2 = ssh_provider()
+    {:ok, _} = Admin.update_settings(%{"active_provider_id" => p1.id})
+    {:ok, _} = Admin.update_settings(%{"active_provider_id" => p2.id})
 
-    test "a blank api_key on update keeps the stored key" do
-      {:ok, _} = Admin.update_settings(%{"api_key" => "sk-secret"})
-      assert Admin.get_settings().api_key == "sk-secret"
+    assert Repo.aggregate(OQueMudou.Admin.Setting, :count) == 1
+    assert Admin.active_provider().id == p2.id
+  end
 
-      {:ok, _} = Admin.update_settings(%{"api_key" => "", "api_model" => "m"})
-      assert Admin.get_settings().api_key == "sk-secret"
-      assert Admin.get_settings().api_model == "m"
-    end
-
-    test "settings stays a singleton across updates" do
-      {:ok, _} = Admin.update_settings(%{"ssh_host" => "a"})
-      {:ok, _} = Admin.update_settings(%{"ssh_host" => "b"})
-      assert Repo.aggregate(OQueMudou.Admin.Setting, :count) == 1
-      assert Admin.get_settings().ssh_host == "b"
-    end
+  test "a blank active_provider_id clears it" do
+    provider = ssh_provider()
+    {:ok, _} = Admin.update_settings(%{"active_provider_id" => provider.id})
+    {:ok, _} = Admin.update_settings(%{"active_provider_id" => ""})
+    assert is_nil(Admin.active_provider())
   end
 end

@@ -22,12 +22,13 @@ defmodule OQueMudou.Register.Act do
 
     belongs_to :edition, Edition
     has_many :summaries, Summary
+    belongs_to :published_summary, Summary
 
     timestamps(type: :utc_datetime)
   end
 
   @required ~w(edition_id dre_id)a
-  @optional ~w(tipo emitter title full_text source_url pdf_url published_at)a
+  @optional ~w(tipo emitter title full_text source_url pdf_url published_at published_summary_id)a
 
   def changeset(act, attrs) do
     act

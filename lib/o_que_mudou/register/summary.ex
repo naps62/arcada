@@ -11,6 +11,7 @@ defmodule OQueMudou.Register.Summary do
 
   alias OQueMudou.Register
   alias OQueMudou.Register.Act
+  alias OQueMudou.Providers.Provider
 
   schema "summaries" do
     field :plain_text, :string
@@ -29,12 +30,13 @@ defmodule OQueMudou.Register.Summary do
     field :validated_at, :utc_datetime
 
     belongs_to :act, Act
+    belongs_to :provider, Provider
 
     timestamps(type: :utc_datetime)
   end
 
   @required ~w(act_id plain_text)a
-  @optional ~w(domains model prompt_version status truncated generated_at validated_at)a
+  @optional ~w(domains model prompt_version status truncated provider_id generated_at validated_at)a
 
   def changeset(summary, attrs) do
     summary

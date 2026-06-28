@@ -1,20 +1,20 @@
 defmodule OQueMudou.Summarizer do
   @moduledoc """
-  Produces 🤖 unreviewed summaries for acts, via a pluggable adapter
-  (`api | local | manual`, selected by config) and an **async write path** —
-  summaries are written by an Oban job, never inline with the scrape.
-
-  Config:
-
-      config :o_que_mudou, OQueMudou.Summarizer, adapter: :manual
+  Produces 🤖 unreviewed summaries for acts. Dispatches to an adapter by the
+  `Provider` kind (`:anthropic | :openai | :ssh`) and writes via an **async path**
+  (an Oban job, never inline with the scrape). The active provider+model
+  (`OQueMudou.Admin`) drives auto-summarize; manual runs pass an explicit one.
   """
 
   alias OQueMudou.Repo
+  alias OQueMudou.Admin
+  alias OQueMudou.Providers.Provider
   alias OQueMudou.Register.{Act, Summary}
-  alias OQueMudou.Summarizer.{SummarizeWorker}
-  alias OQueMudou.Summarizer.Adapters.{Api, Local, Manual, Ssh}
+  alias OQueMudou.Summarizer.SummarizeWorker
+  alias OQueMudou.Summarizer.Adapters.{Api, OpenAI, Ssh}
 
-  @adapters %{api: Api, local: Local, manual: Manual, ssh: Ssh}
+  # Provider kind → adapter module.
+  @adapters %{anthropic: Api, openai: OpenAI, ssh: Ssh}
 
   # Shared system prompt for every LLM adapter (api, ssh). The style rules — plain
   # everyday Portuguese, short active sentences, no bureaucratic filler, no inline
@@ -66,33 +66,49 @@ defmodule OQueMudou.Summarizer do
   def truncated?(text, max_chars) when is_binary(text), do: String.length(text) > max_chars
   def truncated?(_other, _max_chars), do: false
 
+  @doc "The adapter module for a provider kind (`:anthropic | :openai | :ssh`)."
+  def adapter_for(kind) when is_atom(kind), do: Map.fetch!(@adapters, kind)
+
   @doc """
-  The configured adapter module (default: `Manual`). Resolves the effective
-  adapter via `OQueMudou.Admin` (DB override ?? env default); accepts either a
-  known key (`:api | :local | :manual | :ssh`) or an explicit module (tests).
+  Enqueue an async summarization job. With no opts it uses the active
+  provider+model; pass `provider_id:`/`model:` for a manual run on a specific one.
   """
-  def adapter do
-    case OQueMudou.Admin.summarizer_adapter() do
-      key when is_map_key(@adapters, key) -> Map.fetch!(@adapters, key)
-      mod when is_atom(mod) -> mod
+  def enqueue(act, opts \\ [])
+  def enqueue(%Act{id: id}, opts), do: enqueue(id, opts)
+
+  def enqueue(act_id, opts) when is_integer(act_id) do
+    %{act_id: act_id}
+    |> put_opt(opts, :provider_id)
+    |> put_opt(opts, :model)
+    |> SummarizeWorker.new()
+    |> Oban.insert()
+  end
+
+  defp put_opt(args, opts, key) do
+    case Keyword.get(opts, key) do
+      nil -> args
+      v -> Map.put(args, to_string(key), v)
     end
   end
 
-  @doc "Enqueue an async summarization job for an act (the normal entry point)."
-  def enqueue(%Act{id: id}), do: enqueue(id)
-
-  def enqueue(act_id) when is_integer(act_id) do
-    %{act_id: act_id} |> SummarizeWorker.new() |> Oban.insert()
-  end
-
   @doc """
-  Run the configured adapter for `act` and persist the result.
-  Returns `{:ok, summary}` on a synchronous adapter result, `{:async, ref}` if
-  the adapter defers (manual backfill), or `{:error, reason}`.
+  Summarize `act` with the **active** provider+model and persist the result.
+  `{:async, :no_active_provider}` if none is configured (acts wait for a manual
+  run or a configured active provider).
   """
   def summarize(%Act{} = act) do
-    case adapter().summarize(act) do
-      {:ok, attrs} -> create_summary(act, attrs)
+    case Admin.active_provider() do
+      %Provider{} = provider -> summarize(act, provider, Admin.active_model())
+      nil -> {:async, :no_active_provider}
+    end
+  end
+
+  @doc "Summarize `act` with a specific provider + model; persist linked to the provider."
+  def summarize(%Act{} = act, %Provider{} = provider, model) do
+    model = model || List.first(provider.models)
+
+    case adapter_for(provider.kind).summarize(act, provider, model) do
+      {:ok, attrs} -> create_summary(act, Map.put(attrs, :provider_id, provider.id))
       {:async, ref} -> {:async, ref}
       {:error, reason} -> {:error, reason}
     end

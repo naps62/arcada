@@ -96,12 +96,22 @@ public Traefik domain / Let's Encrypt cert. Options:
 - The ingest cron runs automatically every 2 hours, 07:00–19:00 UTC on weekdays
   (`0 7-19/2 * * 1-5`), once the release is up. Idempotent, so re-runs are free.
 
-## Admin page — `/admin/summarizer` (issue #19)
+## Admin page — `/admin` (issues #19, #20)
 
-Runtime control over the summarizer adapter/model/keys, overriding the env-var
-defaults (a blank field falls back to env). Changes apply on the **next**
-summarize job — except Oban queue concurrency, which is fixed at boot, so
-switching adapter needs a restart to re-tune it.
+Manage summarizer **providers** and pick the **active** provider+model used by
+the daily cron / auto-summarize. Providers are DB rows (CRUD at `/admin`), kind
+= `anthropic` | `openai` (OpenAI-compatible: llmbase, ollama, synthetic.new) |
+`ssh` (a CLI like `claude -p` over SSH). Per act, `/admin/acts/:id` lists every
+summary with its provider/model, lets you trigger a run against any
+provider+model, and publish one as the canonical (public) summary.
+
+Active changes apply on the **next** summarize job. Oban queue concurrency is
+fixed at boot, so it doesn't re-tune when you switch the active provider.
+
+Seeding (first deploy): create at least one provider and set it active, e.g.
+via `bin/o_que_mudou rpc` —
+`OQueMudou.Providers.create_provider/1` then `OQueMudou.Admin.update_settings/1`
+with `active_provider_id`/`active_model`.
 
 Gated in two layers (fails closed — without Authelia in front, the in-app plug
 403s everyone):

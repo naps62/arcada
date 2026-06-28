@@ -1,40 +1,13 @@
 defmodule OQueMudou.SummarizerTest do
-  # async: false — these tests mutate global application env (the adapter).
   use OQueMudou.DataCase, async: false
   use Oban.Testing, repo: OQueMudou.Repo
 
-  alias OQueMudou.Repo
+  import OQueMudou.SummarizerHelpers
+
+  alias OQueMudou.{Admin, Repo}
   alias OQueMudou.Register.{Edition, Act, Summary}
   alias OQueMudou.Summarizer
   alias OQueMudou.Summarizer.SummarizeWorker
-
-  # A fake adapter that returns a synchronous result, to exercise the write path
-  # without hitting the network.
-  defmodule FakeAdapter do
-    @behaviour OQueMudou.Summarizer.Adapter
-    @impl true
-    def summarize(_act) do
-      {:ok,
-       %{
-         plain_text: "Em linguagem simples: muda X para Y.",
-         domains: [:fiscal, :trabalho],
-         model: "fake-model",
-         prompt_version: "test"
-       }}
-    end
-  end
-
-  defmodule FailingAdapter do
-    @behaviour OQueMudou.Summarizer.Adapter
-    @impl true
-    def summarize(_act), do: {:error, :boom}
-  end
-
-  defp set_adapter(adapter) do
-    prev = Application.get_env(:o_que_mudou, Summarizer, [])
-    Application.put_env(:o_que_mudou, Summarizer, Keyword.put(prev, :adapter, adapter))
-    on_exit(fn -> Application.put_env(:o_que_mudou, Summarizer, prev) end)
-  end
 
   defp act_fixture do
     edition =
@@ -51,43 +24,91 @@ defmodule OQueMudou.SummarizerTest do
     |> Repo.insert!()
   end
 
-  describe "adapter/0" do
-    test "defaults to Manual" do
-      set_adapter(:manual)
-      assert Summarizer.adapter() == OQueMudou.Summarizer.Adapters.Manual
-    end
+  describe "summarize/3 (explicit provider+model)" do
+    test "persists the result linked to the provider" do
+      stub_ssh_runner(fn _ -> {:ok, claude_envelope("Muda o IRS.", ["fiscal", "trabalho"])} end)
+      provider = ssh_provider()
 
-    test "resolves known keys and explicit modules" do
-      set_adapter(:api)
-      assert Summarizer.adapter() == OQueMudou.Summarizer.Adapters.Api
-      set_adapter(FakeAdapter)
-      assert Summarizer.adapter() == FakeAdapter
-    end
-  end
-
-  describe "summarize/1" do
-    test "manual adapter defers and writes nothing" do
-      set_adapter(:manual)
-      assert {:async, :manual} = Summarizer.summarize(act_fixture())
-      assert Repo.aggregate(Summary, :count) == 0
-    end
-
-    test "a synchronous adapter result is persisted with defaults" do
-      set_adapter(FakeAdapter)
-      assert {:ok, summary} = Summarizer.summarize(act_fixture())
-
-      assert summary.plain_text =~ "linguagem simples"
+      assert {:ok, summary} = Summarizer.summarize(act_fixture(), provider, "claude-cli")
+      assert summary.plain_text == "Muda o IRS."
       assert summary.domains == [:fiscal, :trabalho]
-      assert summary.model == "fake-model"
-      assert summary.prompt_version == "test"
+      assert summary.model == "claude-cli"
+      assert summary.provider_id == provider.id
       assert summary.status == :unreviewed
       assert summary.generated_at
-      assert is_nil(summary.validated_at)
     end
 
     test "propagates adapter errors" do
-      set_adapter(FailingAdapter)
-      assert {:error, :boom} = Summarizer.summarize(act_fixture())
+      stub_ssh_runner(fn _ -> {:error, {:ssh_exit, 7}} end)
+      assert {:error, _} = Summarizer.summarize(act_fixture(), ssh_provider(), "claude-cli")
+    end
+  end
+
+  describe "summarize/1 (active provider)" do
+    test "defers when no active provider is set" do
+      assert {:async, :no_active_provider} = Summarizer.summarize(act_fixture())
+      assert Repo.aggregate(Summary, :count) == 0
+    end
+
+    test "uses the active provider+model" do
+      stub_ssh_runner(fn _ -> {:ok, claude_envelope("x", ["fiscal"])} end)
+      provider = ssh_provider()
+
+      {:ok, _} =
+        Admin.update_settings(%{
+          "active_provider_id" => provider.id,
+          "active_model" => "claude-cli"
+        })
+
+      assert {:ok, summary} = Summarizer.summarize(act_fixture())
+      assert summary.provider_id == provider.id
+      assert summary.model == "claude-cli"
+    end
+  end
+
+  describe "enqueue/2" do
+    test "encodes a manual provider+model run into the job args" do
+      act = act_fixture()
+      assert {:ok, %Oban.Job{args: args}} = Summarizer.enqueue(act, provider_id: 7, model: "m")
+      assert args["provider_id"] == 7
+      assert args["model"] == "m"
+    end
+  end
+
+  describe "SummarizeWorker" do
+    test "runs the active provider inline" do
+      stub_ssh_runner(fn _ -> {:ok, claude_envelope("y", [])} end)
+      provider = ssh_provider()
+
+      {:ok, _} =
+        Admin.update_settings(%{
+          "active_provider_id" => provider.id,
+          "active_model" => "claude-cli"
+        })
+
+      act = act_fixture()
+
+      assert :ok = perform_job(SummarizeWorker, %{act_id: act.id})
+      assert Repo.one!(Summary).provider_id == provider.id
+    end
+
+    test "a pinned provider_id overrides the active one" do
+      stub_ssh_runner(fn _ -> {:ok, claude_envelope("z", [])} end)
+      provider = ssh_provider()
+      act = act_fixture()
+
+      assert :ok =
+               perform_job(SummarizeWorker, %{
+                 act_id: act.id,
+                 provider_id: provider.id,
+                 model: "claude-cli"
+               })
+
+      assert Repo.one!(Summary).provider_id == provider.id
+    end
+
+    test "missing act is a no-op success" do
+      assert :ok = perform_job(SummarizeWorker, %{act_id: 999_999})
     end
   end
 
@@ -98,50 +119,11 @@ defmodule OQueMudou.SummarizerTest do
       assert {:ok, summary} =
                Summarizer.create_summary(act, %{
                  plain_text: "Resumo manual.",
-                 domains: [:habitação],
-                 model: "manual",
-                 prompt_version: "human"
+                 domains: [:habitação]
                })
 
       assert summary.act_id == act.id
       assert summary.generated_at
-    end
-  end
-
-  describe "SummarizeWorker (async write path)" do
-    test "manual adapter: job succeeds and writes nothing" do
-      set_adapter(:manual)
-      act = act_fixture()
-      assert :ok = perform_job(SummarizeWorker, %{act_id: act.id})
-      assert Repo.aggregate(Summary, :count) == 0
-    end
-
-    test "synchronous adapter: job writes a summary" do
-      set_adapter(FakeAdapter)
-      act = act_fixture()
-      assert :ok = perform_job(SummarizeWorker, %{act_id: act.id})
-
-      summary = Repo.one!(Summary)
-      assert summary.act_id == act.id
-      assert summary.domains == [:fiscal, :trabalho]
-    end
-
-    test "missing act is a no-op success (no retry)" do
-      assert :ok = perform_job(SummarizeWorker, %{act_id: 999_999})
-    end
-
-    test "adapter error surfaces so the job retries" do
-      set_adapter(FailingAdapter)
-      act = act_fixture()
-      assert {:error, :boom} = perform_job(SummarizeWorker, %{act_id: act.id})
-    end
-  end
-
-  describe "enqueue/1" do
-    test "enqueues a job for the act" do
-      set_adapter(:manual)
-      act = act_fixture()
-      assert {:ok, %Oban.Job{}} = Summarizer.enqueue(act)
     end
   end
 end
