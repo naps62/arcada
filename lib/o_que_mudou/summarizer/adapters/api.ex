@@ -64,6 +64,9 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
     }
   end
 
+  # Cap act text so oversized diplomas don't exceed the model's context limit.
+  @max_text_chars 80_000
+
   defp act_prompt(act) do
     """
     Tipo: #{act.tipo}
@@ -71,7 +74,7 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
     Título: #{act.title}
 
     Texto:
-    #{act.full_text || act.title}
+    #{OQueMudou.Summarizer.cap_text(act.full_text || act.title, @max_text_chars)}
     """
   end
 

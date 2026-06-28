@@ -54,6 +54,11 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
     end
   end
 
+  # Cap the act text so giant diplomas (huge annexes/tables — some run to ~1M+
+  # tokens) don't exceed the model's context limit. The operative content of a
+  # diploma is near the start; the tail is typically annexes.
+  @max_text_chars 80_000
+
   defp build_prompt(act) do
     """
     #{@system}
@@ -64,7 +69,7 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
     Título: #{act.title}
 
     Texto:
-    #{act.full_text || act.title}
+    #{OQueMudou.Summarizer.cap_text(act.full_text || act.title, @max_text_chars)}
     """
   end
 

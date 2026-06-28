@@ -17,6 +17,20 @@ defmodule OQueMudou.Summarizer do
   @adapters %{api: Api, local: Local, manual: Manual, ssh: Ssh}
 
   @doc """
+  Cap act text for the summarizer prompt so oversized diplomas (huge annexes)
+  don't exceed the model's context limit. Appends a truncation marker.
+  """
+  def cap_text(text, max_chars) when is_binary(text) do
+    if String.length(text) > max_chars do
+      String.slice(text, 0, max_chars) <> "\n\n[...texto truncado para efeitos de resumo...]"
+    else
+      text
+    end
+  end
+
+  def cap_text(other, _max_chars), do: other
+
+  @doc """
   The configured adapter module (default: `Manual`). Accepts either a known key
   (`:api | :local | :manual`) or an explicit module (handy for tests).
   """
