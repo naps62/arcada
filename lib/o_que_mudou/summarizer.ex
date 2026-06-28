@@ -12,9 +12,9 @@ defmodule OQueMudou.Summarizer do
   alias OQueMudou.Repo
   alias OQueMudou.Register.{Act, Summary}
   alias OQueMudou.Summarizer.{SummarizeWorker}
-  alias OQueMudou.Summarizer.Adapters.{Api, Local, Manual}
+  alias OQueMudou.Summarizer.Adapters.{Api, Local, Manual, Ssh}
 
-  @adapters %{api: Api, local: Local, manual: Manual}
+  @adapters %{api: Api, local: Local, manual: Manual, ssh: Ssh}
 
   @doc """
   The configured adapter module (default: `Manual`). Accepts either a known key

@@ -26,10 +26,40 @@ cron `{"0 9 * * 1-5", OQueMudou.Scraper.IngestWorker}` with queues
 | `PHX_SERVER` | `true` |
 | `PORT` | `4000` |
 | `ANTHROPIC_API_KEY` | Claude API key — **secret**; enables the `:api` summarizer adapter |
-| `SUMMARIZER_ADAPTER` | optional; `manual` (default) or `api`. With a key present, defaults to `api`. |
+| `SUMMARIZER_ADAPTER` | optional; `manual` (default) · `api` · `ssh` · `local`. With an API key present, defaults to `api`. |
 
-> Without `ANTHROPIC_API_KEY` the summarizer stays on the `manual` adapter
+> Without a configured summarizer the app stays on the `manual` adapter
 > (no external calls); ingestion still runs and acts appear unsummarized.
+
+### Summarizer adapter options
+
+| Adapter | How it summarizes | Needs |
+|---|---|---|
+| `manual` (default) | nothing automatic — human backfill via console | — |
+| `api` | Claude API (Sonnet 4.6), structured output | `ANTHROPIC_API_KEY` |
+| `ssh` | SSHes to a host with the `claude` CLI and runs `claude -p` | SSH key + `SUMMARIZER_SSH_HOST` |
+| `local` | placeholder (not implemented) | — |
+
+**`ssh` adapter env / setup** (no `ANTHROPIC_API_KEY` needed — auth lives on the
+remote machine where `claude` is already logged in):
+
+| Var | Value |
+|---|---|
+| `SUMMARIZER_ADAPTER` | `ssh` |
+| `SUMMARIZER_SSH_HOST` | host with the `claude` CLI (e.g. `192.0.2.10`) |
+| `SUMMARIZER_SSH_USER` | SSH user (e.g. `naps62`) — default `claude` |
+| `SUMMARIZER_SSH_IDENTITY` | private-key path in the container (default `/app/.ssh/id_ed25519`) |
+| `SUMMARIZER_CLAUDE_CMD` | default `claude -p --output-format json`; use an **absolute path** to `claude` if it isn't in the non-login `PATH` |
+
+Wiring steps:
+1. The runtime image already ships `openssh-client`.
+2. Generate a keypair; mount the **private key** into the container at
+   `SUMMARIZER_SSH_IDENTITY` (Dokploy → app → Advanced → Volumes/Mounts, or a
+   build secret) with `chmod 600`.
+3. Add the **public key** to `~<user>/.ssh/authorized_keys` on the SSH host.
+4. The act text is base64-piped to the remote `claude` over SSH — no act content
+   touches a shell. `claude -p` reads the prompt from stdin and returns the JSON
+   envelope the adapter parses.
 
 ## Dokploy setup
 

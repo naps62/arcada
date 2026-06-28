@@ -32,6 +32,19 @@ if api_key = System.get_env("ANTHROPIC_API_KEY") do
   end
 end
 
+# SSH adapter — runs `claude -p` on a remote host that already has the CLI
+# authenticated (no ANTHROPIC_API_KEY in the app). Set SUMMARIZER_SSH_HOST (and
+# SUMMARIZER_ADAPTER=ssh) to use it.
+if ssh_host = System.get_env("SUMMARIZER_SSH_HOST") do
+  config :o_que_mudou, OQueMudou.Summarizer.Adapters.Ssh,
+    host: ssh_host,
+    user: System.get_env("SUMMARIZER_SSH_USER") || "claude",
+    identity_file: System.get_env("SUMMARIZER_SSH_IDENTITY") || "/app/.ssh/id_ed25519",
+    claude_cmd: System.get_env("SUMMARIZER_CLAUDE_CMD") || "claude -p --output-format json",
+    model: System.get_env("SUMMARIZER_SSH_MODEL") || "claude-cli"
+end
+
+# Explicit adapter override always wins (:manual | :api | :local | :ssh).
 if adapter = System.get_env("SUMMARIZER_ADAPTER") do
   config :o_que_mudou, OQueMudou.Summarizer, adapter: String.to_atom(adapter)
 end

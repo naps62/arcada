@@ -26,6 +26,22 @@ config :o_que_mudou, OQueMudou.Summarizer, adapter: :manual
 # Claude API adapter. Model pinned to Sonnet 4.6 per docs/PLAN.md.
 config :o_que_mudou, OQueMudou.Summarizer.Adapters.Api, model: "claude-sonnet-4-6"
 
+# SSH adapter — runs `claude -p` on a remote host that has the CLI logged in
+# (no ANTHROPIC_API_KEY needed in the app). host/identity come from env at
+# runtime (runtime.exs); these are the static defaults.
+config :o_que_mudou, OQueMudou.Summarizer.Adapters.Ssh,
+  user: "claude",
+  claude_cmd: "claude -p --output-format json",
+  model: "claude-cli",
+  ssh_extra: [
+    "-o",
+    "StrictHostKeyChecking=accept-new",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "ConnectTimeout=20"
+  ]
+
 # Configures Oban (background jobs + daily cron).
 # The DRE scraper runs on a daily cron; see docs/PLAN.md.
 config :o_que_mudou, Oban,
