@@ -81,6 +81,13 @@ ENV LC_ALL=en_US.UTF-8
 WORKDIR "/app"
 RUN chown nobody /app
 
+# Opt this container into Grafana Alloy's Prometheus scraping. Alloy's
+# discovery.relabel "metrics" only keeps containers with these two labels and
+# scrapes `<addr>:<prometheus.port>/metrics` (see infra/alloy config.alloy).
+# PromEx exposes GET /metrics on PORT (4000) via PromEx.Plug.
+LABEL prometheus.scrape="true"
+LABEL prometheus.port="4000"
+
 # set runner ENV
 ENV MIX_ENV="prod"
 
