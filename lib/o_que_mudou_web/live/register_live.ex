@@ -55,13 +55,11 @@ defmodule OQueMudouWeb.RegisterLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <nav class="border-b border-border" aria-label="Filtrar por período">
-      <h2 class="sr-only">Período</h2>
-      <ul class="flex flex-wrap items-center gap-x-5 gap-y-1 py-3">
+    <section aria-label="Filtros" class="border-b border-border">
+      <.filter_row id="filtro-quando" label="Quando">
         <li>
           <.section_link
             label="Tudo"
-            count={@period_counts[:tudo]}
             patch={filter_path(@active_domain, nil)}
             active={is_nil(@active_period)}
           />
@@ -74,12 +72,9 @@ defmodule OQueMudouWeb.RegisterLive do
             active={@active_period == p}
           />
         </li>
-      </ul>
-    </nav>
+      </.filter_row>
 
-    <nav class="border-b border-border" aria-label="Filtrar por domínio">
-      <h2 class="sr-only">Domínios</h2>
-      <ul class="flex flex-wrap items-center gap-x-5 gap-y-1 py-3">
+      <.filter_row id="filtro-tema" label="Tema" class="border-t border-border">
         <li>
           <.section_link
             label="Tudo"
@@ -95,8 +90,30 @@ defmodule OQueMudouWeb.RegisterLive do
             active={@active_domain == d}
           />
         </li>
-      </ul>
-    </nav>
+      </.filter_row>
+    </section>
+
+    <div
+      :if={@groups != []}
+      class="flex items-baseline justify-between gap-4 border-b border-border py-2.5"
+    >
+      <p class="text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
+        <span class="font-semibold tabular-nums text-ink">{@total}</span>
+        {if @total == 1, do: "diploma", else: "diplomas"}
+        <span :if={@active_period}>
+          · {String.downcase(period_label(@active_period))}
+        </span><span :if={@active_domain}>
+          · {@active_domain}
+        </span>
+      </p>
+      <.link
+        :if={@active_domain || @active_period}
+        patch={~p"/"}
+        class="inline-flex shrink-0 items-center gap-1 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted transition-colors duration-150 ease-out-quart hover:text-primary"
+      >
+        <.icon name="hero-x-mark-micro" class="size-3.5" /> limpar
+      </.link>
+    </div>
 
     <div :if={@groups == []} class="border-b border-border py-16 text-center">
       <.icon name="hero-document-magnifying-glass" class="mx-auto size-8 text-muted" />
@@ -135,6 +152,32 @@ defmodule OQueMudouWeb.RegisterLive do
     """
   end
 
+  # A labeled filter axis: a fixed-width rubric in the left gutter (the row's
+  # accessible name) and a wrapping bar of section links. Label stacks above the
+  # bar on narrow screens, sits beside it from `sm` up.
+  attr :id, :string, required: true
+  attr :label, :string, required: true
+  attr :class, :string, default: nil
+  slot :inner_block, required: true
+
+  defp filter_row(assigns) do
+    ~H"""
+    <div class={["sm:flex sm:items-baseline sm:gap-x-4", @class]}>
+      <span
+        id={@id}
+        class="block pt-2.5 text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-muted sm:w-[4.5rem] sm:shrink-0 sm:py-2.5"
+      >
+        {@label}
+      </span>
+      <nav aria-labelledby={@id} class="min-w-0 sm:flex-1">
+        <ul class="flex flex-wrap items-baseline gap-x-5">
+          {render_slot(@inner_block)}
+        </ul>
+      </nav>
+    </div>
+    """
+  end
+
   attr :label, :string, required: true
   attr :patch, :string, required: true
   attr :active, :boolean, default: false
@@ -153,8 +196,21 @@ defmodule OQueMudouWeb.RegisterLive do
         !@active && @count == 0 && "opacity-50"
       ]}
     >
-      <span class={["pb-0.5", @active && "border-b-2 border-ink"]}>{@label}</span>
-      <span :if={@count} class="text-[0.625rem] font-normal normal-case tabular-nums text-muted">
+      <span class={[
+        "border-b-2 pb-0.5 transition-colors duration-150 ease-out-quart",
+        @active && "border-ink",
+        !@active && "border-transparent group-hover:border-border"
+      ]}>
+        {@label}
+      </span>
+      <span
+        :if={@count}
+        class={[
+          "text-[0.625rem] font-normal normal-case tabular-nums",
+          @active && "text-ink",
+          !@active && "text-muted"
+        ]}
+      >
         {@count}
       </span>
     </.link>
