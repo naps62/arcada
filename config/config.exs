@@ -63,6 +63,10 @@ config :o_que_mudou, Oban,
     {Oban.Plugins.Cron, crontab: [{"0 7-19/2 * * 1-5", OQueMudou.Scraper.IngestWorker}]}
   ]
 
+# Admin area (/admin): edge-gated by Authelia (Remote-Groups header) + VPN ACL.
+# `bypass: true` (dev) skips the in-app group check. See issue #19.
+config :o_que_mudou, :admin, group: "oqm-admin", bypass: false
+
 # Configures the endpoint
 config :o_que_mudou, OQueMudouWeb.Endpoint,
   url: [host: "localhost"],

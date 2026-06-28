@@ -96,6 +96,28 @@ public Traefik domain / Let's Encrypt cert. Options:
 - The ingest cron runs automatically every 2 hours, 07:00–19:00 UTC on weekdays
   (`0 7-19/2 * * 1-5`), once the release is up. Idempotent, so re-runs are free.
 
+## Admin page — `/admin/summarizer` (issue #19)
+
+Runtime control over the summarizer adapter/model/keys, overriding the env-var
+defaults (a blank field falls back to env). Changes apply on the **next**
+summarize job — except Oban queue concurrency, which is fixed at boot, so
+switching adapter needs a restart to re-tune it.
+
+Gated in two layers (fails closed — without Authelia in front, the in-app plug
+403s everyone):
+
+1. **Edge (Traefik).** Add a Dokploy domain row for the app: `host=oqm.example.internal`,
+   `path=/admin`, middlewares `[authelia, vpn-allowlist]`. This
+   routes `/admin` through Authelia (and the VPN ACL); the path-specific router
+   wins over the catch-all `/` row.
+2. **App (defense in depth).** `OQueMudouWeb.Plugs.RequireAdminGroup` checks the
+   `Remote-Groups` header (set by Authelia) for `oqm-admin`. Config:
+   `config :o_que_mudou, :admin, group: "oqm-admin", bypass: false`. Dev sets
+   `bypass: true`.
+
+Authelia setup: create group `oqm-admin`, add the operator user to it, and add an
+access-control rule for `oqm.example.internal/admin` requiring group `oqm-admin`.
+
 ## Observability (Loki + Prometheus)
 
 **Logs (Loki).** In `prod` the Logger default handler uses

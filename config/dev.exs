@@ -65,6 +65,9 @@ config :o_que_mudou, OQueMudouWeb.Endpoint,
 # Enable dev routes for dashboard and mailbox
 config :o_que_mudou, dev_routes: true
 
+# No Authelia in front of the dev server — skip the /admin group check.
+config :o_que_mudou, :admin, group: "oqm-admin", bypass: true
+
 # Do not include metadata nor timestamps in development logs
 config :logger, :console, format: "[$level] $message\n"
 

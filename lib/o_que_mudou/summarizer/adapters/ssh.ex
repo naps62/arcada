@@ -182,5 +182,6 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
   defp valid_domains(_), do: []
 
   defp model, do: config()[:model] || @default_model
-  defp config, do: Application.get_env(:o_que_mudou, __MODULE__, [])
+  # Env config overlaid with runtime admin overrides (host, user, claude_cmd, model).
+  defp config, do: OQueMudou.Admin.adapter_config(__MODULE__)
 end

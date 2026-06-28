@@ -118,5 +118,6 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
     end
   end
 
-  defp config, do: Application.get_env(:o_que_mudou, __MODULE__, [])
+  # Env config overlaid with runtime admin overrides (model, api_key).
+  defp config, do: OQueMudou.Admin.adapter_config(__MODULE__)
 end

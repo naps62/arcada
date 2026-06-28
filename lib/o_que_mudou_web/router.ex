@@ -14,11 +14,23 @@ defmodule OQueMudouWeb.Router do
     plug :accepts, ["json"]
   end
 
+  # Edge-gated by Traefik (authelia + VPN ACL); this plug re-checks the
+  # Remote-Groups header as defense in depth. See issue #19.
+  pipeline :admin do
+    plug OQueMudouWeb.Plugs.RequireAdminGroup
+  end
+
   scope "/", OQueMudouWeb do
     pipe_through :browser
 
     live "/", RegisterLive, :index
     live "/acts/:id", ActLive, :show
+  end
+
+  scope "/admin", OQueMudouWeb do
+    pipe_through [:browser, :admin]
+
+    live "/summarizer", AdminLive, :index
   end
 
   # Other scopes may use custom stacks.

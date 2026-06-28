@@ -67,11 +67,12 @@ defmodule OQueMudou.Summarizer do
   def truncated?(_other, _max_chars), do: false
 
   @doc """
-  The configured adapter module (default: `Manual`). Accepts either a known key
-  (`:api | :local | :manual`) or an explicit module (handy for tests).
+  The configured adapter module (default: `Manual`). Resolves the effective
+  adapter via `OQueMudou.Admin` (DB override ?? env default); accepts either a
+  known key (`:api | :local | :manual | :ssh`) or an explicit module (tests).
   """
   def adapter do
-    case Application.get_env(:o_que_mudou, __MODULE__, [])[:adapter] || :manual do
+    case OQueMudou.Admin.summarizer_adapter() do
       key when is_map_key(@adapters, key) -> Map.fetch!(@adapters, key)
       mod when is_atom(mod) -> mod
     end
