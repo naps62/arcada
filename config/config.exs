@@ -92,10 +92,21 @@ config :tailwind,
     cd: Path.expand("../assets", __DIR__)
   ]
 
-# Configures Elixir's Logger
+# Configures Elixir's Logger. The console formatter is the human-readable
+# default for dev/test; prod overrides the default handler with a JSON
+# formatter (see config/prod.exs) so logs land structured in Loki.
 config :logger, :console,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
+
+# Prometheus metrics (PromEx). Dashboards are not auto-uploaded; metrics are
+# exposed at /metrics via PromEx.Plug and scraped by Prometheus over the
+# dokploy-network.
+config :o_que_mudou, OQueMudou.PromEx,
+  manual_metrics_start_delay: :no_delay,
+  drop_metrics_groups: [],
+  grafana: :disabled,
+  metrics_server: :disabled
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason

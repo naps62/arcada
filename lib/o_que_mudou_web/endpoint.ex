@@ -38,6 +38,10 @@ defmodule OQueMudouWeb.Endpoint do
     param_key: "request_logger",
     cookie_key: "request_logger"
 
+  # Expose Prometheus metrics at /metrics. Placed before RequestId/Telemetry
+  # so scrapes don't generate request logs or skew request metrics.
+  plug PromEx.Plug, prom_ex_module: OQueMudou.PromEx
+
   plug Plug.RequestId
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
 

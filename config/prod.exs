@@ -11,5 +11,14 @@ config :o_que_mudou, OQueMudouWeb.Endpoint,
 # Do not print debug messages in production
 config :logger, level: :info
 
+# Structured JSON logs to stdout, consistent with the other Dokploy apps —
+# Alloy ships the container's stdout to Loki, where `| json` parses these
+# fields (severity, message, request_id, …). The Basic formatter emits one
+# JSON object per line: %{time, severity, message, metadata}.
+config :logger, :default_handler,
+  formatter:
+    {LoggerJSON.Formatters.Basic,
+     metadata: [:request_id, :mfa, :file, :line, :crash_reason, :domain]}
+
 # Runtime production configuration, including reading
 # of environment variables, is done on config/runtime.exs.

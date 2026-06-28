@@ -95,6 +95,43 @@ public Traefik domain / Let's Encrypt cert. Options:
   `OQueMudou.Summarizer.create_summary/2` from `bin/o_que_mudou remote`.
 - The daily cron runs automatically at 09:00 UTC on weekdays once the release is up.
 
+## Observability (Loki + Prometheus)
+
+**Logs (Loki).** In `prod` the Logger default handler uses
+`LoggerJSON.Formatters.Basic`, so the app writes one JSON object per line to
+stdout (`{"time","severity","message","metadata"}`). Alloy ships the
+container's stdout to Loki, where `| json` parses the fields. Oban job
+lifecycle is logged via `Oban.Telemetry.attach_default_logger/1`. `LOG_LEVEL`
+(env) overrides the level at boot. Query in Grafana:
+
+```
+{service="arcada-app"} | json | severity="error"
+```
+
+**Metrics (Prometheus).** PromEx (`OQueMudou.PromEx`) exposes
+`GET /metrics` via `PromEx.Plug` (mounted before `Plug.Telemetry`, so scrapes
+aren't logged). Plugins: Application, Beam, Phoenix, Ecto, Oban,
+PhoenixLiveView (~60 metric families, all prefixed `o_que_mudou_prom_ex_*`).
+
+Point Prometheus at the container **over `dokploy-network`** — this bypasses
+Traefik entirely (no ACL to satisfy, no TLS):
+
+```yaml
+scrape_configs:
+  - job_name: arcada-app
+    static_configs:
+      - targets: ["arcada-app-byl8ru:4000"]
+```
+
+`/metrics` is *also* reachable at `https://oqm.example.internal/metrics`, but it
+inherits the host's `vpn-allowlist@file` ipAllowList (the router
+rule is `Host()`-only, no path split) — so it's already restricted to the
+VPN/docker ranges, same as the rest of the app. No metrics-specific Traefik
+config is needed. Prefer the internal `dokploy-network` target above.
+
+Dashboards aren't auto-uploaded (`grafana: :disabled`); import the bundled
+PromEx dashboards manually against the `prometheus` datasource if wanted.
+
 ## Local verification (what was run before shipping)
 
 ```
