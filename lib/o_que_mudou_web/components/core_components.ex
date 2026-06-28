@@ -656,7 +656,9 @@ defmodule OQueMudouWeb.CoreComponents do
   defp provenance_label(:community), do: "comunidade"
   defp provenance_label(:verified), do: "verificado"
 
-  defp provenance_title(:unreviewed), do: "Resumo gerado por modelo, ainda não revisto por uma pessoa."
+  defp provenance_title(:unreviewed),
+    do: "Resumo gerado por modelo, ainda não revisto por uma pessoa."
+
   defp provenance_title(:community), do: "Revisto pela comunidade."
   defp provenance_title(:verified), do: "Verificado por um revisor."
 
@@ -696,6 +698,38 @@ defmodule OQueMudouWeb.CoreComponents do
     ]}>
       {@label}
     </span>
+    """
+  end
+
+  @doc """
+  A broadsheet placeholder for pages still to be written (FAQ, About). Renders a
+  headline, a standfirst teaching what's coming, a quiet "Em breve" mark, and a
+  way back to the register.
+  """
+  attr :title, :string, required: true
+  slot :inner_block, required: true
+
+  def page_placeholder(assigns) do
+    ~H"""
+    <article class="mx-auto max-w-reading py-12 text-center sm:py-20">
+      <h1 class="text-balance font-display text-[2rem] font-semibold leading-tight text-ink sm:text-[2.625rem]">
+        {@title}
+      </h1>
+      <p class="mx-auto mt-5 max-w-reading text-pretty font-serif text-[1.0625rem] leading-relaxed text-ink">
+        {render_slot(@inner_block)}
+      </p>
+      <p class="mt-7 inline-flex items-center gap-1.5 rounded-[3px] border border-border px-2.5 py-1 text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-muted">
+        Em breve
+      </p>
+      <div class="mt-9 border-t border-border pt-6">
+        <.link
+          navigate="/"
+          class="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+        >
+          <.icon name="hero-arrow-left-micro" class="size-4" /> Voltar ao registo
+        </.link>
+      </div>
+    </article>
     """
   end
 

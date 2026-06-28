@@ -12,6 +12,11 @@ defmodule OQueMudouWeb.Layouts do
 
   embed_templates "layouts/*"
 
+  @months ~w(janeiro fevereiro março abril maio junho julho agosto setembro outubro novembro dezembro)
+
+  @doc "Long Portuguese date for the masthead dateline, e.g. `28 de junho de 2026`."
+  def long_date(%Date{} = d), do: "#{d.day} de #{Enum.at(@months, d.month - 1)} de #{d.year}"
+
   @doc """
   Umami analytics config, or `nil` when not configured.
 

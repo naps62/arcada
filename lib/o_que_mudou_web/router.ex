@@ -24,6 +24,8 @@ defmodule OQueMudouWeb.Router do
     pipe_through :browser
 
     live "/", RegisterLive, :index
+    live "/faq", FaqLive, :index
+    live "/sobre", AboutLive, :index
     live "/acts/:id", ActLive, :show
   end
 

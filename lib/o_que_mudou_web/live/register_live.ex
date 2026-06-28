@@ -12,6 +12,7 @@ defmodule OQueMudouWeb.RegisterLive do
   def mount(_params, _session, socket) do
     {:ok,
      assign(socket,
+       front_page: true,
        domains: Register.life_domains(),
        periods: Register.periods()
      )}
@@ -55,19 +56,6 @@ defmodule OQueMudouWeb.RegisterLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <section class="border-b border-border pb-7 text-center">
-      <h1 class="font-display text-[1.6rem] font-light italic leading-tight text-ink sm:text-[2rem]">
-        Para quem muda, e quando.
-      </h1>
-      <p class="mx-auto mt-3 text-[0.9375rem] leading-relaxed text-muted">
-        Em linguagem simples e directa.
-      </p>
-      <p class="mx-auto mt-3 inline-flex items-center gap-1.5 text-xs text-muted">
-        <.icon name="hero-information-circle-micro" class="size-4 shrink-0" />
-        <span>Isto não é aconselhamento jurídico — um sinal, não uma autoridade.</span>
-      </p>
-    </section>
-
     <nav class="border-b border-border" aria-label="Filtrar por período">
       <h2 class="sr-only">Período</h2>
       <ul class="flex flex-wrap items-center gap-x-5 gap-y-1 py-3">

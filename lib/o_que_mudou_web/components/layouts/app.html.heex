@@ -5,24 +5,65 @@
   Saltar para o conteúdo
 </a>
 
-<header>
+<header class="border-b-2 border-rule-strong">
   <div class="mx-auto max-w-3xl px-4 sm:px-6">
-    <div class="flex items-center justify-between gap-3 border-b border-border py-2 text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-muted">
-      <span>Diário da República · Série I</span>
-      <span class="hidden sm:inline">Novo a cada dia útil</span>
+    <%!-- Folio line: a real dateline, plus the standing page nav. --%>
+    <div class="flex items-center justify-between gap-3 border-b border-border py-2 text-[0.625rem] font-semibold uppercase tracking-[0.08em] text-muted sm:text-[0.6875rem] sm:tracking-[0.12em]">
+      <time datetime={Date.to_iso8601(Date.utc_today())} class="truncate tabular-nums">
+        {long_date(Date.utc_today())}
+      </time>
+      <nav aria-label="Páginas" class="flex shrink-0 items-center gap-4 sm:gap-5">
+        <.link
+          navigate={~p"/faq"}
+          class="transition-colors duration-150 ease-out-quart hover:text-primary"
+        >
+          Perguntas
+        </.link>
+        <.link
+          navigate={~p"/sobre"}
+          class="transition-colors duration-150 ease-out-quart hover:text-primary"
+        >
+          Sobre
+        </.link>
+      </nav>
     </div>
+
+    <%!-- Nameplate: grand on the front page, compact on inner pages. --%>
     <a
       href="/"
-      class="block py-5 text-center transition-colors duration-150 ease-out-quart hover:text-primary"
+      class={[
+        "block text-center transition-colors duration-150 ease-out-quart hover:text-primary",
+        assigns[:front_page] && "pt-7 sm:pt-9",
+        !assigns[:front_page] && "py-5"
+      ]}
       aria-label="O que mudou — início"
     >
-      <span class="font-display text-4xl font-black leading-none tracking-[-0.02em] text-ink sm:text-[3.25rem]">
+      <span class={[
+        "block font-display font-black leading-[0.92] tracking-[-0.03em] text-ink",
+        assigns[:front_page] && "text-[clamp(2.4rem,11vw,4.5rem)]",
+        !assigns[:front_page] && "text-[2rem] sm:text-[3.25rem]"
+      ]}>
         O que mudou
       </span>
     </a>
-    <div class="border-t-2 border-rule-strong"></div>
+
+    <%!-- Front-page standfirst — the page's h1. --%>
+    <h1
+      :if={assigns[:front_page]}
+      class="mt-3 text-balance px-2 pb-7 text-center font-display text-[1.375rem] font-light italic leading-tight text-ink sm:text-[1.75rem]"
+    >
+      Para quem muda, e quando.
+    </h1>
   </div>
 </header>
+
+<%!-- Disclaimer band: the standing "isto não é aconselhamento jurídico" line. --%>
+<div :if={assigns[:front_page]} class="border-b border-border bg-surface">
+  <p class="mx-auto flex max-w-3xl items-center justify-center gap-1.5 px-4 py-2.5 text-center text-xs leading-snug text-muted sm:px-6">
+    <.icon name="hero-information-circle-micro" class="size-4 shrink-0" />
+    <span>Isto não é aconselhamento jurídico — um sinal, não uma autoridade.</span>
+  </p>
+</div>
 
 <main id="conteudo" tabindex="-1" class="mx-auto max-w-3xl px-4 pb-24 pt-6 outline-none sm:px-6">
   <.flash_group flash={@flash} />
