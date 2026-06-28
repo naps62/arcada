@@ -39,7 +39,11 @@ config :o_que_mudou, OQueMudou.Summarizer.Adapters.Ssh,
     "-o",
     "BatchMode=yes",
     "-o",
-    "ConnectTimeout=20"
+    "ConnectTimeout=20",
+    # Avoid known_hosts writes (the app's HOME may be /nonexistent); keeps ssh
+    # diagnostics off stdout so the JSON parse stays clean.
+    "-o",
+    "UserKnownHostsFile=/dev/null"
   ]
 
 # Configures Oban (background jobs + daily cron).

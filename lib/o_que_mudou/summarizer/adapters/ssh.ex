@@ -83,9 +83,12 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
       host when is_binary(host) and host != "" ->
         args = ssh_args(cfg, host, prompt)
 
-        case System.cmd("ssh", args, stderr_to_stdout: true) do
+        # Don't merge stderr — ssh diagnostics (e.g. known_hosts warnings) would
+        # otherwise pollute stdout and break JSON parsing. stdout is claude's
+        # JSON envelope; stderr is dropped (exit code carries failure).
+        case System.cmd("ssh", args, stderr_to_stdout: false) do
           {out, 0} -> {:ok, out}
-          {out, code} -> {:error, {:ssh_exit, code, String.slice(out, 0, 500)}}
+          {_out, code} -> {:error, {:ssh_exit, code}}
         end
 
       _ ->
@@ -100,7 +103,17 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
     remote = "echo #{b64} | base64 -d | #{claude_cmd}"
 
     identity = if f = cfg[:identity_file], do: ["-i", f], else: []
-    extra = cfg[:ssh_extra] || ["-o", "StrictHostKeyChecking=accept-new", "-o", "BatchMode=yes"]
+
+    extra =
+      cfg[:ssh_extra] ||
+        [
+          "-o",
+          "StrictHostKeyChecking=accept-new",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "UserKnownHostsFile=/dev/null"
+        ]
 
     identity ++ extra ++ ["#{user}@#{host}", remote]
   end
