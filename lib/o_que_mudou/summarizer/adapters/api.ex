@@ -23,6 +23,8 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
   @default_model "claude-sonnet-4-6"
   # Bump when the prompt/schema change so summaries record which version produced them.
   @prompt_version "2026-06-27.1"
+  # Cap act text so oversized diplomas don't exceed the model's context limit.
+  @max_text_chars 80_000
 
   @system """
   És um assistente que resume diplomas legais do Diário da República em português \
@@ -42,7 +44,8 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
          plain_text: parsed["plain_text"],
          domains: Enum.map(parsed["domains"] || [], &String.to_existing_atom/1),
          model: model(),
-         prompt_version: @prompt_version
+         prompt_version: @prompt_version,
+         truncated: OQueMudou.Summarizer.truncated?(act.full_text || act.title, @max_text_chars)
        }}
     else
       {:ok, %{status: status, body: body}} ->
@@ -63,9 +66,6 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
       "output_config" => %{"format" => %{"type" => "json_schema", "schema" => schema()}}
     }
   end
-
-  # Cap act text so oversized diplomas don't exceed the model's context limit.
-  @max_text_chars 80_000
 
   defp act_prompt(act) do
     """

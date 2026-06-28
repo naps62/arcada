@@ -31,6 +31,14 @@ defmodule OQueMudou.Summarizer do
   def cap_text(other, _max_chars), do: other
 
   @doc """
+  Whether `cap_text/2` would truncate this text — i.e. the act text exceeds the
+  cap and the resulting summary only reflects the opening of the diploma.
+  Recorded per summary (`truncated`) so the UI can flag partial summaries.
+  """
+  def truncated?(text, max_chars) when is_binary(text), do: String.length(text) > max_chars
+  def truncated?(_other, _max_chars), do: false
+
+  @doc """
   The configured adapter module (default: `Manual`). Accepts either a known key
   (`:api | :local | :manual`) or an explicit module (handy for tests).
   """

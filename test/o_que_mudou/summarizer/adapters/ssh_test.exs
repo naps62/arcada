@@ -37,6 +37,16 @@ defmodule OQueMudou.Summarizer.Adapters.SshTest do
     assert is_binary(attrs.prompt_version)
   end
 
+  test "flags truncated when the act text exceeds the cap" do
+    set_runner(fn _ -> {:ok, claude_envelope("x", [])} end)
+
+    short = %{act() | full_text: "curto"}
+    assert {:ok, %{truncated: false}} = Ssh.summarize(short)
+
+    huge = %{act() | full_text: String.duplicate("a", 80_001)}
+    assert {:ok, %{truncated: true}} = Ssh.summarize(huge)
+  end
+
   test "drops domains outside the fixed taxonomy" do
     set_runner(fn _ -> {:ok, claude_envelope("x", ["fiscal", "cripto", "saúde"])} end)
     assert {:ok, %{domains: [:fiscal, :saúde]}} = Ssh.summarize(act())

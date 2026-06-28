@@ -177,7 +177,10 @@ defmodule OQueMudouWeb.RegisterLive do
             </.link>
           </h3>
         </div>
-        <.provenance_badge summary={@summary} class="mt-0.5" />
+        <div class="mt-0.5 flex shrink-0 flex-col items-end gap-1">
+          <.provenance_badge summary={@summary} />
+          <.partial_summary_badge summary={@summary} />
+        </div>
       </div>
 
       <p class="mt-2.5 max-w-reading text-pretty font-serif text-[1.0625rem] leading-relaxed text-ink">

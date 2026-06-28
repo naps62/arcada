@@ -66,8 +66,8 @@ defmodule OQueMudouWeb.RegisterLiveTest do
     seed()
     {:ok, _lv, html} = live(conn, ~p"/")
 
-    assert html =~ "🤖 não revisto"
-    assert html =~ "✓ validado"
+    assert html =~ "não revisto"
+    assert html =~ "verificado"
   end
 
   test "domain filter narrows the list", %{conn: conn} do

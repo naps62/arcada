@@ -71,6 +71,7 @@ defmodule OQueMudouWeb.ActLive do
           <h2 class="flex items-center gap-2 text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-muted">
             Em linguagem simples
             <.provenance_badge summary={@summary} />
+            <.partial_summary_badge summary={@summary} />
           </h2>
           <.validation_control summary={@summary} />
         </div>
@@ -83,6 +84,17 @@ defmodule OQueMudouWeb.ActLive do
         </p>
         <p :if={is_nil(@summary)} class="mt-4 font-serif text-lg italic text-muted">
           Ainda sem resumo em linguagem simples.
+        </p>
+
+        <p
+          :if={@summary && @summary.truncated}
+          class="mt-4 flex max-w-reading items-start gap-2 rounded-md border border-border bg-surface-inset px-3.5 py-2.5 text-[0.8125rem] leading-relaxed text-muted"
+        >
+          <.icon name="hero-scissors-micro" class="mt-0.5 size-4 shrink-0" />
+          <span>
+            Este diploma é extenso: o resumo cobre apenas o início do texto e pode não
+            refletir os anexos. Consulte o <strong>texto integral</strong> e a fonte oficial.
+          </span>
         </p>
 
         <div :if={@summary && @summary.domains != []} class="mt-5 flex flex-wrap gap-1.5">

@@ -660,6 +660,30 @@ defmodule OQueMudouWeb.CoreComponents do
   defp provenance_title(:community), do: "Revisto pela comunidade."
   defp provenance_title(:verified), do: "Verificado por um revisor."
 
+  @doc """
+  Flags a summary built from a truncated (capped) act text — an oversized
+  diploma whose annexes were dropped before summarising, so the summary only
+  reflects the opening of the document. Renders nothing for complete summaries.
+  """
+  attr :summary, :any, default: nil
+  attr :class, :string, default: nil
+
+  def partial_summary_badge(%{summary: %{truncated: true}} = assigns) do
+    ~H"""
+    <span
+      title="Diploma extenso: o resumo cobre apenas o início do texto, não os anexos. Consulte a fonte oficial."
+      class={[
+        "inline-flex shrink-0 items-center gap-1 rounded-[3px] px-2 py-0.5 text-[0.6875rem] font-semibold uppercase tracking-[0.06em] bg-surface-inset text-muted",
+        @class
+      ]}
+    >
+      <.icon name="hero-scissors-micro" class="size-3.5" /> resumo parcial
+    </span>
+    """
+  end
+
+  def partial_summary_badge(assigns), do: ~H""
+
   @doc "A life-domain tag — quiet, neutral, never a status color."
   attr :label, :string, required: true
   attr :class, :string, default: nil

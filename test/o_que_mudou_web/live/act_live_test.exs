@@ -62,15 +62,15 @@ defmodule OQueMudouWeb.ActLiveTest do
     %{act: act, summary: summary} = seed()
     {:ok, lv, html} = live(conn, ~p"/acts/#{act.id}")
 
-    assert html =~ "marcar como validado"
+    assert html =~ "Marcar como validado"
     assert is_nil(Repo.get!(Summary, summary.id).validated_at)
 
-    after_click = lv |> element("button", "marcar como validado") |> render_click()
-    assert after_click =~ "✓ validado"
+    after_click = lv |> element("button", "Marcar como validado") |> render_click()
+    assert after_click =~ "verificado"
     refute is_nil(Repo.get!(Summary, summary.id).validated_at)
 
     # toggling again clears it
-    lv |> element("button", "validado") |> render_click()
+    lv |> element("button", "Validado") |> render_click()
     assert is_nil(Repo.get!(Summary, summary.id).validated_at)
   end
 
