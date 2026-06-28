@@ -32,6 +32,7 @@ defmodule OQueMudouWeb.Router do
   scope "/admin", OQueMudouWeb do
     pipe_through [:browser, :admin]
 
+    live "/", AdminLive, :index
     live "/summarizer", AdminLive, :index
   end
 
