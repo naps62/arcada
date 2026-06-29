@@ -38,20 +38,14 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
   ]
 
   @impl true
-  def summarize(%Act{} = act, %Provider{} = provider, model) do
-    with {:ok, stdout} <- run(build_prompt(act), provider),
+  def summarize(%Act{} = act, %Provider{} = provider, model, text) do
+    with {:ok, stdout} <- run(build_prompt(act, text), provider),
          {:ok, attrs} <- parse(stdout, model || @default_model) do
-      truncated =
-        OQueMudou.Summarizer.truncated?(
-          act.full_text || act.title,
-          OQueMudou.Summarizer.max_text_chars()
-        )
-
-      {:ok, Map.put(attrs, :truncated, truncated)}
+      {:ok, attrs}
     end
   end
 
-  defp build_prompt(act) do
+  defp build_prompt(act, text) do
     """
     #{OQueMudou.Summarizer.base_system_prompt()}
     #{@json_format}
@@ -61,7 +55,7 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
     Título: #{act.title}
 
     Texto:
-    #{OQueMudou.Summarizer.prepare_text(act.full_text || act.title)}
+    #{text}
     """
   end
 

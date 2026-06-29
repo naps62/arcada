@@ -24,6 +24,17 @@ defmodule OQueMudou.SummarizerTest do
     |> Repo.insert!()
   end
 
+  defp oversized_act(full_text) do
+    edition =
+      %Edition{}
+      |> Edition.changeset(%{serie: "I", number: "121/2026", date: ~D[2026-06-25]})
+      |> Repo.insert!()
+
+    %Act{}
+    |> Act.changeset(%{edition_id: edition.id, dre_id: "long-1", title: "x", full_text: full_text})
+    |> Repo.insert!()
+  end
+
   describe "summarize/3 (explicit provider+model)" do
     test "persists the result linked to the provider" do
       stub_ssh_runner(fn _ -> {:ok, claude_envelope("Muda o IRS.", ["fiscal", "trabalho"])} end)
@@ -212,6 +223,79 @@ defmodule OQueMudou.SummarizerTest do
       assert Summarizer.prepare_text(text, 100) == Summarizer.cap_text(text, 100)
     end
 
+    test "auto ranks when possible (delegates to prepare with :auto)" do
+      set_embeddings(embed_fn: relevance_embed())
+      assert {_out, :rank} = Summarizer.prepare(diploma(800), 400, :auto)
+    end
+  end
+
+  describe "prepare/3 strategy" do
+    test "a fitting act is :full, untouched" do
+      assert {"curto", :full} = Summarizer.prepare("curto", 1_000, :auto)
+    end
+
+    test ":truncate forces head-truncation even when ranking is available" do
+      set_embeddings(embed_fn: relevance_embed())
+      {out, strategy} = Summarizer.prepare(diploma(800), 400, :truncate)
+      assert strategy == :truncate
+      assert out == Summarizer.cap_text(diploma(800), 400)
+    end
+
+    test ":rank keeps relevant sections and reports :rank" do
+      set_embeddings(embed_fn: relevance_embed())
+      {out, strategy} = Summarizer.prepare(diploma(800), 400, :rank)
+      assert strategy == :rank
+      assert String.contains?(out, "Artigo 1.º")
+      refute String.contains?(out, "999999")
+    end
+
+    test ":rank falls back to :truncate when the ranker is unavailable" do
+      set_embeddings([])
+      assert {_out, :truncate} = Summarizer.prepare(diploma(800), 400, :rank)
+    end
+  end
+
+  describe "summarize/4 strategy bookkeeping" do
+    test "records the effective strategy (rank) and truncated flag" do
+      {:ok, _} = Admin.update_settings(%{"max_text_chars" => "400"})
+      set_embeddings(embed_fn: relevance_embed())
+      stub_ssh_runner(fn _ -> {:ok, claude_envelope("resumo", ["fiscal"])} end)
+
+      assert {:ok, %{text_strategy: "rank", truncated: true}} =
+               Summarizer.summarize(oversized_act(diploma(800)), ssh_provider(), "claude-cli")
+    end
+
+    test "honours a forced :truncate run" do
+      {:ok, _} = Admin.update_settings(%{"max_text_chars" => "400"})
+      set_embeddings(embed_fn: relevance_embed())
+      stub_ssh_runner(fn _ -> {:ok, claude_envelope("resumo", [])} end)
+
+      assert {:ok, %{text_strategy: "truncate"}} =
+               Summarizer.summarize(oversized_act(diploma(800)), ssh_provider(), "claude-cli",
+                 text_strategy: :truncate
+               )
+    end
+
+    test "a fitting act is recorded as full / not truncated" do
+      stub_ssh_runner(fn _ -> {:ok, claude_envelope("resumo", [])} end)
+
+      assert {:ok, %{text_strategy: "full", truncated: false}} =
+               Summarizer.summarize(oversized_act("curto"), ssh_provider(), "claude-cli")
+    end
+
+    test "normalizes a string strategy from decoded job args" do
+      {:ok, _} = Admin.update_settings(%{"max_text_chars" => "400"})
+      set_embeddings(embed_fn: relevance_embed())
+      stub_ssh_runner(fn _ -> {:ok, claude_envelope("resumo", [])} end)
+
+      assert {:ok, %{text_strategy: "truncate"}} =
+               Summarizer.summarize(oversized_act(diploma(800)), ssh_provider(), "claude-cli",
+                 text_strategy: "truncate"
+               )
+    end
+  end
+
+  describe "prepare_text/2 (legacy text-only)" do
     test "applies task prefixes to scored text only, never to the assembled prompt" do
       test_pid = self()
 

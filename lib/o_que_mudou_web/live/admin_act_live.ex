@@ -40,13 +40,18 @@ defmodule OQueMudouWeb.AdminActLive do
     {:noreply, assign(socket, trigger_id: parse_id(pid))}
   end
 
-  def handle_event("trigger", %{"provider_id" => pid, "model" => model}, socket) do
+  def handle_event("trigger", %{"provider_id" => pid, "model" => model} = params, socket) do
     case parse_id(pid) do
       nil ->
         {:noreply, put_flash(socket, :error, "Escolhe um provider.")}
 
       id ->
-        Summarizer.enqueue(socket.assigns.act.id, provider_id: id, model: emptyish(model))
+        Summarizer.enqueue(socket.assigns.act.id,
+          provider_id: id,
+          model: emptyish(model),
+          text_strategy: emptyish(params["text_strategy"])
+        )
+
         {:noreply, put_flash(socket, :info, "Run enfileirado — atualiza daqui a pouco.")}
     end
   end
@@ -109,6 +114,17 @@ defmodule OQueMudouWeb.AdminActLive do
               <option :for={m <- (@tp && @tp.models) || []} value={m}>{m}</option>
             </select>
           </div>
+          <div>
+            <label class="block text-xs text-muted">Texto (atos longos)</label>
+            <select
+              name="text_strategy"
+              class="mt-1 rounded-md border border-border bg-bg px-2 py-1.5 text-sm text-ink"
+            >
+              <option value="auto">Automático</option>
+              <option value="rank">Secções relevantes</option>
+              <option value="truncate">Início (truncar)</option>
+            </select>
+          </div>
           <button
             type="submit"
             class="rounded-md bg-ink px-3 py-1.5 text-sm font-semibold text-bg hover:opacity-90"
@@ -135,6 +151,7 @@ defmodule OQueMudouWeb.AdminActLive do
             <div class="flex items-center gap-2 text-xs text-muted">
               <span class="font-semibold text-ink">{provider_name(s)}</span>
               <span>· {s.model || "—"}</span>
+              <span :if={strategy_label(s)}>· {strategy_label(s)}</span>
               <.provenance_badge summary={s} />
               <.partial_summary_badge summary={s} />
             </div>
@@ -162,4 +179,10 @@ defmodule OQueMudouWeb.AdminActLive do
 
   defp provider_name(%{provider: %{name: name}}), do: name
   defp provider_name(_), do: "—"
+
+  # How an oversized act's text was prepared for this summary (nil when the act
+  # fit whole — nothing worth labelling). Lets you eyeball ranked vs truncated.
+  defp strategy_label(%{text_strategy: "rank"}), do: "secções relevantes"
+  defp strategy_label(%{text_strategy: "truncate"}), do: "início"
+  defp strategy_label(_), do: nil
 end

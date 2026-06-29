@@ -20,11 +20,11 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
   @prompt_version "2026-06-28.2"
 
   @impl true
-  def summarize(%Act{} = act, %Provider{} = provider, model) do
+  def summarize(%Act{} = act, %Provider{} = provider, model, text) do
     model = model || @default_model
 
     with {:ok, key} <- api_key(provider),
-         body = request_body(act, model),
+         body = request_body(act, model, text),
          {:ok, %{status: 200} = resp} <- post(key, body),
          {:ok, parsed} <- parse(resp.body) do
       {:ok,
@@ -32,12 +32,7 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
          plain_text: parsed["plain_text"],
          domains: Enum.map(parsed["domains"] || [], &String.to_existing_atom/1),
          model: model,
-         prompt_version: @prompt_version,
-         truncated:
-           OQueMudou.Summarizer.truncated?(
-             act.full_text || act.title,
-             OQueMudou.Summarizer.max_text_chars()
-           )
+         prompt_version: @prompt_version
        }}
     else
       {:ok, %{status: status, body: body}} ->
@@ -49,24 +44,24 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
     end
   end
 
-  defp request_body(act, model) do
+  defp request_body(act, model, text) do
     %{
       "model" => model,
       "max_tokens" => 1024,
       "system" => OQueMudou.Summarizer.base_system_prompt(),
-      "messages" => [%{"role" => "user", "content" => act_prompt(act)}],
+      "messages" => [%{"role" => "user", "content" => act_prompt(act, text)}],
       "output_config" => %{"format" => %{"type" => "json_schema", "schema" => schema()}}
     }
   end
 
-  defp act_prompt(act) do
+  defp act_prompt(act, text) do
     """
     Tipo: #{act.tipo}
     Emissor: #{act.emitter}
     Título: #{act.title}
 
     Texto:
-    #{OQueMudou.Summarizer.prepare_text(act.full_text || act.title)}
+    #{text}
     """
   end
 

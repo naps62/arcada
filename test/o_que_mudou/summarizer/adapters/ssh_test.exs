@@ -15,7 +15,8 @@ defmodule OQueMudou.Summarizer.Adapters.SshTest do
     }
   end
 
-  defp run(act \\ act(), model \\ "claude-cli"), do: Ssh.summarize(act, ssh_provider(), model)
+  defp run(act \\ act(), model \\ "claude-cli"),
+    do: Ssh.summarize(act, ssh_provider(), model, act.full_text || act.title)
 
   test "parses claude envelope into the summary contract" do
     stub_ssh_runner(fn _ -> {:ok, claude_envelope("Muda o IRS.", ["fiscal", "trabalho"])} end)
@@ -27,11 +28,17 @@ defmodule OQueMudou.Summarizer.Adapters.SshTest do
     assert is_binary(attrs.prompt_version)
   end
 
-  test "flags truncated when the act text exceeds the cap" do
-    stub_ssh_runner(fn _ -> {:ok, claude_envelope("x", [])} end)
+  test "embeds the already-prepared text into the prompt verbatim" do
+    parent = self()
 
-    assert {:ok, %{truncated: false}} = run(%{act() | full_text: "curto"})
-    assert {:ok, %{truncated: true}} = run(%{act() | full_text: String.duplicate("a", 80_001)})
+    stub_ssh_runner(fn prompt ->
+      send(parent, {:prompt, prompt})
+      {:ok, claude_envelope("x", [])}
+    end)
+
+    assert {:ok, _} = Ssh.summarize(act(), ssh_provider(), "claude-cli", "TEXTO-PREPARADO-XYZ")
+    assert_received {:prompt, prompt}
+    assert prompt =~ "TEXTO-PREPARADO-XYZ"
   end
 
   test "drops domains outside the fixed taxonomy" do
@@ -58,6 +65,6 @@ defmodule OQueMudou.Summarizer.Adapters.SshTest do
   test "a provider without a host errors instead of shelling out" do
     # no runner injected → real path; provider has no ssh_host
     provider = %OQueMudou.Providers.Provider{kind: :ssh, ssh_host: nil}
-    assert {:error, :missing_ssh_host} = Ssh.summarize(act(), provider, "claude-cli")
+    assert {:error, :missing_ssh_host} = Ssh.summarize(act(), provider, "claude-cli", "texto")
   end
 end

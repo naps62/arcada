@@ -26,9 +26,9 @@ defmodule OQueMudou.Summarizer.Adapters.OpenAI do
   """
 
   @impl true
-  def summarize(%Act{} = act, %Provider{} = provider, model) do
+  def summarize(%Act{} = act, %Provider{} = provider, model, text) do
     with {:ok, url} <- endpoint(provider),
-         body = request_body(act, model),
+         body = request_body(act, model, text),
          {:ok, %{status: 200, body: resp}} <- post(url, provider.api_key, body),
          {:ok, obj} <- parse(resp) do
       {:ok,
@@ -36,12 +36,7 @@ defmodule OQueMudou.Summarizer.Adapters.OpenAI do
          plain_text: obj["plain_text"],
          domains: valid_domains(obj["domains"]),
          model: model,
-         prompt_version: @prompt_version,
-         truncated:
-           OQueMudou.Summarizer.truncated?(
-             act.full_text || act.title,
-             OQueMudou.Summarizer.max_text_chars()
-           )
+         prompt_version: @prompt_version
        }}
     else
       {:ok, %{status: status, body: body}} ->
@@ -53,19 +48,19 @@ defmodule OQueMudou.Summarizer.Adapters.OpenAI do
     end
   end
 
-  defp request_body(act, model) do
+  defp request_body(act, model, text) do
     %{
       "model" => model,
       "messages" => [
         %{"role" => "system", "content" => OQueMudou.Summarizer.base_system_prompt()},
-        %{"role" => "user", "content" => act_prompt(act)}
+        %{"role" => "user", "content" => act_prompt(act, text)}
       ],
       "response_format" => %{"type" => "json_object"},
       "temperature" => 0.2
     }
   end
 
-  defp act_prompt(act) do
+  defp act_prompt(act, text) do
     """
     #{@json_format}
     ---
@@ -74,7 +69,7 @@ defmodule OQueMudou.Summarizer.Adapters.OpenAI do
     Título: #{act.title}
 
     Texto:
-    #{OQueMudou.Summarizer.prepare_text(act.full_text || act.title)}
+    #{text}
     """
   end
 

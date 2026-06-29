@@ -24,8 +24,11 @@ defmodule OQueMudou.Register.Summary do
     field :prompt_version, :string
     field :status, Ecto.Enum, values: Register.statuses(), default: :unreviewed
     # The act's full text was capped before summarising (oversized diploma): the
-    # summary reflects only the opening of the document, not its annexes.
+    # summary reflects only part of the document, not the whole thing.
     field :truncated, :boolean, default: false
+    # How the text was prepared: "full" | "rank" (relevant sections kept) |
+    # "truncate" (opening kept). Null on legacy rows. See OQueMudou.Summarizer.
+    field :text_strategy, :string
     field :generated_at, :utc_datetime
     field :validated_at, :utc_datetime
 
@@ -36,7 +39,7 @@ defmodule OQueMudou.Register.Summary do
   end
 
   @required ~w(act_id plain_text)a
-  @optional ~w(domains model prompt_version status truncated provider_id generated_at validated_at)a
+  @optional ~w(domains model prompt_version status truncated text_strategy provider_id generated_at validated_at)a
 
   def changeset(summary, attrs) do
     summary

@@ -26,8 +26,11 @@ defmodule OQueMudou.Summarizer.SummarizeWorker do
   # A manual run pins a provider (+ optional model); otherwise use the active one.
   defp run(act, %{"provider_id" => pid} = args) when not is_nil(pid) do
     case Providers.get_provider(pid) do
-      nil -> {:error, :provider_not_found}
-      provider -> Summarizer.summarize(act, provider, args["model"])
+      nil ->
+        {:error, :provider_not_found}
+
+      provider ->
+        Summarizer.summarize(act, provider, args["model"], text_strategy: args["text_strategy"])
     end
   end
 

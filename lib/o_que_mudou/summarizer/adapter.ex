@@ -19,6 +19,12 @@ defmodule OQueMudou.Summarizer.Adapter do
           required(:prompt_version) => String.t()
         }
 
-  @callback summarize(Act.t(), Provider.t(), String.t()) ::
+  @doc """
+  Summarize an act. `text` is the already-prepared act body (capped / section-
+  ranked by `OQueMudou.Summarizer` — adapters don't re-prepare it); the adapter
+  builds its prompt from `act`'s metadata plus this text. Truncation/strategy
+  bookkeeping is handled by the caller, so the result need not include it.
+  """
+  @callback summarize(Act.t(), Provider.t(), String.t(), text :: String.t()) ::
               {:ok, result} | {:async, term} | {:error, term}
 end

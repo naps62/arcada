@@ -68,19 +68,42 @@ defmodule OQueMudou.Summarizer do
   May perform a network call to the embeddings server; intended for the async
   summarize job, not request paths.
   """
-  def prepare_text(text, max_chars \\ nil)
+  def prepare_text(text, max_chars \\ nil), do: prepare(text, max_chars) |> elem(0)
 
-  def prepare_text(text, max_chars) when is_binary(text) do
+  @doc """
+  Like `prepare_text/2` but returns `{prepared_text, effective_strategy}` where
+  the strategy is what *actually* happened:
+
+    * `:full`     — fit under the cap, sent whole
+    * `:rank`     — oversized; most change-relevant sections kept (embeddings)
+    * `:truncate` — oversized; opening kept (head-truncation)
+
+  `requested` (`:auto | :rank | :truncate`) is the caller's preference. `:auto`
+  and `:rank` both attempt ranking and fall back to truncation when it isn't
+  available (ranker off, unstructured text, embed failure, nothing fits);
+  `:truncate` forces head-truncation even when ranking is available — used by the
+  per-act comparison to A/B the two strategies on the same model.
+  """
+  def prepare(text, max_chars \\ nil, requested \\ :auto)
+
+  def prepare(text, max_chars, requested) when is_binary(text) do
     max_chars = max_chars || max_text_chars()
 
-    if String.length(text) <= max_chars do
-      text
-    else
-      select_relevant(text, max_chars) || cap_text(text, max_chars)
+    cond do
+      String.length(text) <= max_chars -> {text, :full}
+      requested == :truncate -> {cap_text(text, max_chars), :truncate}
+      true -> ranked_or_truncated(text, max_chars)
     end
   end
 
-  def prepare_text(other, _max_chars), do: other
+  def prepare(other, _max_chars, _requested), do: {other, :full}
+
+  defp ranked_or_truncated(text, max_chars) do
+    case select_relevant(text, max_chars) do
+      nil -> {cap_text(text, max_chars), :truncate}
+      selected -> {selected, :rank}
+    end
+  end
 
   # Returns assembled most-relevant sections, or nil to signal "fall back to
   # head-truncation" (ranker disabled, unstructured text, embed failure, or
@@ -179,7 +202,9 @@ defmodule OQueMudou.Summarizer do
 
   @doc """
   Enqueue an async summarization job. With no opts it uses the active
-  provider+model; pass `provider_id:`/`model:` for a manual run on a specific one.
+  provider+model; pass `provider_id:`/`model:` for a manual run on a specific one,
+  and `text_strategy:` (`:rank | :truncate | :auto`) to force how an oversized
+  act's text is prepared (for the per-act ranking comparison).
   """
   def enqueue(act, opts \\ [])
   def enqueue(%Act{id: id}, opts), do: enqueue(id, opts)
@@ -188,6 +213,7 @@ defmodule OQueMudou.Summarizer do
     %{act_id: act_id}
     |> put_opt(opts, :provider_id)
     |> put_opt(opts, :model)
+    |> put_opt(opts, :text_strategy)
     |> SummarizeWorker.new()
     |> Oban.insert()
   end
@@ -211,14 +237,35 @@ defmodule OQueMudou.Summarizer do
     end
   end
 
-  @doc "Summarize `act` with a specific provider + model; persist linked to the provider."
-  def summarize(%Act{} = act, %Provider{} = provider, model) do
+  @doc """
+  Summarize `act` with a specific provider + model; persist linked to the
+  provider. `opts[:text_strategy]` (`:auto` default) forces how an oversized act
+  is prepared. The text is prepared here (once) and handed to the adapter, which
+  only talks to its backend — the cap/ranking decision lives in one place.
+  """
+  def summarize(%Act{} = act, %Provider{} = provider, model, opts \\ []) do
     model = model || List.first(provider.models)
+    requested = opts |> Keyword.get(:text_strategy, :auto) |> normalize_strategy()
+    {text, strategy} = prepare(act.full_text || act.title, max_text_chars(), requested)
 
-    case adapter_for(provider.kind).summarize(act, provider, model) do
-      {:ok, attrs} -> create_summary(act, Map.put(attrs, :provider_id, provider.id))
-      {:async, ref} -> {:async, ref}
-      {:error, reason} -> {:error, reason}
+    case adapter_for(provider.kind).summarize(act, provider, model, text) do
+      {:ok, attrs} ->
+        create_summary(
+          act,
+          attrs
+          |> Map.new()
+          |> Map.merge(%{
+            provider_id: provider.id,
+            truncated: strategy != :full,
+            text_strategy: to_string(strategy)
+          })
+        )
+
+      {:async, ref} ->
+        {:async, ref}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -238,6 +285,12 @@ defmodule OQueMudou.Summarizer do
     |> Summary.changeset(attrs)
     |> Repo.insert()
   end
+
+  # Accept the strategy as an atom (direct calls) or string (decoded job args).
+  defp normalize_strategy(s) when s in [:auto, :rank, :truncate], do: s
+  defp normalize_strategy("rank"), do: :rank
+  defp normalize_strategy("truncate"), do: :truncate
+  defp normalize_strategy(_), do: :auto
 
   defp now, do: DateTime.utc_now() |> DateTime.truncate(:second)
 end
