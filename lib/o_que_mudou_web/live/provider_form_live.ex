@@ -4,7 +4,7 @@ defmodule OQueMudouWeb.ProviderFormLive do
   `/admin/providers/:id/edit`). Kind-specific fields show based on the selected
   kind. See issue #20.
   """
-  use OQueMudouWeb, :live_view
+  use OQueMudouWeb, :live_view_admin
 
   alias OQueMudou.Providers
   alias OQueMudou.Providers.Provider
@@ -13,8 +13,8 @@ defmodule OQueMudouWeb.ProviderFormLive do
   def mount(params, _session, socket) do
     {provider, title} =
       case params do
-        %{"id" => id} -> {Providers.get_provider!(id), "Editar provider"}
-        _ -> {%Provider{kind: :anthropic, models: []}, "Novo provider"}
+        %{"id" => id} -> {Providers.get_provider!(id), "Edit provider"}
+        _ -> {%Provider{kind: :anthropic, models: []}, "New provider"}
       end
 
     {:ok,
@@ -48,7 +48,7 @@ defmodule OQueMudouWeb.ProviderFormLive do
     case saved do
       {:ok, _} ->
         {:noreply,
-         socket |> put_flash(:info, "Provider guardado.") |> push_navigate(to: ~p"/admin")}
+         socket |> put_flash(:info, "Provider saved.") |> push_navigate(to: ~p"/admin")}
 
       {:error, cs} ->
         {:noreply, assign_form(socket, cs)}
@@ -71,88 +71,95 @@ defmodule OQueMudouWeb.ProviderFormLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="mx-auto max-w-2xl py-8">
-      <.link navigate={~p"/admin"} class="text-sm text-muted hover:text-primary hover:underline">
-        ← Admin
-      </.link>
-      <h1 class="mt-4 border-b-2 border-rule-strong pb-3 font-display text-2xl font-semibold text-ink">
-        {@title}
-      </h1>
+    <nav aria-label="Breadcrumb" class="text-[0.8125rem] text-muted">
+      <.link navigate={~p"/admin"} class="hover:text-primary hover:underline">Admin</.link>
+      <span aria-hidden="true" class="mx-1.5 text-border">/</span>
+      <span class="text-ink">{@title}</span>
+    </nav>
 
-      <.form
-        id="provider-form"
-        for={@form}
-        as={:provider}
-        phx-change="validate"
-        phx-submit="save"
-        class="mt-6 space-y-5"
-      >
-        <.admin_field field={@form[:name]} label="Nome" placeholder="ex. ollama-local" />
+    <h1 class="mt-4 border-b-2 border-rule-strong pb-3 font-display text-[1.75rem] font-semibold text-ink">
+      {@title}
+    </h1>
 
-        <.admin_field field={@form[:kind]} type="select" label="Tipo">
-          <option :for={k <- Provider.kinds()} value={k} selected={@kind == k}>{k}</option>
-        </.admin_field>
+    <.form
+      id="provider-form"
+      for={@form}
+      as={:provider}
+      phx-change="validate"
+      phx-submit="save"
+      class="mt-6 space-y-5"
+    >
+      <.admin_field field={@form[:name]} label="Name" placeholder="e.g. ollama-local" />
 
+      <.admin_field field={@form[:kind]} type="select" label="Type">
+        <option :for={k <- Provider.kinds()} value={k} selected={@kind == k}>{k}</option>
+      </.admin_field>
+
+      <.admin_field
+        :if={@kind == :openai}
+        field={@form[:base_url]}
+        label="Base URL"
+        placeholder="https://api.synthetic.new/v1"
+        hint="OpenAI-compatible endpoint (without /chat/completions)."
+      />
+
+      <.admin_field
+        :if={@kind in [:anthropic, :openai]}
+        field={@form[:api_key]}
+        type="password"
+        name="provider[api_key]"
+        value=""
+        autocomplete="off"
+        label={"API key " <> if(@api_key_set?, do: "(stored — leave blank to keep)", else: "")}
+      />
+
+      <%= if @kind == :ssh do %>
+        <.admin_field field={@form[:ssh_host]} label="SSH host" placeholder="192.0.2.10" />
+        <.admin_field field={@form[:ssh_user]} label="SSH user" placeholder="naps62" />
         <.admin_field
-          :if={@kind == :openai}
-          field={@form[:base_url]}
-          label="Base URL"
-          placeholder="https://api.synthetic.new/v1"
-          hint="Endpoint compatível com OpenAI (sem /chat/completions)."
+          field={@form[:ssh_identity_file]}
+          label="Identity file"
+          placeholder="/tmp/.ssh/id_ed25519"
         />
-
         <.admin_field
-          :if={@kind in [:anthropic, :openai]}
-          field={@form[:api_key]}
-          type="password"
-          name="provider[api_key]"
-          value=""
-          autocomplete="off"
-          label={"API key " <> if(@api_key_set?, do: "(guardada — vazio mantém)", else: "")}
+          field={@form[:ssh_claude_cmd]}
+          label="Command"
+          placeholder="claude -p --output-format json"
         />
+      <% end %>
 
-        <%= if @kind == :ssh do %>
-          <.admin_field field={@form[:ssh_host]} label="SSH host" placeholder="192.0.2.10" />
-          <.admin_field field={@form[:ssh_user]} label="SSH user" placeholder="naps62" />
-          <.admin_field
-            field={@form[:ssh_identity_file]}
-            label="Identity file"
-            placeholder="/tmp/.ssh/id_ed25519"
-          />
-          <.admin_field
-            field={@form[:ssh_claude_cmd]}
-            label="Comando"
-            placeholder="claude -p --output-format json"
-          />
-        <% end %>
+      <.admin_field
+        field={@form[:models]}
+        type="textarea"
+        rows="4"
+        label="Models"
+        hint="One per line (or comma-separated)."
+        value={Enum.join(@provider.models || [], "\n")}
+      />
 
-        <.admin_field
-          field={@form[:models]}
-          type="textarea"
-          rows="4"
-          label="Modelos"
-          hint="Um por linha (ou separados por vírgula)."
-          value={Enum.join(@provider.models || [], "\n")}
-        />
+      <label class="flex items-center gap-2 text-sm text-ink">
+        <input type="hidden" name="provider[enabled]" value="false" />
+        <input
+          type="checkbox"
+          name="provider[enabled]"
+          value="true"
+          checked={@form[:enabled].value != false}
+          class="rounded border-border text-primary focus:ring-primary"
+        /> Enabled
+      </label>
 
-        <label class="flex items-center gap-2 text-sm text-ink">
-          <input type="hidden" name="provider[enabled]" value="false" />
-          <input
-            type="checkbox"
-            name="provider[enabled]"
-            value="true"
-            checked={@form[:enabled].value != false}
-          /> Ativado
-        </label>
-
+      <div class="flex items-center gap-3 border-t border-border pt-5">
         <button
           type="submit"
-          class="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-bg hover:opacity-90"
+          class="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-fg transition-colors duration-150 ease-out-quart hover:bg-primary-hover"
         >
-          Guardar
+          Save provider
         </button>
-      </.form>
-    </div>
+        <.link navigate={~p"/admin"} class="text-sm font-medium text-muted hover:text-primary hover:underline">
+          Cancel
+        </.link>
+      </div>
+    </.form>
     """
   end
 end

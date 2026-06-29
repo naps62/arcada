@@ -59,6 +59,20 @@ defmodule OQueMudouWeb do
     end
   end
 
+  @doc """
+  LiveViews for the back-of-house admin console. Same design tokens as the
+  public broadsheet, but its own tool chrome (`:admin` layout) instead of the
+  public masthead. Edge-gated by Authelia + VPN; see `Plugs.RequireAdminGroup`.
+  """
+  def live_view_admin do
+    quote do
+      use Phoenix.LiveView,
+        layout: {OQueMudouWeb.Layouts, :admin}
+
+      unquote(html_helpers())
+    end
+  end
+
   def live_component do
     quote do
       use Phoenix.LiveComponent
