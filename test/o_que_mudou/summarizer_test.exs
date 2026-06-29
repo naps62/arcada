@@ -25,13 +25,20 @@ defmodule OQueMudou.SummarizerTest do
   end
 
   defp oversized_act(full_text) do
+    n = System.unique_integer([:positive])
+
     edition =
       %Edition{}
-      |> Edition.changeset(%{serie: "I", number: "121/2026", date: ~D[2026-06-25]})
+      |> Edition.changeset(%{serie: "I", number: "121-#{n}/2026", date: ~D[2026-06-25]})
       |> Repo.insert!()
 
     %Act{}
-    |> Act.changeset(%{edition_id: edition.id, dre_id: "long-1", title: "x", full_text: full_text})
+    |> Act.changeset(%{
+      edition_id: edition.id,
+      dre_id: "long-#{n}",
+      title: "x",
+      full_text: full_text
+    })
     |> Repo.insert!()
   end
 
@@ -294,6 +301,24 @@ defmodule OQueMudou.SummarizerTest do
       stub_ssh_runner(fn _ -> {:ok, claude_envelope("resumo", [])} end)
 
       assert {:ok, %{text_strategy: "full", truncated: false}} =
+               Summarizer.summarize(oversized_act("curto"), ssh_provider(), "claude-cli")
+    end
+
+    test "records the embeddings model that ranked (preprocessor), on rank only" do
+      {:ok, _} = Admin.update_settings(%{"max_text_chars" => "400"})
+      set_embeddings(embed_fn: relevance_embed(), model: "bge-m3")
+      stub_ssh_runner(fn _ -> {:ok, claude_envelope("resumo", [])} end)
+
+      assert {:ok, %{text_strategy: "rank", ranker_model: "bge-m3"}} =
+               Summarizer.summarize(oversized_act(diploma(800)), ssh_provider(), "claude-cli")
+
+      # truncate and full leave it nil — the embedder did nothing.
+      assert {:ok, %{ranker_model: nil}} =
+               Summarizer.summarize(oversized_act(diploma(800)), ssh_provider(), "claude-cli",
+                 text_strategy: :truncate
+               )
+
+      assert {:ok, %{ranker_model: nil}} =
                Summarizer.summarize(oversized_act("curto"), ssh_provider(), "claude-cli")
     end
 

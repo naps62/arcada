@@ -187,7 +187,11 @@ defmodule OQueMudouWeb.AdminActLive do
   defp provider_name(_), do: "—"
 
   # How an oversized act's text was prepared for this summary (nil when the act
-  # fit whole — nothing worth labelling). Lets you eyeball ranked vs truncated.
+  # fit whole — nothing worth labelling). Lets you eyeball ranked vs truncated;
+  # ranked rows also name the embeddings model that preprocessed the input.
+  defp strategy_label(%{text_strategy: "rank", ranker_model: m}) when is_binary(m),
+    do: "relevant sections · #{m}"
+
   defp strategy_label(%{text_strategy: "rank"}), do: "relevant sections"
   defp strategy_label(%{text_strategy: "truncate"}), do: "start"
   defp strategy_label(_), do: nil

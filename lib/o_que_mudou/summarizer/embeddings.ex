@@ -24,6 +24,10 @@ defmodule OQueMudou.Summarizer.Embeddings do
   @default_model "bge-m3"
   @default_timeout 30_000
 
+  @doc "The effective embeddings model name for a config (default applied)."
+  @spec model(keyword) :: String.t()
+  def model(cfg), do: cfg[:model] || @default_model
+
   @doc """
   Whether section-relevance ranking is available for `cfg` — true when a server
   `base_url` is set, or a test `:embed_fn` is injected.

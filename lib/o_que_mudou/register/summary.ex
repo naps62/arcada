@@ -29,6 +29,9 @@ defmodule OQueMudou.Register.Summary do
     # How the text was prepared: "full" | "rank" (relevant sections kept) |
     # "truncate" (opening kept). Null on legacy rows. See OQueMudou.Summarizer.
     field :text_strategy, :string
+    # The embeddings model that ranked the sections (preprocessor), set only when
+    # text_strategy = "rank". Distinct from `model` (the LLM that wrote the text).
+    field :ranker_model, :string
     field :generated_at, :utc_datetime
     field :validated_at, :utc_datetime
 
@@ -39,7 +42,7 @@ defmodule OQueMudou.Register.Summary do
   end
 
   @required ~w(act_id plain_text)a
-  @optional ~w(domains model prompt_version status truncated text_strategy provider_id generated_at validated_at)a
+  @optional ~w(domains model prompt_version status truncated text_strategy ranker_model provider_id generated_at validated_at)a
 
   def changeset(summary, attrs) do
     summary

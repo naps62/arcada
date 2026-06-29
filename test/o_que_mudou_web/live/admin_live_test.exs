@@ -22,7 +22,7 @@ defmodule OQueMudouWeb.AdminLiveTest do
 
   test "renders the providers hub for an oqm-admin member", %{conn: conn} do
     {:ok, _lv, html} = conn |> as_admin() |> live(~p"/admin")
-    assert html =~ "Resumidor"
+    assert html =~ "Summarizer"
     assert html =~ "Providers"
   end
 

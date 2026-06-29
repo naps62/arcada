@@ -247,6 +247,8 @@ defmodule OQueMudou.Summarizer do
     model = model || List.first(provider.models)
     requested = opts |> Keyword.get(:text_strategy, :auto) |> normalize_strategy()
     {text, strategy} = prepare(act.full_text || act.title, max_text_chars(), requested)
+    # Only ranking actually uses the embedder; record which one preprocessed it.
+    ranker_model = if strategy == :rank, do: Embeddings.model(Admin.embeddings_config())
 
     case adapter_for(provider.kind).summarize(act, provider, model, text) do
       {:ok, attrs} ->
@@ -257,7 +259,8 @@ defmodule OQueMudou.Summarizer do
           |> Map.merge(%{
             provider_id: provider.id,
             truncated: strategy != :full,
-            text_strategy: to_string(strategy)
+            text_strategy: to_string(strategy),
+            ranker_model: ranker_model
           })
         )
 
