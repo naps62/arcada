@@ -22,4 +22,11 @@ defmodule OQueMudou.Summarizer.EmbeddingsTest do
     cfg = [embed_fn: fn texts -> {:ok, Enum.map(texts, &[String.length(&1) * 1.0])} end]
     assert {:ok, [[1.0], [2.0], [3.0]]} = Embeddings.embed(["a", "bb", "ccc"], cfg)
   end
+
+  test "endpoint_url tolerates a base with or without /v1" do
+    assert Embeddings.endpoint_url("https://h") == "https://h/v1/embeddings"
+    assert Embeddings.endpoint_url("https://h/") == "https://h/v1/embeddings"
+    assert Embeddings.endpoint_url("https://h/v1") == "https://h/v1/embeddings"
+    assert Embeddings.endpoint_url("https://h/v1/") == "https://h/v1/embeddings"
+  end
 end

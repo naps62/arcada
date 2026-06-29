@@ -53,8 +53,21 @@ defmodule OQueMudou.Summarizer.Embeddings do
 
   defp dot(a, b), do: Enum.zip(a, b) |> Enum.reduce(0.0, fn {x, y}, acc -> acc + x * y end)
 
+  @doc """
+  The `/v1/embeddings` URL for a server `base_url`. Tolerates a base that already
+  includes a trailing `/v1` (or trailing slashes), so both `https://h` and
+  `https://h/v1` resolve to `https://h/v1/embeddings`.
+  """
+  @spec endpoint_url(binary) :: binary
+  def endpoint_url(base) do
+    base
+    |> String.trim_trailing("/")
+    |> String.replace_suffix("/v1", "")
+    |> Kernel.<>("/v1/embeddings")
+  end
+
   defp http_embed(texts, cfg) do
-    url = String.trim_trailing(cfg[:base_url], "/") <> "/v1/embeddings"
+    url = endpoint_url(cfg[:base_url])
     body = %{model: cfg[:model] || @default_model, input: texts}
 
     case Req.post(url,
