@@ -67,4 +67,29 @@ defmodule OQueMudou.Summarizer.Adapters.SshTest do
     provider = %OQueMudou.Providers.Provider{kind: :ssh, ssh_host: nil}
     assert {:error, :missing_ssh_host} = Ssh.summarize(act(), provider, "claude-cli", "texto")
   end
+
+  describe "remote_claude_cmd/2 — model passthrough" do
+    @base "claude -p --output-format json"
+
+    test "forwards a real model to --model, shell-quoted" do
+      assert Ssh.remote_claude_cmd(@base, "opus") == ~s(#{@base} --model 'opus')
+      assert Ssh.remote_claude_cmd(@base, "claude-sonnet-4-6") =~ "--model 'claude-sonnet-4-6'"
+    end
+
+    test "leaves the CLI default for the claude-cli sentinel, nil, or blank" do
+      assert Ssh.remote_claude_cmd(@base, "claude-cli") == @base
+      assert Ssh.remote_claude_cmd(@base, nil) == @base
+      assert Ssh.remote_claude_cmd(@base, "") == @base
+    end
+
+    test "does not double-set a model already pinned in the command" do
+      assert Ssh.remote_claude_cmd("claude -p --model opus", "sonnet") == "claude -p --model opus"
+      assert Ssh.remote_claude_cmd("claude -p -m opus", "sonnet") == "claude -p -m opus"
+    end
+
+    test "escapes shell metacharacters in the model" do
+      assert Ssh.remote_claude_cmd(@base, "a'; rm -rf /") ==
+               ~s(#{@base} --model 'a'\\''; rm -rf /')
+    end
+  end
 end

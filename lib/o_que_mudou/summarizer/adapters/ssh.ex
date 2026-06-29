@@ -9,6 +9,11 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
   over SSH stdin (`ssh … <cmd> < tmpfile`). No act content is ever interpolated
   into a command line — no injection, no MAX_ARG_STRLEN limit for long diplomas.
   Tests inject `:runner` via `Application.put_env(:o_que_mudou, __MODULE__, ...)`.
+
+  Model selection: a real selected model is forwarded to the remote CLI's
+  `--model` flag (shell-quoted). The sentinel `#{"claude-cli"}` and a nil model
+  mean "let the CLI use its own default" — nothing is passed. A `--model`/`-m`
+  already pinned in `ssh_claude_cmd` is left untouched.
   """
   @behaviour OQueMudou.Summarizer.Adapter
 
@@ -39,7 +44,7 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
 
   @impl true
   def summarize(%Act{} = act, %Provider{} = provider, model, text) do
-    with {:ok, stdout} <- run(build_prompt(act, text), provider),
+    with {:ok, stdout} <- run(build_prompt(act, text), provider, model),
          {:ok, attrs} <- parse(stdout, model || @default_model) do
       {:ok, attrs}
     end
@@ -60,26 +65,26 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
   end
 
   # `:runner` (test injection) takes precedence over a real SSH call.
-  defp run(prompt, provider) do
+  defp run(prompt, provider, model) do
     case Application.get_env(:o_que_mudou, __MODULE__, [])[:runner] do
       fun when is_function(fun, 1) -> fun.(prompt)
-      _ -> default_run(prompt, provider)
+      _ -> default_run(prompt, provider, model)
     end
   end
 
-  defp default_run(prompt, %Provider{ssh_host: host} = provider)
+  defp default_run(prompt, %Provider{ssh_host: host} = provider, model)
        when is_binary(host) and host != "" do
-    run_via_ssh(provider, prompt)
+    run_via_ssh(provider, prompt, model)
   end
 
-  defp default_run(_prompt, _provider), do: {:error, :missing_ssh_host}
+  defp default_run(_prompt, _provider, _model), do: {:error, :missing_ssh_host}
 
-  defp run_via_ssh(provider, prompt) do
+  defp run_via_ssh(provider, prompt, model) do
     tmp = Path.join(System.tmp_dir!(), "oqm_prompt_#{System.unique_integer([:positive])}")
     File.write!(tmp, prompt)
 
     try do
-      case System.cmd("sh", ["-c", ssh_command(provider, tmp)], stderr_to_stdout: false) do
+      case System.cmd("sh", ["-c", ssh_command(provider, tmp, model)], stderr_to_stdout: false) do
         {out, 0} ->
           {:ok, out}
 
@@ -92,13 +97,33 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
     end
   end
 
-  defp ssh_command(%Provider{} = p, tmpfile) do
+  defp ssh_command(%Provider{} = p, tmpfile, model) do
     user = p.ssh_user || "claude"
-    claude_cmd = p.ssh_claude_cmd || @default_claude_cmd
+    claude_cmd = remote_claude_cmd(p.ssh_claude_cmd || @default_claude_cmd, model)
     identity = if f = p.ssh_identity_file, do: "-i #{f} ", else: ""
     extra = Enum.join(@default_ssh_extra, " ")
     "ssh #{identity}#{extra} #{user}@#{p.ssh_host} #{claude_cmd} < #{tmpfile}"
   end
+
+  @doc """
+  Build the remote `claude` invocation, forwarding a real selected `model` to the
+  CLI's `--model` flag. The `#{@default_model}` sentinel and a nil/blank model are
+  left to the CLI's own default; an existing `--model`/`-m` in `base` is kept.
+  Public only so the model wiring is unit-testable.
+  """
+  def remote_claude_cmd(base, model)
+      when is_binary(model) and model not in ["", @default_model] do
+    if Regex.match?(~r/(^|\s)(--model|-m)(=|\s)/, base) do
+      base
+    else
+      "#{base} --model #{shell_quote(model)}"
+    end
+  end
+
+  def remote_claude_cmd(base, _model), do: base
+
+  # Single-quote for POSIX sh: wrap in '…', and close/escape/reopen each literal '.
+  defp shell_quote(s), do: "'" <> String.replace(s, "'", "'\\''") <> "'"
 
   # `claude -p --output-format json` wraps the response in an envelope whose
   # `result` field is our JSON string. Tolerate code fences around either layer.
