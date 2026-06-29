@@ -41,6 +41,32 @@ defmodule OQueMudou.Summarizer.Adapters.SshTest do
     assert prompt =~ "TEXTO-PREPARADO-XYZ"
   end
 
+  test "captures token usage + notional cost from the envelope" do
+    extra = %{
+      "total_cost_usd" => 0.0123,
+      "usage" => %{"input_tokens" => 1200, "output_tokens" => 300},
+      "duration_ms" => 1500
+    }
+
+    stub_ssh_runner(fn _ -> {:ok, claude_envelope("x", [], extra)} end)
+
+    assert {:ok, attrs} = run()
+    assert attrs.input_tokens == 1200
+    assert attrs.output_tokens == 300
+    assert attrs.cost_source == "subscription"
+    assert attrs.duration_ms == 1500
+    assert Decimal.equal?(attrs.cost_usd, Decimal.from_float(0.0123) |> Decimal.round(6))
+  end
+
+  test "leaves cost/usage nil when the envelope omits them" do
+    stub_ssh_runner(fn _ -> {:ok, claude_envelope("x", [])} end)
+
+    assert {:ok, attrs} = run()
+    assert attrs.cost_usd == nil
+    assert attrs.cost_source == nil
+    assert attrs.input_tokens == nil
+  end
+
   test "drops domains outside the fixed taxonomy" do
     stub_ssh_runner(fn _ -> {:ok, claude_envelope("x", ["fiscal", "cripto", "saúde"])} end)
     assert {:ok, %{domains: [:fiscal, :saúde]}} = run()

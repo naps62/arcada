@@ -32,6 +32,15 @@ defmodule OQueMudou.Register.Summary do
     # The embeddings model that ranked the sections (preprocessor), set only when
     # text_strategy = "rank". Distinct from `model` (the LLM that wrote the text).
     field :ranker_model, :string
+    # Token usage + cost for the run that produced this summary. `cost_source`:
+    # "api" = exact tokens × price table; "subscription" = SSH CLI's notional
+    # cost (covered by a Claude subscription, not real spend); null when the
+    # backend reports no usable cost. See the add_usage_to_summaries migration.
+    field :input_tokens, :integer
+    field :output_tokens, :integer
+    field :cost_usd, :decimal
+    field :cost_source, :string
+    field :duration_ms, :integer
     field :generated_at, :utc_datetime
     field :validated_at, :utc_datetime
 
@@ -42,7 +51,7 @@ defmodule OQueMudou.Register.Summary do
   end
 
   @required ~w(act_id plain_text)a
-  @optional ~w(domains model prompt_version status truncated text_strategy ranker_model provider_id generated_at validated_at)a
+  @optional ~w(domains model prompt_version status truncated text_strategy ranker_model input_tokens output_tokens cost_usd cost_source duration_ms provider_id generated_at validated_at)a
 
   def changeset(summary, attrs) do
     summary

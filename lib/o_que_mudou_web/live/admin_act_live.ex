@@ -156,6 +156,9 @@ defmodule OQueMudouWeb.AdminActLive do
             <span class="font-semibold text-ink">{provider_name(s)}</span>
             <span>· {s.model || "—"}</span>
             <span :if={strategy_label(s)}>· {strategy_label(s)}</span>
+            <span :if={tokens_label(s)} class="tabular-nums">· {tokens_label(s)}</span>
+            <span :if={cost_label(s)} class="tabular-nums">· {cost_label(s)}</span>
+            <span :if={duration_label(s)} class="tabular-nums">· {duration_label(s)}</span>
             <.provenance_badge summary={s} />
             <.partial_summary_badge summary={s} />
           </div>
@@ -195,4 +198,30 @@ defmodule OQueMudouWeb.AdminActLive do
   defp strategy_label(%{text_strategy: "rank"}), do: "relevant sections"
   defp strategy_label(%{text_strategy: "truncate"}), do: "start"
   defp strategy_label(_), do: nil
+
+  # Prompt → completion token counts for the run (nil when the backend didn't
+  # report usage, e.g. a stubbed test run or legacy row).
+  defp tokens_label(%{input_tokens: i, output_tokens: o}) when is_integer(i) and is_integer(o),
+    do: "#{i} → #{o} tok"
+
+  defp tokens_label(_), do: nil
+
+  # Dollar cost. The SSH path's cost is notional (covered by a Claude
+  # subscription), so it's flagged rather than shown as real spend.
+  defp cost_label(%{cost_usd: nil}), do: nil
+
+  defp cost_label(%{cost_usd: c, cost_source: "subscription"}) when not is_nil(c),
+    do: "$#{fmt_cost(c)} (subscription)"
+
+  defp cost_label(%{cost_usd: c}) when not is_nil(c), do: "$#{fmt_cost(c)}"
+  defp cost_label(_), do: nil
+
+  defp fmt_cost(%Decimal{} = c), do: c |> Decimal.round(4) |> Decimal.to_string(:normal)
+  defp fmt_cost(c), do: to_string(c)
+
+  defp duration_label(%{duration_ms: ms}) when is_integer(ms) and ms > 0 do
+    if ms >= 1000, do: "#{Float.round(ms / 1000, 1)}s", else: "#{ms}ms"
+  end
+
+  defp duration_label(_), do: nil
 end

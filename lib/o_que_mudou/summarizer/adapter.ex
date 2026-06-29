@@ -11,12 +11,24 @@ defmodule OQueMudou.Summarizer.Adapter do
   alias OQueMudou.Register.Act
   alias OQueMudou.Providers.Provider
 
-  @typedoc "A synchronous result — everything `Register.Summary` needs."
+  @typedoc """
+  A synchronous result — everything `Register.Summary` needs.
+
+  The usage keys are optional: an adapter includes whichever its backend
+  reports. `cost_source` is `"api"` (exact tokens × published price table) or
+  `"subscription"` (the SSH CLI's notional cost — covered by a Claude
+  subscription, not real spend).
+  """
   @type result :: %{
           required(:plain_text) => String.t(),
           required(:domains) => [atom()],
           required(:model) => String.t(),
-          required(:prompt_version) => String.t()
+          required(:prompt_version) => String.t(),
+          optional(:input_tokens) => non_neg_integer(),
+          optional(:output_tokens) => non_neg_integer(),
+          optional(:cost_usd) => Decimal.t() | float() | nil,
+          optional(:cost_source) => String.t(),
+          optional(:duration_ms) => non_neg_integer()
         }
 
   @doc """

@@ -4,10 +4,16 @@ defmodule OQueMudou.SummarizerHelpers do
   alias OQueMudou.Providers
   alias OQueMudou.Summarizer.Adapters.Ssh
 
-  @doc "The `claude -p --output-format json` envelope wrapping our inner JSON."
-  def claude_envelope(plain_text, domains) do
+  @doc """
+  The `claude -p --output-format json` envelope wrapping our inner JSON. `extra`
+  merges envelope-level fields (e.g. `total_cost_usd`, `usage`, `duration_ms`).
+  """
+  def claude_envelope(plain_text, domains, extra \\ %{}) do
     inner = Jason.encode!(%{"plain_text" => plain_text, "domains" => domains})
-    Jason.encode!(%{"type" => "result", "subtype" => "success", "result" => inner})
+
+    %{"type" => "result", "subtype" => "success", "result" => inner}
+    |> Map.merge(extra)
+    |> Jason.encode!()
   end
 
   @doc "Create an `:ssh` provider (testable offline via the runner stub)."

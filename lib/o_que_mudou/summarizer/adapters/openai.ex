@@ -27,6 +27,8 @@ defmodule OQueMudou.Summarizer.Adapters.OpenAI do
 
   @impl true
   def summarize(%Act{} = act, %Provider{} = provider, model, text) do
+    started = System.monotonic_time(:millisecond)
+
     with {:ok, url} <- endpoint(provider),
          body = request_body(act, model, text),
          {:ok, %{status: 200, body: resp}} <- post(url, provider.api_key, body),
@@ -37,7 +39,8 @@ defmodule OQueMudou.Summarizer.Adapters.OpenAI do
          domains: valid_domains(obj["domains"]),
          model: model,
          prompt_version: @prompt_version
-       }}
+       }
+       |> Map.merge(usage_attrs(resp, started))}
     else
       {:ok, %{status: status, body: body}} ->
         Logger.warning("OpenAI-compatible API returned #{status}: #{inspect(body)}")
@@ -88,6 +91,19 @@ defmodule OQueMudou.Summarizer.Adapters.OpenAI do
   end
 
   defp parse(_), do: {:error, :unexpected_response}
+
+  # Record token counts when the server reports them (OpenAI `usage` shape).
+  # These are typically self-hosted / variably-priced backends, so we don't
+  # guess a dollar cost — tokens + duration are still useful on their own.
+  defp usage_attrs(resp, started) do
+    usage = (is_map(resp) && resp["usage"]) || %{}
+
+    %{
+      input_tokens: usage["prompt_tokens"],
+      output_tokens: usage["completion_tokens"],
+      duration_ms: System.monotonic_time(:millisecond) - started
+    }
+  end
 
   defp endpoint(%Provider{base_url: base}) when is_binary(base) and base != "" do
     {:ok, String.trim_trailing(base, "/") <> "/chat/completions"}

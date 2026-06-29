@@ -56,6 +56,23 @@ defmodule OQueMudou.SummarizerTest do
       assert summary.generated_at
     end
 
+    test "persists token usage + cost reported by the adapter" do
+      extra = %{
+        "total_cost_usd" => 0.0123,
+        "usage" => %{"input_tokens" => 1200, "output_tokens" => 300},
+        "duration_ms" => 1500
+      }
+
+      stub_ssh_runner(fn _ -> {:ok, claude_envelope("ok", [], extra)} end)
+
+      assert {:ok, summary} = Summarizer.summarize(act_fixture(), ssh_provider(), "claude-cli")
+      assert summary.input_tokens == 1200
+      assert summary.output_tokens == 300
+      assert summary.cost_source == "subscription"
+      assert summary.duration_ms == 1500
+      assert Decimal.equal?(summary.cost_usd, Decimal.from_float(0.0123) |> Decimal.round(6))
+    end
+
     test "propagates adapter errors" do
       stub_ssh_runner(fn _ -> {:error, {:ssh_exit, 7}} end)
       assert {:error, _} = Summarizer.summarize(act_fixture(), ssh_provider(), "claude-cli")

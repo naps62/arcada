@@ -138,7 +138,8 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
          domains: valid_domains(obj["domains"]),
          model: model,
          prompt_version: @prompt_version
-       }}
+       }
+       |> Map.merge(usage_attrs(envelope))}
     else
       _ ->
         Logger.warning(
@@ -148,6 +149,29 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
         {:error, :unparseable_output}
     end
   end
+
+  # `claude -p --output-format json` reports its own usage + cost in the
+  # envelope. The cost is *notional* — these runs are covered by the remote
+  # host's Claude subscription, not billed per-token — so it's tagged
+  # "subscription" rather than presented as real spend. Missing on a raw-stdout
+  # fallback (envelope isn't the CLI shape), so every field is best-effort.
+  defp usage_attrs(envelope) when is_map(envelope) do
+    usage = (is_map(envelope["usage"]) && envelope["usage"]) || %{}
+
+    %{
+      input_tokens: usage["input_tokens"],
+      output_tokens: usage["output_tokens"],
+      cost_usd: to_decimal(envelope["total_cost_usd"]),
+      cost_source: if(is_number(envelope["total_cost_usd"]), do: "subscription"),
+      duration_ms: envelope["duration_ms"]
+    }
+  end
+
+  defp usage_attrs(_), do: %{}
+
+  defp to_decimal(n) when is_float(n), do: n |> Decimal.from_float() |> Decimal.round(6)
+  defp to_decimal(n) when is_integer(n), do: Decimal.new(n)
+  defp to_decimal(_), do: nil
 
   defp decode_json(str) when is_binary(str), do: str |> strip_fences() |> Jason.decode()
   defp decode_json(_), do: :error

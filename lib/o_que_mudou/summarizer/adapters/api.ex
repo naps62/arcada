@@ -19,9 +19,20 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
   # Bump when the prompt/schema change so summaries record which version produced them.
   @prompt_version "2026-06-28.2"
 
+  # Published per-million-token prices ({input, output}), matched by model-id
+  # prefix so minor version bumps don't need a table update. Turns the response's
+  # exact token counts into a dollar cost; unknown models record tokens with a
+  # nil cost rather than guessing.
+  @prices %{
+    "claude-opus-" => {5.0, 25.0},
+    "claude-sonnet-" => {3.0, 15.0},
+    "claude-haiku-" => {1.0, 5.0}
+  }
+
   @impl true
   def summarize(%Act{} = act, %Provider{} = provider, model, text) do
     model = model || @default_model
+    started = System.monotonic_time(:millisecond)
 
     with {:ok, key} <- api_key(provider),
          body = request_body(act, model, text),
@@ -33,7 +44,8 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
          domains: Enum.map(parsed["domains"] || [], &String.to_existing_atom/1),
          model: model,
          prompt_version: @prompt_version
-       }}
+       }
+       |> Map.merge(usage_attrs(resp.body, model, started))}
     else
       {:ok, %{status: status, body: body}} ->
         Logger.warning("Claude API returned #{status}: #{inspect(body)}")
@@ -97,6 +109,36 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
   end
 
   defp parse(_), do: {:error, :unexpected_response}
+
+  # Pull exact token counts from the response `usage` block and price them.
+  # cache_creation/cache_read tokens aren't billed at the base rate, so cost is
+  # computed from the plain input/output counts only.
+  defp usage_attrs(body, model, started) do
+    usage = (is_map(body) && body["usage"]) || %{}
+    input = usage["input_tokens"]
+    output = usage["output_tokens"]
+
+    %{
+      input_tokens: input,
+      output_tokens: output,
+      cost_usd: cost(model, input, output),
+      cost_source: "api",
+      duration_ms: System.monotonic_time(:millisecond) - started
+    }
+  end
+
+  defp cost(model, input, output) when is_integer(input) and is_integer(output) do
+    case Enum.find(@prices, fn {prefix, _} -> String.starts_with?(model, prefix) end) do
+      {_prefix, {in_price, out_price}} ->
+        Decimal.from_float((input * in_price + output * out_price) / 1_000_000)
+        |> Decimal.round(6)
+
+      nil ->
+        nil
+    end
+  end
+
+  defp cost(_model, _input, _output), do: nil
 
   defp api_key(%Provider{api_key: key}) when is_binary(key) and key != "", do: {:ok, key}
 
