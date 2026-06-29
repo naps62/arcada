@@ -253,6 +253,20 @@ defmodule OQueMudou.SummarizerTest do
       set_embeddings([])
       assert {_out, :truncate} = Summarizer.prepare(diploma(800), 400, :rank)
     end
+
+    test "ranks paragraph chunks for headingless oversized text (acórdão-style)" do
+      set_embeddings(embed_fn: relevance_embed())
+      # No Artigo/Anexo headings — the paragraph-chunk fallback must kick in so
+      # ranking still engages instead of head-truncating.
+      text =
+        Enum.map_join(1..40, "\n\n", fn n ->
+          "Parágrafo #{n}. " <> String.duplicate("conteúdo ", 60)
+        end)
+
+      {out, strategy} = Summarizer.prepare(text, 5_000, :rank)
+      assert strategy == :rank
+      assert String.length(out) <= 5_000
+    end
   end
 
   describe "summarize/4 strategy bookkeeping" do
