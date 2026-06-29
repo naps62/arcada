@@ -211,5 +211,35 @@ defmodule OQueMudou.SummarizerTest do
       text = String.duplicate("texto sem cabecalhos ", 60)
       assert Summarizer.prepare_text(text, 100) == Summarizer.cap_text(text, 100)
     end
+
+    test "applies task prefixes to scored text only, never to the assembled prompt" do
+      test_pid = self()
+
+      capturing_embed = fn texts ->
+        send(test_pid, {:embed_inputs, texts})
+
+        {:ok,
+         Enum.map(texts, fn t ->
+           if String.contains?(t, "ANEXO"), do: [0.0, 1.0], else: [1.0, 0.0]
+         end)}
+      end
+
+      set_embeddings(
+        embed_fn: capturing_embed,
+        query_prefix: "search_query: ",
+        document_prefix: "search_document: "
+      )
+
+      out = Summarizer.prepare_text(diploma(800), 400)
+
+      assert_received {:embed_inputs, [query | docs]}
+      assert String.starts_with?(query, "search_query: ")
+      assert Enum.all?(docs, &String.starts_with?(&1, "search_document: "))
+
+      # Prefixes are a retrieval detail — they must not leak into the LLM prompt.
+      refute String.contains?(out, "search_document:")
+      refute String.contains?(out, "search_query:")
+      assert String.contains?(out, "Artigo 1.º")
+    end
   end
 end

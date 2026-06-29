@@ -50,8 +50,14 @@ config :o_que_mudou, OQueMudou.Summarizer.Adapters.Ssh,
 # head-truncation. Set it (admin page or EMBEDDINGS_BASE_URL) to an OpenAI-compatible
 # embeddings server — llama.cpp `llama-server --embeddings`, Ollama, etc. — to keep
 # the operative articles instead of whatever lands in the first N chars.
+#
+# Default model is bge-m3: multilingual (1024-dim), the right fit for Portuguese
+# legal text. nomic-embed-text is English-centric and additionally needs task
+# prefixes for good retrieval — if you point at nomic, also set:
+#   query_prefix: "search_query: ", document_prefix: "search_document: "
+# (left empty for bge-m3, which doesn't use them).
 config :o_que_mudou, OQueMudou.Summarizer.Embeddings,
-  model: "nomic-embed-text",
+  model: "bge-m3",
   timeout: 30_000
 
 # Configures Oban (background jobs + daily cron).

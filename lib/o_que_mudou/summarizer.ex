@@ -91,8 +91,7 @@ defmodule OQueMudou.Summarizer do
 
     with true <- Embeddings.enabled?(cfg),
          true <- length(sections) > 1,
-         {:ok, [query_vec | section_vecs]} <-
-           Embeddings.embed([relevance_query(cfg) | Enum.map(sections, & &1.text)], cfg),
+         {:ok, [query_vec | section_vecs]} <- Embeddings.embed(embed_inputs(sections, cfg), cfg),
          true <- length(section_vecs) == length(sections) do
       sections
       |> rank(section_vecs, query_vec)
@@ -140,6 +139,15 @@ defmodule OQueMudou.Summarizer do
       |> Enum.map_join("\n\n", fn {_index, section} -> section.text end)
 
     if length(picked) < total, do: body <> @truncation_marker, else: body
+  end
+
+  # nomic-embed and similar models want task prefixes (search_query: / search_document:)
+  # for good retrieval; bge-m3 and plain setups leave them empty. Applied only to the
+  # text scored by the model — never to the sections assembled into the prompt.
+  defp embed_inputs(sections, cfg) do
+    query_prefix = cfg[:query_prefix] || ""
+    doc_prefix = cfg[:document_prefix] || ""
+    [query_prefix <> relevance_query(cfg) | Enum.map(sections, &(doc_prefix <> &1.text))]
   end
 
   defp relevance_query(cfg), do: cfg[:query] || @relevance_query

@@ -63,7 +63,7 @@ end
 if base_url = System.get_env("EMBEDDINGS_BASE_URL") do
   config :o_que_mudou, OQueMudou.Summarizer.Embeddings,
     base_url: base_url,
-    model: System.get_env("EMBEDDINGS_MODEL") || "nomic-embed-text"
+    model: System.get_env("EMBEDDINGS_MODEL") || "bge-m3"
 end
 
 # Summarize-queue concurrency follows the adapter. The :ssh adapter shells out to

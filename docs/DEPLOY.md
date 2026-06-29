@@ -114,8 +114,10 @@ exceeds the cap, instead of truncating its opening the summarizer keeps the most
 change-relevant sections (articles) and drops trailing annexes. Point it at any
 OpenAI-compatible `/v1/embeddings` server — llama.cpp `llama-server --embeddings`
 or Ollama on a GPU box — via the admin field or `EMBEDDINGS_BASE_URL`
-(+ `EMBEDDINGS_MODEL`, default `nomic-embed-text`). The server must be reachable
-from the app over the VPN/LAN. Unset → oversized acts head-truncate as before.
+(+ `EMBEDDINGS_MODEL`, default `bge-m3`: multilingual, right for Portuguese). The
+server must be reachable from the app over the VPN/LAN. Unset → oversized acts
+head-truncate as before. (nomic-embed is English-centric and needs `query_prefix`/
+`document_prefix` task prefixes — see the config comment; bge-m3 needs neither.)
 
 Seeding (first deploy): create at least one provider and set it active, e.g.
 via `bin/o_que_mudou rpc` —

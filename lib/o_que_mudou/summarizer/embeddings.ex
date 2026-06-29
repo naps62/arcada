@@ -19,7 +19,9 @@ defmodule OQueMudou.Summarizer.Embeddings do
 
   require Logger
 
-  @default_model "nomic-embed-text"
+  # bge-m3: multilingual (1024-dim), suits Portuguese legal text. See the config
+  # comment on task prefixes if you point this at nomic-embed instead.
+  @default_model "bge-m3"
   @default_timeout 30_000
 
   @doc """
