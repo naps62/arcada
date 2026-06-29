@@ -45,6 +45,15 @@ config :o_que_mudou, OQueMudou.Summarizer.Adapters.Ssh,
     "UserKnownHostsFile=/dev/null"
   ]
 
+# Embeddings ranking for oversized diplomas (see `OQueMudou.Summarizer.Embeddings`).
+# `base_url` is left unset here → ranking is off and oversized acts fall back to
+# head-truncation. Set it (admin page or EMBEDDINGS_BASE_URL) to an OpenAI-compatible
+# embeddings server — llama.cpp `llama-server --embeddings`, Ollama, etc. — to keep
+# the operative articles instead of whatever lands in the first N chars.
+config :o_que_mudou, OQueMudou.Summarizer.Embeddings,
+  model: "nomic-embed-text",
+  timeout: 30_000
+
 # Configures Oban (background jobs + daily cron).
 # The DRE scraper runs on a daily cron; see docs/PLAN.md.
 config :o_que_mudou, Oban,

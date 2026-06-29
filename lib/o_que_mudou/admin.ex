@@ -34,5 +34,29 @@ defmodule OQueMudou.Admin do
   @doc "The active model string (or nil)."
   def active_model, do: get_settings().active_model
 
+  @doc "Effective cap (chars) on act text fed to the summarizer: DB ?? config ?? 80k."
+  def max_text_chars do
+    get_settings().max_text_chars ||
+      Application.get_env(:o_que_mudou, OQueMudou.Summarizer, [])[:max_text_chars] ||
+      80_000
+  end
+
+  @doc """
+  Effective embeddings config (for oversized-diploma section ranking): the
+  `OQueMudou.Summarizer.Embeddings` app config overlaid with DB overrides
+  (`base_url`, `model`). Ranking is active iff a `base_url` ends up set (or a
+  test `:embed_fn` is injected).
+  """
+  def embeddings_config do
+    s = get_settings()
+
+    Keyword.merge(
+      Application.get_env(:o_que_mudou, OQueMudou.Summarizer.Embeddings, []),
+      compact(base_url: s.embeddings_base_url, model: s.embeddings_model)
+    )
+  end
+
+  defp compact(kw), do: Enum.reject(kw, fn {_k, v} -> is_nil(v) end)
+
   defp singleton_query, do: from(s in Setting, order_by: [asc: s.id], limit: 1)
 end

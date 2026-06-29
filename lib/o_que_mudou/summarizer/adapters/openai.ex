@@ -18,7 +18,6 @@ defmodule OQueMudou.Summarizer.Adapters.OpenAI do
   alias OQueMudou.Providers.Provider
 
   @prompt_version "2026-06-28.openai.1"
-  @max_text_chars 80_000
 
   @json_format """
   Responde APENAS com um objeto JSON válido, sem texto antes ou depois, no formato:
@@ -38,7 +37,11 @@ defmodule OQueMudou.Summarizer.Adapters.OpenAI do
          domains: valid_domains(obj["domains"]),
          model: model,
          prompt_version: @prompt_version,
-         truncated: OQueMudou.Summarizer.truncated?(act.full_text || act.title, @max_text_chars)
+         truncated:
+           OQueMudou.Summarizer.truncated?(
+             act.full_text || act.title,
+             OQueMudou.Summarizer.max_text_chars()
+           )
        }}
     else
       {:ok, %{status: status, body: body}} ->
@@ -71,7 +74,7 @@ defmodule OQueMudou.Summarizer.Adapters.OpenAI do
     Título: #{act.title}
 
     Texto:
-    #{OQueMudou.Summarizer.cap_text(act.full_text || act.title, @max_text_chars)}
+    #{OQueMudou.Summarizer.prepare_text(act.full_text || act.title)}
     """
   end
 

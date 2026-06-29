@@ -56,6 +56,16 @@ if adapter = System.get_env("SUMMARIZER_ADAPTER") do
   config :o_que_mudou, OQueMudou.Summarizer, adapter: String.to_atom(adapter)
 end
 
+# Embeddings-based section ranking for oversized diplomas. An env fallback for the
+# admin-page setting: point it at an OpenAI-compatible embeddings server (llama.cpp
+# `llama-server --embeddings`, Ollama, …), e.g. on a local GPU box. Without it (and
+# with no admin override) oversized acts head-truncate as before.
+if base_url = System.get_env("EMBEDDINGS_BASE_URL") do
+  config :o_que_mudou, OQueMudou.Summarizer.Embeddings,
+    base_url: base_url,
+    model: System.get_env("EMBEDDINGS_MODEL") || "nomic-embed-text"
+end
+
 # Summarize-queue concurrency follows the adapter. The :ssh adapter shells out to
 # a full `claude` CLI session per job — those must NOT run concurrently (one SSH
 # session at a time), so default it to 1. API-style providers can fan out, so

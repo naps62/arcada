@@ -10,11 +10,19 @@ defmodule OQueMudou.Summarizer do
   alias OQueMudou.Admin
   alias OQueMudou.Providers.Provider
   alias OQueMudou.Register.{Act, Summary}
-  alias OQueMudou.Summarizer.SummarizeWorker
+  alias OQueMudou.Summarizer.{Embeddings, Sections, SummarizeWorker}
   alias OQueMudou.Summarizer.Adapters.{Api, OpenAI, Ssh}
 
   # Provider kind → adapter module.
   @adapters %{anthropic: Api, openai: OpenAI, ssh: Ssh}
+
+  # Appended whenever some act content was dropped from the prompt.
+  @truncation_marker "\n\n[...texto truncado para efeitos de resumo...]"
+
+  # What the section ranker treats as "relevant": sections whose meaning is
+  # closest to this query are kept first. Overridable via the Embeddings config.
+  @relevance_query "Que mudanças concretas este diploma introduz: novas regras, " <>
+                     "obrigações, alterações, revogações, prazos e quem fica afetado."
 
   # Shared system prompt for every LLM adapter (api, ssh). The style rules — plain
   # everyday Portuguese, short active sentences, no bureaucratic filler, no inline
@@ -44,13 +52,105 @@ defmodule OQueMudou.Summarizer do
   @doc "Shared system prompt (writing + classification rules) for the LLM adapters."
   def base_system_prompt, do: @base_system
 
+  @doc "Effective cap (chars) on act text fed to the summarizer prompt."
+  def max_text_chars, do: Admin.max_text_chars()
+
+  @doc """
+  Prepare act text for the summarizer prompt, capped at `max_chars` (the
+  configured cap by default).
+
+  When the text fits, it's returned untouched. When it's oversized and the
+  embeddings ranker is configured, the diploma is split into sections and only
+  the most change-relevant ones (in document order) are kept — so the operative
+  articles aren't crowded out by trailing annex tables. Otherwise it falls back
+  to head-truncation (`cap_text/2`). Either way a marker flags dropped content.
+
+  May perform a network call to the embeddings server; intended for the async
+  summarize job, not request paths.
+  """
+  def prepare_text(text, max_chars \\ nil)
+
+  def prepare_text(text, max_chars) when is_binary(text) do
+    max_chars = max_chars || max_text_chars()
+
+    if String.length(text) <= max_chars do
+      text
+    else
+      select_relevant(text, max_chars) || cap_text(text, max_chars)
+    end
+  end
+
+  def prepare_text(other, _max_chars), do: other
+
+  # Returns assembled most-relevant sections, or nil to signal "fall back to
+  # head-truncation" (ranker disabled, unstructured text, embed failure, or
+  # nothing fit the budget).
+  defp select_relevant(text, max_chars) do
+    cfg = Admin.embeddings_config()
+    sections = Sections.split(text)
+
+    with true <- Embeddings.enabled?(cfg),
+         true <- length(sections) > 1,
+         {:ok, [query_vec | section_vecs]} <-
+           Embeddings.embed([relevance_query(cfg) | Enum.map(sections, & &1.text)], cfg),
+         true <- length(section_vecs) == length(sections) do
+      sections
+      |> rank(section_vecs, query_vec)
+      |> pick_within_budget(max_chars)
+      |> assemble(length(sections))
+    else
+      _ -> nil
+    end
+  end
+
+  # Pair each section (with its document position) to its relevance score.
+  defp rank(sections, section_vecs, query_vec) do
+    sections
+    |> Enum.zip(section_vecs)
+    |> Enum.with_index()
+    |> Enum.map(fn {{section, vec}, index} ->
+      {index, section, Embeddings.cosine(query_vec, vec)}
+    end)
+  end
+
+  # Greedily take the highest-scoring sections that fit the char budget
+  # (reserving room for the marker). Returns `[{index, section}]`.
+  defp pick_within_budget(scored, max_chars) do
+    budget = max_chars - String.length(@truncation_marker)
+
+    scored
+    |> Enum.sort_by(fn {_i, _s, score} -> score end, :desc)
+    |> Enum.reduce({[], 0}, fn {index, section, _score}, {picked, used} ->
+      # +2 for the "\n\n" joiner between sections.
+      len = String.length(section.text) + 2
+
+      if used + len <= budget,
+        do: {[{index, section} | picked], used + len},
+        else: {picked, used}
+    end)
+    |> elem(0)
+  end
+
+  defp assemble([], _total), do: nil
+
+  defp assemble(picked, total) do
+    body =
+      picked
+      |> Enum.sort_by(fn {index, _section} -> index end)
+      |> Enum.map_join("\n\n", fn {_index, section} -> section.text end)
+
+    if length(picked) < total, do: body <> @truncation_marker, else: body
+  end
+
+  defp relevance_query(cfg), do: cfg[:query] || @relevance_query
+
   @doc """
   Cap act text for the summarizer prompt so oversized diplomas (huge annexes)
   don't exceed the model's context limit. Appends a truncation marker.
   """
   def cap_text(text, max_chars) when is_binary(text) do
     if String.length(text) > max_chars do
-      String.slice(text, 0, max_chars) <> "\n\n[...texto truncado para efeitos de resumo...]"
+      String.slice(text, 0, max_chars) <> @truncation_marker
     else
       text
     end

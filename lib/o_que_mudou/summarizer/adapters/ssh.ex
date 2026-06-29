@@ -21,7 +21,6 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
   @prompt_version "2026-06-28.ssh.2"
   @default_model "claude-cli"
   @default_claude_cmd "claude -p --output-format json"
-  @max_text_chars 80_000
 
   @json_format """
   Responde APENAS com um objeto JSON válido, sem texto antes ou depois, no formato:
@@ -42,7 +41,12 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
   def summarize(%Act{} = act, %Provider{} = provider, model) do
     with {:ok, stdout} <- run(build_prompt(act), provider),
          {:ok, attrs} <- parse(stdout, model || @default_model) do
-      truncated = OQueMudou.Summarizer.truncated?(act.full_text || act.title, @max_text_chars)
+      truncated =
+        OQueMudou.Summarizer.truncated?(
+          act.full_text || act.title,
+          OQueMudou.Summarizer.max_text_chars()
+        )
+
       {:ok, Map.put(attrs, :truncated, truncated)}
     end
   end
@@ -57,7 +61,7 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
     Título: #{act.title}
 
     Texto:
-    #{OQueMudou.Summarizer.cap_text(act.full_text || act.title, @max_text_chars)}
+    #{OQueMudou.Summarizer.prepare_text(act.full_text || act.title)}
     """
   end
 

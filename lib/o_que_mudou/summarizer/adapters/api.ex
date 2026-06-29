@@ -18,8 +18,6 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
   @default_model "claude-sonnet-4-6"
   # Bump when the prompt/schema change so summaries record which version produced them.
   @prompt_version "2026-06-28.2"
-  # Cap act text so oversized diplomas don't exceed the model's context limit.
-  @max_text_chars 80_000
 
   @impl true
   def summarize(%Act{} = act, %Provider{} = provider, model) do
@@ -35,7 +33,11 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
          domains: Enum.map(parsed["domains"] || [], &String.to_existing_atom/1),
          model: model,
          prompt_version: @prompt_version,
-         truncated: OQueMudou.Summarizer.truncated?(act.full_text || act.title, @max_text_chars)
+         truncated:
+           OQueMudou.Summarizer.truncated?(
+             act.full_text || act.title,
+             OQueMudou.Summarizer.max_text_chars()
+           )
        }}
     else
       {:ok, %{status: status, body: body}} ->
@@ -64,7 +66,7 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
     Título: #{act.title}
 
     Texto:
-    #{OQueMudou.Summarizer.cap_text(act.full_text || act.title, @max_text_chars)}
+    #{OQueMudou.Summarizer.prepare_text(act.full_text || act.title)}
     """
   end
 

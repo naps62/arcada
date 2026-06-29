@@ -102,11 +102,41 @@ defmodule OQueMudouWeb.AdminLive do
             </option>
           </.admin_field>
 
+          <div class="border-t border-border pt-5">
+            <h3 class="text-sm font-semibold text-ink">Diplomas longos</h3>
+            <p class="mt-1 text-xs text-muted">
+              Atos grandes (anexos enormes) são cortados no limite abaixo. Com um
+              servidor de embeddings, em vez de cortar pelo início escolhem-se as
+              secções mais relevantes (o que muda) e descartam-se as tabelas do fim.
+            </p>
+          </div>
+
+          <.admin_field
+            field={@form[:max_text_chars]}
+            type="number"
+            label="Limite de caracteres"
+            hint="Vazio = 80000 (predefinição)."
+          />
+
+          <.admin_field
+            field={@form[:embeddings_base_url]}
+            type="text"
+            label="Servidor de embeddings (base URL)"
+            hint="API compatível com OpenAI /v1/embeddings (llama.cpp, Ollama). Vazio = cortar pelo início."
+          />
+
+          <.admin_field
+            field={@form[:embeddings_model]}
+            type="text"
+            label="Modelo de embeddings"
+            hint="ex.: nomic-embed-text"
+          />
+
           <button
             type="submit"
             class="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-bg hover:opacity-90"
           >
-            Guardar ativo
+            Guardar
           </button>
         </.form>
       </section>

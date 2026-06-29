@@ -108,6 +108,15 @@ provider+model, and publish one as the canonical (public) summary.
 Active changes apply on the **next** summarize job. Oban queue concurrency is
 fixed at boot, so it doesn't re-tune when you switch the active provider.
 
+**Long diplomas.** The `/admin` page also sets the prompt cap (`max_text_chars`,
+default 80k) and an optional embeddings server for section ranking: when an act
+exceeds the cap, instead of truncating its opening the summarizer keeps the most
+change-relevant sections (articles) and drops trailing annexes. Point it at any
+OpenAI-compatible `/v1/embeddings` server — llama.cpp `llama-server --embeddings`
+or Ollama on a GPU box — via the admin field or `EMBEDDINGS_BASE_URL`
+(+ `EMBEDDINGS_MODEL`, default `nomic-embed-text`). The server must be reachable
+from the app over the VPN/LAN. Unset → oversized acts head-truncate as before.
+
 Seeding (first deploy): create at least one provider and set it active, e.g.
 via `bin/o_que_mudou rpc` —
 `OQueMudou.Providers.create_provider/1` then `OQueMudou.Admin.update_settings/1`
