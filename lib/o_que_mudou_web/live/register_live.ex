@@ -93,8 +93,10 @@ defmodule OQueMudouWeb.RegisterLive do
       </.filter_row>
     </section>
 
+    <%!-- Only while filtering: this is the filter's feedback + reset, not a
+         page-wide tally (a grand total clashes with the per-day section counts). --%>
     <div
-      :if={@groups != []}
+      :if={@groups != [] && (@active_domain || @active_period)}
       class="flex items-baseline justify-between gap-4 border-b border-border py-2.5"
     >
       <p class="text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
@@ -107,7 +109,6 @@ defmodule OQueMudouWeb.RegisterLive do
         </span>
       </p>
       <.link
-        :if={@active_domain || @active_period}
         patch={~p"/"}
         class="inline-flex shrink-0 items-center gap-1 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted transition-colors duration-150 ease-out-quart hover:text-primary"
       >
