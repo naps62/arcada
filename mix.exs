@@ -42,6 +42,10 @@ defmodule OQueMudou.MixProject do
       {:floki, ">= 0.30.0", only: :test},
       {:lazy_html, ">= 0.1.0", only: :test},
       {:phoenix_live_dashboard, "~> 0.8.3"},
+      {:kaffy, "~> 0.11.0"},
+      # Kaffy still pins decimal ~> 2.2; the ecto 3.14 stack is on 3.x. No schema
+      # here uses decimal fields, so Kaffy's decimal path is never hit — force 3.x.
+      {:decimal, "~> 3.1", override: true},
       {:esbuild, "~> 0.8", runtime: Mix.env() == :dev},
       {:tailwind, "~> 0.2.0", runtime: Mix.env() == :dev},
       {:heroicons,

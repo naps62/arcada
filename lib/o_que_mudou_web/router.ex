@@ -39,6 +39,10 @@ defmodule OQueMudouWeb.Router do
     live "/acts/:id", AdminActLive, :show
   end
 
+  # Raw-DB admin (Kaffy): auto-generated CRUD over every Ecto schema, mounted at
+  # /admin/db behind the same edge gate (Authelia + VPN) and in-app :admin check.
+  use Kaffy.Routes, scope: "/admin/db", pipe_through: [:browser, :admin]
+
   # Other scopes may use custom stacks.
   # scope "/api", OQueMudouWeb do
   #   pipe_through :api

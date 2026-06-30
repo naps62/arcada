@@ -21,7 +21,10 @@ defmodule OQueMudouWeb do
 
   def router do
     quote do
-      use Phoenix.Router, helpers: false
+      # helpers: true — Kaffy (raw-DB admin at /admin/db) still relies on the
+      # legacy Phoenix.Router.Helpers path helpers. App code uses verified ~p
+      # routes; this just keeps the helper module generated for Kaffy.
+      use Phoenix.Router, helpers: true
 
       # Import common connection and controller functions to use in pipelines
       import Plug.Conn

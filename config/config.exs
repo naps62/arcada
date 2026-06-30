@@ -79,6 +79,15 @@ config :o_que_mudou, Oban,
 # `bypass: true` (dev) skips the in-app group check. See issue #19.
 config :o_que_mudou, :admin, group: "oqm-admin", bypass: false
 
+# Kaffy raw-DB admin (mounted at /admin/db, behind the same Authelia/VPN gate).
+# Schemas are auto-discovered from the Repo; see OQueMudouWeb.Router.
+config :kaffy,
+  otp_app: :o_que_mudou,
+  ecto_repo: OQueMudou.Repo,
+  router: OQueMudouWeb.Router,
+  admin_title: "o-que-mudou DB",
+  hide_dashboard: false
+
 # Configures the endpoint
 config :o_que_mudou, OQueMudouWeb.Endpoint,
   url: [host: "localhost"],
