@@ -25,6 +25,15 @@ defmodule OQueMudouWeb.Endpoint do
     gzip: false,
     only: OQueMudouWeb.static_paths()
 
+  # Kaffy ships its CSS/JS in its own dep (deps/kaffy/priv/static/assets) and
+  # references them at /kaffy/assets/...; it has no Plug.Static of its own, so
+  # the host must serve them. Releases bundle deps' priv, so this works in prod.
+  plug Plug.Static,
+    at: "/kaffy",
+    from: :kaffy,
+    gzip: false,
+    only: ~w(assets)
+
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
   if code_reloading? do
