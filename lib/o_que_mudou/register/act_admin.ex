@@ -19,6 +19,10 @@ defmodule OQueMudou.Register.ActAdmin do
         url: "/admin",
         location: :top,
         icon: "arrow-left",
+        # The layout accesses `custom_link.full_icon` with dot syntax (not
+        # bracket), so the key must be present or Kaffy 500s rendering the
+        # sidebar. nil is falsy → falls back to the FontAwesome `icon` above.
+        full_icon: nil,
         target: "_self",
         order: 0
       }
