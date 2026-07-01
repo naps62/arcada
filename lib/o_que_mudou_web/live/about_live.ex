@@ -15,11 +15,9 @@ defmodule OQueMudouWeb.AboutLive do
   def render(assigns) do
     ~H"""
     <article class="mx-auto max-w-reading py-12 sm:py-16">
-      <h1 class="text-balance text-center font-display text-[2rem] font-semibold leading-tight text-ink sm:text-[2.625rem]">
-        Sobre a Arcada
-      </h1>
+      <h1 class="sr-only">Sobre a Arcada</h1>
 
-      <div class="mt-6 space-y-5 font-serif text-[1.0625rem] leading-relaxed text-ink">
+      <div class="space-y-5 font-serif text-[1.0625rem] leading-relaxed text-ink">
         <p>
           A Arcada pega no <em>Diário da República, Série I</em>
           e reconta-o em linguagem simples: o que muda, para quem, e quando.
@@ -44,13 +42,10 @@ defmodule OQueMudouWeb.AboutLive do
           diplomas densos e reescrevê-los, um a um, em português simples.
         </p>
         <p>
-          Mas não é só pedir a um modelo que resuma. Cada diploma passa por uma
-          série de passos. Partimos sempre do texto oficial; nos diplomas longos,
-          dividimo-lo em secções e medimos, por semelhança de significado, quais
-          introduzem mudanças concretas — são essas que entregamos ao modelo, sem o
-          enchimento à volta. Só então ele escreve o título e o resumo e arruma o
-          diploma por área da vida. No fim, indexamos tudo para poder ser
-          pesquisado por significado, e não apenas por palavras exatas.
+          Mas não é só pedir a um modelo que resuma. Por trás há um pipeline:
+          partimos do texto oficial, dividimo-lo em secções e escolhemos as
+          relevantes com embeddings; o modelo gera o título e o resumo e classifica
+          o diploma por área; no fim, indexamos tudo para pesquisa semântica.
         </p>
         <p>
           Os modelos também erram. Por isso o texto oficial fica sempre a um clique,
@@ -97,6 +92,20 @@ defmodule OQueMudouWeb.AboutLive do
           </a>
         </figcaption>
       </figure>
+
+      <h2 class="mt-11 font-display text-[1.375rem] font-semibold leading-tight text-ink">
+        Contacto
+      </h2>
+      <p class="mt-4 font-serif text-[1.0625rem] leading-relaxed text-ink">
+        Feito por Miguel Palhas (<a
+          href="https://naps.pt"
+          rel="noopener"
+          class="text-primary hover:underline"
+        >naps.pt</a>). Dúvidas, erros ou sugestões:
+        <a href="mailto:arcada@naps62.com" class="text-primary hover:underline">
+          arcada@naps62.com
+        </a>.
+      </p>
 
       <div class="mt-11 border-t border-border pt-6">
         <.link
