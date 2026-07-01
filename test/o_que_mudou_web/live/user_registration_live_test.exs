@@ -71,6 +71,20 @@ defmodule OQueMudouWeb.UserRegistrationLiveTest do
       assert OQueMudou.Accounts.get_user_by_email(email).username == "handle"
     end
 
+    test "rejects submissions that fill the honeypot field", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, ~p"/users/register")
+
+      email = unique_user_email()
+
+      result =
+        lv
+        |> form("#registration_form", user: valid_user_attributes(email: email))
+        |> render_submit(%{"hp_name" => "i am a bot"})
+
+      assert result =~ "Verifique os erros"
+      refute OQueMudou.Accounts.get_user_by_email(email)
+    end
+
     test "renders errors for duplicated email", %{conn: conn} do
       {:ok, lv, _html} = live(conn, ~p"/users/register")
 

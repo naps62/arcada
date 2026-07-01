@@ -8,6 +8,9 @@ config :bcrypt_elixir, :log_rounds, 1
 config :o_que_mudou, OQueMudou.Mailer, adapter: Swoosh.Adapters.Test
 config :swoosh, :api_client, false
 
+# Disable the signup timing gate — tests submit the form instantly.
+config :o_que_mudou, :signup_min_fill_ms, 0
+
 # Configure your database
 #
 # The MIX_TEST_PARTITION environment variable can be used

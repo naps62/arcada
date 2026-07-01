@@ -170,6 +170,16 @@ config :swoosh, api_client: Swoosh.ApiClient.Req
 # verified domain. The dev/test default is only ever seen in the mailbox preview.
 config :o_que_mudou, :mailer_from, {"Arcada", "nao-responder@arcada.local"}
 
+# Global cap on new signups per UTC day. Protects the Resend free quota
+# (100 emails/day) since every registration sends a confirmation email.
+# Kept below 100 to leave headroom for password-reset / re-confirm mails.
+config :o_que_mudou, :daily_signup_cap, 80
+
+# Cloudflare Turnstile bot check on the signup form. Disabled by default
+# (no keys) — dev/test skip the widget and verification. Prod keys come from
+# env at runtime (see config/runtime.exs).
+config :o_que_mudou, OQueMudouWeb.Turnstile, site_key: nil, secret_key: nil
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

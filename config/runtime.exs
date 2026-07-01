@@ -108,6 +108,18 @@ if reply_to = System.get_env("MAILER_REPLY_TO") do
   config :o_que_mudou, :mailer_reply_to, reply_to
 end
 
+# Cloudflare Turnstile keys for the signup bot check. Both must be set for the
+# widget to render and be verified; missing either keeps Turnstile disabled.
+# Read in every env so you can smoke-test with Cloudflare's test keys locally.
+turnstile_site_key = System.get_env("TURNSTILE_SITE_KEY")
+turnstile_secret_key = System.get_env("TURNSTILE_SECRET_KEY")
+
+if turnstile_site_key && turnstile_secret_key do
+  config :o_que_mudou, OQueMudouWeb.Turnstile,
+    site_key: turnstile_site_key,
+    secret_key: turnstile_secret_key
+end
+
 if config_env() == :prod do
   if resend_key = System.get_env("RESEND_API_KEY") do
     config :o_que_mudou, OQueMudou.Mailer,
