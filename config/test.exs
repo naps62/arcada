@@ -1,5 +1,13 @@
 import Config
 
+# Only in tests, remove the complexity from the password hashing algorithm
+config :bcrypt_elixir, :log_rounds, 1
+
+# Public-user email in tests: collect into the process mailbox so specs can
+# assert with Swoosh.TestAssertions. No real delivery, no API client.
+config :o_que_mudou, OQueMudou.Mailer, adapter: Swoosh.Adapters.Test
+config :swoosh, :api_client, false
+
 # Configure your database
 #
 # The MIX_TEST_PARTITION environment variable can be used

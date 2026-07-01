@@ -86,7 +86,9 @@ config :kaffy,
   ecto_repo: OQueMudou.Repo,
   router: OQueMudouWeb.Router,
   admin_title: "o-que-mudou DB",
-  hide_dashboard: false
+  hide_dashboard: false,
+  # Restyle Kaffy to our palette + a denser layout (see OQueMudouWeb.KaffyTheme).
+  extensions: [OQueMudouWeb.KaffyTheme]
 
 # Configures the endpoint
 config :o_que_mudou, OQueMudouWeb.Endpoint,
@@ -139,6 +141,18 @@ config :o_que_mudou, OQueMudou.PromEx,
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
+
+# Public-user email (account verification + password reset), sent via the
+# OQueMudou.Mailer / Swoosh. Swoosh's HTTP calls go through Req (already a dep)
+# rather than pulling in hackney/Finch. The per-environment adapter is set in
+# dev/test/prod: Local mailbox preview in dev, Test collector in test, Resend
+# in prod (API key via env — see config/runtime.exs).
+config :swoosh, api_client: Swoosh.ApiClient.Req
+
+# From address for account emails. Overridden at runtime in prod
+# (MAILER_FROM_EMAIL / MAILER_FROM_NAME) — the Resend sender must be on a
+# verified domain. The dev/test default is only ever seen in the mailbox preview.
+config :o_que_mudou, :mailer_from, {"O que mudou", "nao-responder@o-que-mudou.local"}
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

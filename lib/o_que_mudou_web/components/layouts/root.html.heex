@@ -6,6 +6,34 @@
     <meta name="csrf-token" content={get_csrf_token()} />
     <meta name="theme-color" content="#f5f1e9" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#16140f" media="(prefers-color-scheme: dark)" />
+    <%!-- No-flash theme: apply the stored auto/light/dark choice before first paint.
+         Runs inline in <head> so <html data-theme> is set before the CSS resolves.
+         Also collapses the two theme-color metas to the active colour so an explicit
+         choice is honoured; with JS disabled the media-based metas already do this. --%>
+    <script>
+      (function () {
+        function apply(theme) {
+          var root = document.documentElement;
+          root.setAttribute("data-theme", theme);
+          var dark = theme === "dark" ||
+            (theme !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          var color = dark ? "#16140f" : "#f5f1e9";
+          var metas = document.querySelectorAll('meta[name="theme-color"]');
+          for (var i = 0; i < metas.length; i++) {
+            if (i === 0) {
+              metas[i].removeAttribute("media");
+              metas[i].setAttribute("content", color);
+            } else {
+              metas[i].parentNode.removeChild(metas[i]);
+            }
+          }
+        }
+        window.__applyTheme = apply;
+        var theme = "auto";
+        try { theme = localStorage.getItem("theme") || "auto"; } catch (e) {}
+        apply(theme);
+      })();
+    </script>
     <.live_title default="O que mudou — Diário da República em linguagem simples" suffix=" · O que mudou">
       {assigns[:page_title]}
     </.live_title>

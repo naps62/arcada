@@ -65,6 +65,11 @@ config :o_que_mudou, OQueMudouWeb.Endpoint,
 # Enable dev routes for dashboard and mailbox
 config :o_que_mudou, dev_routes: true
 
+# Public-user email in dev: capture into the Swoosh mailbox preview
+# (visit /dev/mailbox); nothing is sent and no API client is needed.
+config :o_que_mudou, OQueMudou.Mailer, adapter: Swoosh.Adapters.Local
+config :swoosh, :api_client, false
+
 # No Authelia in front of the dev server — skip the /admin group check.
 config :o_que_mudou, :admin, group: "oqm-admin", bypass: true
 
