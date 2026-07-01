@@ -20,31 +20,52 @@ defmodule OQueMudouWeb.RegisterLive do
      )}
   end
 
+  # Live search pushes the query into the URL (`?q=…`) so results are shareable
+  # and deep-linkable; `handle_params` runs the actual search. `replace: true`
+  # keeps the debounced keystrokes from flooding browser history.
   @impl true
   def handle_event("search", %{"q" => query}, socket) do
-    query = String.trim(query)
-    results = if query == "", do: nil, else: Search.search(query)
-    {:noreply, assign(socket, query: query, search_results: results)}
+    case String.trim(query) do
+      "" -> {:noreply, push_patch(socket, to: ~p"/", replace: true)}
+      q -> {:noreply, push_patch(socket, to: ~p"/?#{[q: q]}", replace: true)}
+    end
   end
 
+  # The URL is the source of truth: `?q=…` is search mode (deep-linkable),
+  # anything else is the filtered browse listing.
   @impl true
   def handle_params(params, _uri, socket) do
+    case String.trim(params["q"] || "") do
+      "" -> {:noreply, assign_browse(socket, params)}
+      query -> {:noreply, assign_search(socket, query)}
+    end
+  end
+
+  defp assign_search(socket, query) do
+    assign(socket,
+      query: query,
+      search_results: Search.search(query),
+      page_title: "Pesquisa: #{query}"
+    )
+  end
+
+  defp assign_browse(socket, params) do
     domain = params["domain"]
     period = Register.fetch_period(params["period"])
     acts = Register.list_acts(domain: domain, period: period, limit: 300)
-    groups = group_by_date(acts)
 
-    {:noreply,
-     assign(socket,
-       active_domain: domain,
-       active_period: period,
-       # Each axis's badges reflect the *other* axis's selection.
-       domain_counts: Register.domain_counts(period: period),
-       period_counts: Register.period_counts(domain: domain),
-       groups: groups,
-       total: length(acts),
-       page_title: page_title(domain, period)
-     )}
+    assign(socket,
+      query: "",
+      search_results: nil,
+      active_domain: domain,
+      active_period: period,
+      # Each axis's badges reflect the *other* axis's selection.
+      domain_counts: Register.domain_counts(period: period),
+      period_counts: Register.period_counts(domain: domain),
+      groups: group_by_date(acts),
+      total: length(acts),
+      page_title: page_title(domain, period)
+    )
   end
 
   # Group acts by their edition's publication date, newest day first.
@@ -93,9 +114,17 @@ defmodule OQueMudouWeb.RegisterLive do
                beside the field's own icon would just be redundant. --%>
           <button
             type="submit"
-            class="hidden shrink-0 items-center justify-center rounded-md bg-primary px-8 text-base font-semibold text-primary-fg transition-colors duration-150 ease-out-quart hover:bg-primary-hover focus:outline-none focus:ring-4 focus:ring-primary/25 sm:inline-flex"
+            class="relative hidden shrink-0 items-center justify-center rounded-md bg-primary px-8 text-base font-semibold text-primary-fg transition-colors duration-150 ease-out-quart hover:bg-primary-hover focus:outline-none focus:ring-4 focus:ring-primary/25 sm:inline-flex"
           >
-            Pesquisar
+            <%!-- The label reserves the button width; while a search request is in
+                 flight the spinner overlays it centered, so the button doesn't
+                 resize. Loading classes are set on the form by phx-change/submit. --%>
+            <span class="phx-change-loading:opacity-0 phx-submit-loading:opacity-0">
+              Pesquisar
+            </span>
+            <span class="pointer-events-none absolute inset-0 hidden items-center justify-center phx-change-loading:flex phx-submit-loading:flex">
+              <.icon name="hero-arrow-path" class="size-5 animate-spin" />
+            </span>
           </button>
         </div>
         <p class="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-muted">

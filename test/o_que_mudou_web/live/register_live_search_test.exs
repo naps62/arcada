@@ -64,6 +64,27 @@ defmodule OQueMudouWeb.RegisterLiveSearchTest do
     refute html =~ "Filtros"
   end
 
+  test "typing pushes the query into the URL so it's shareable", %{conn: conn} do
+    set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+
+    {:ok, lv, _html} = live(conn, ~p"/")
+    lv |> form("#search-form", %{"q" => "arrendamento jovem"}) |> render_change()
+
+    assert_patched(lv, ~p"/?#{[q: "arrendamento jovem"]}")
+  end
+
+  test "a shared ?q= link runs the search on load", %{conn: conn} do
+    seed_indexed_act([1.0, 0.0])
+    set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+
+    {:ok, _lv, html} = live(conn, ~p"/?#{[q: "arrendamento"]}")
+
+    assert html =~ "Muda o escalão do IRS."
+    refute html =~ "Filtros"
+    # The field is pre-filled from the URL so the shared link is self-explanatory.
+    assert html =~ ~s(value="arrendamento")
+  end
+
   test "an unmatched query shows the empty state", %{conn: conn} do
     set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
 
