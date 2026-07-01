@@ -22,7 +22,8 @@ cron `{"0 9 * * 1-5", OQueMudou.Scraper.IngestWorker}` with queues
 |---|---|
 | `DATABASE_URL` | `ecto://<user>:<pass>@<pg-host>/o_que_mudou_prod` (Dokploy-managed Postgres) |
 | `SECRET_KEY_BASE` | `mix phx.gen.secret` (64+ bytes) |
-| `PHX_HOST` | the internal/VPN hostname (e.g. `oqm.example.internal`) |
+| `PHX_HOST` | canonical public hostname for generated URLs (e.g. `arcada.naps.pt`) |
+| `ADMIN_HOST` | host on which `/admin*` is served (e.g. `arcada.example.internal`). On any other host admin paths 404. Unset → admin reachable on every host (single-host / dev). |
 | `PHX_SERVER` | `true` |
 | `PORT` | `4000` |
 | `ANTHROPIC_API_KEY` | Claude API key — **secret**; enables the `:api` summarizer adapter |
@@ -81,6 +82,39 @@ Wiring steps:
    Dokploy command). The container's default `CMD` is `/app/bin/server`.
 4. **Deploy** and watch logs for `Running OQueMudouWeb.Endpoint`.
 
+## Two-host setup — public `arcada.naps.pt` + private `arcada.example.internal` (issue #37)
+
+The app is served on **two** hosts by the same Dokploy application (add both as
+domain rows on the app):
+
+| Host | Audience | Edge middlewares | `/admin*` |
+|---|---|---|---|
+| `arcada.naps.pt` | public *(closed for now)* | `authelia` | **404** (host guard) |
+| `arcada.example.internal` | private (VPN) | `vpn-allowlist` | Authelia-gated, served |
+
+- **`arcada.naps.pt`** is the canonical public host (`PHX_HOST`). It is **not
+  open yet** — until go-public it sits behind the `authelia` forwardAuth
+  middleware so only authenticated users reach it. Drop the `authelia`
+  middleware from this row when ready to open to the world. It never serves
+  `/admin`: `ADMIN_HOST=arcada.example.internal` makes `RequireAdminHost` raise a 404
+  (identical to any unknown path — no 403, which would confirm the surface).
+- **`arcada.example.internal`** is the private VPN host carrying the
+  `vpn-allowlist` IP-allowlist middleware (per the `*.example.internal`
+  model). It is the only host where `/admin*` exists; `/admin` additionally
+  routes through `authelia` + the in-app `RequireAdminGroup` check (see the
+  Admin section below).
+
+Dokploy domain rows (per host, path `/`):
+
+| Host | Path | Middlewares |
+|---|---|---|
+| `arcada.naps.pt` | `/` | `authelia` |
+| `arcada.example.internal` | `/` | `vpn-allowlist` |
+| `arcada.example.internal` | `/admin` | `authelia`, `vpn-allowlist` |
+
+Set `ADMIN_HOST=arcada.example.internal` in the app environment so the in-app host guard
+matches the edge routing. `robots.txt` disallows `/admin*` (SEO issue).
+
 ## VPN gating (no public exposure)
 
 The app has **no auth** — access control is the network. Do **not** attach a
@@ -133,20 +167,23 @@ via `bin/o_que_mudou rpc` —
 `OQueMudou.Providers.create_provider/1` then `OQueMudou.Admin.update_settings/1`
 with `active_provider_id`/`active_model`.
 
-Gated in two layers (fails closed — without Authelia in front, the in-app plug
-403s everyone):
+Admin lives **only** on the private host `arcada.example.internal` (see the two-host
+section above). Gated in three layers (fails closed):
 
-1. **Edge (Traefik).** Add a Dokploy domain row for the app: `host=oqm.example.internal`,
+1. **Host (Traefik + app).** `/admin*` is not routed on the public host at all,
+   and `RequireAdminHost` 404s it in-app if `conn.host != ADMIN_HOST`. So the
+   surface simply doesn't exist off the VPN host.
+2. **Edge (Traefik).** Add a Dokploy domain row: `host=arcada.example.internal`,
    `path=/admin`, middlewares `[authelia, vpn-allowlist]`. This
    routes `/admin` through Authelia (and the VPN ACL); the path-specific router
    wins over the catch-all `/` row.
-2. **App (defense in depth).** `OQueMudouWeb.Plugs.RequireAdminGroup` checks the
+3. **App (defense in depth).** `OQueMudouWeb.Plugs.RequireAdminGroup` checks the
    `Remote-Groups` header (set by Authelia) for `oqm-admin`. Config:
    `config :o_que_mudou, :admin, group: "oqm-admin", bypass: false`. Dev sets
    `bypass: true`.
 
 Authelia setup: create group `oqm-admin`, add the operator user to it, and add an
-access-control rule for `oqm.example.internal/admin` requiring group `oqm-admin`.
+access-control rule for `arcada.example.internal/admin` requiring group `oqm-admin`.
 
 ## Observability (Loki + Prometheus)
 
