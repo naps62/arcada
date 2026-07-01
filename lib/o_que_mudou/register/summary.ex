@@ -43,6 +43,10 @@ defmodule OQueMudou.Register.Summary do
     field :duration_ms, :integer
     field :generated_at, :utc_datetime
     field :validated_at, :utc_datetime
+    # bge-m3 embedding of `plain_text`, for semantic search (issue #27). Null
+    # when the embeddings server was disabled/unreachable at generation time —
+    # such summaries are simply absent from search results, never an error.
+    field :embedding, OQueMudou.Register.Embedding
 
     belongs_to :act, Act
     belongs_to :provider, Provider
@@ -51,7 +55,7 @@ defmodule OQueMudou.Register.Summary do
   end
 
   @required ~w(act_id plain_text)a
-  @optional ~w(domains model prompt_version status truncated text_strategy ranker_model input_tokens output_tokens cost_usd cost_source duration_ms provider_id generated_at validated_at)a
+  @optional ~w(domains model prompt_version status truncated text_strategy ranker_model input_tokens output_tokens cost_usd cost_source duration_ms provider_id generated_at validated_at embedding)a
 
   def changeset(summary, attrs) do
     summary
