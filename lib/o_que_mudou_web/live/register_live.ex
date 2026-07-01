@@ -100,9 +100,7 @@ defmodule OQueMudouWeb.RegisterLive do
         </div>
         <p class="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-muted">
           <.icon name="hero-information-circle-micro" class="size-3.5 shrink-0" />
-          <span>
-            Pesquisa por significado — não precisas das palavras exatas. Isto não é aconselhamento jurídico.
-          </span>
+          <span>Pesquisa por significado — não precisas das palavras exatas.</span>
         </p>
       </form>
     </section>
