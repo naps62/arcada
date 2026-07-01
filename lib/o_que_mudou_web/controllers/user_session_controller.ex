@@ -5,7 +5,7 @@ defmodule OQueMudouWeb.UserSessionController do
   alias OQueMudouWeb.UserAuth
 
   def create(conn, %{"_action" => "registered"} = params) do
-    create(conn, params, "Conta criada com sucesso!")
+    create(conn, params, "Conta criada. Confirme o email que lhe enviámos para a activar.")
   end
 
   def create(conn, %{"_action" => "password_updated"} = params) do
