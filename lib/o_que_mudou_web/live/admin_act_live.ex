@@ -104,6 +104,7 @@ defmodule OQueMudouWeb.AdminActLive do
         Run a summary
       </h2>
       <form
+        id="run-summary"
         phx-change="pick_provider"
         phx-submit="trigger"
         class="mt-3 flex flex-wrap items-end gap-3"
@@ -157,62 +158,133 @@ defmodule OQueMudouWeb.AdminActLive do
       </h2>
       <p :if={@summaries == []} class="mt-4 text-sm text-muted">No summaries yet.</p>
 
-      <article
-        :for={s <- @summaries}
-        class={[
-          "mt-4 rounded-md border p-4",
-          (@published_id == s.id && "border-primary bg-surface") || "border-border"
-        ]}
-      >
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <div class="flex flex-wrap items-center gap-2 text-xs text-muted">
-            <span class="font-semibold text-ink">{provider_name(s)}</span>
-            <span>· {s.model || "—"}</span>
-            <span :if={strategy_label(s)}>· {strategy_label(s)}</span>
-            <span :if={tokens_label(s)} class="tabular-nums">· {tokens_label(s)}</span>
-            <span :if={cost_label(s)} class="tabular-nums">· {cost_label(s)}</span>
-            <span :if={duration_label(s)} class="tabular-nums">· {duration_label(s)}</span>
-            <.provenance_badge summary={s} />
-          </div>
-          <div class="flex items-center gap-2">
-            <span :if={s.embedding} class="text-xs text-muted">embedded</span>
-            <button
-              phx-click="embed"
-              phx-value-id={s.id}
-              class="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-ink transition-colors duration-150 ease-out-quart hover:bg-surface-inset"
-            >
-              {if s.embedding, do: "Regenerate embedding", else: "Generate embedding"}
-            </button>
-            <button
-              :if={@published_id != s.id}
-              phx-click="publish"
-              phx-value-id={s.id}
-              class="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-ink transition-colors duration-150 ease-out-quart hover:bg-surface-inset"
-            >
-              Publish
-            </button>
-            <span
-              :if={@published_id == s.id}
-              class="inline-flex items-center gap-1 text-xs font-semibold text-primary"
-            >
-              <.icon name="hero-check-circle-micro" class="size-4" /> published
-            </span>
-          </div>
-        </div>
-        <p :if={s.headline} class="mt-3 font-display text-base font-semibold text-ink">
-          {s.headline}
-        </p>
-        <p class={[
-          "font-serif text-[1.0625rem] leading-relaxed text-ink",
-          if(s.headline, do: "mt-2", else: "mt-3")
-        ]}>
-          {s.plain_text}
-        </p>
-        <div :if={s.domains != []} class="mt-2 flex flex-wrap gap-1.5">
-          <.domain_tag :for={d <- s.domains} label={to_string(d)} />
-        </div>
-      </article>
+      <%!-- Two or more: lay them out as side-by-side columns so the prose can be
+           read against each other; scroll horizontally when they overflow. --%>
+      <div :if={length(@summaries) >= 2} class="mt-4 flex gap-4 overflow-x-auto pb-3">
+        <.summary_column :for={s <- @summaries} summary={s} published_id={@published_id} />
+      </div>
+
+      <%!-- One (or zero): a single full-width card reads better than a lone column. --%>
+      <.summary_card :for={s <- @summaries} :if={length(@summaries) < 2} summary={s} published_id={@published_id} />
     </section>
+    """
+  end
+
+  # A single full-width summary card — used when an act has just one summary.
+  attr :summary, :any, required: true
+  attr :published_id, :any, default: nil
+
+  defp summary_card(assigns) do
+    ~H"""
+    <article class={[
+      "mt-4 rounded-md border p-4",
+      (@published_id == @summary.id && "border-primary bg-surface") || "border-border"
+    ]}>
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex flex-wrap items-center gap-2 text-xs text-muted">
+          <span class="font-semibold text-ink">{provider_name(@summary)}</span>
+          <span>· {@summary.model || "—"}</span>
+          <span :if={strategy_label(@summary)}>· {strategy_label(@summary)}</span>
+          <span :if={tokens_label(@summary)} class="tabular-nums">· {tokens_label(@summary)}</span>
+          <span :if={cost_label(@summary)} class="tabular-nums">· {cost_label(@summary)}</span>
+          <span :if={duration_label(@summary)} class="tabular-nums">· {duration_label(@summary)}</span>
+          <.provenance_badge summary={@summary} />
+        </div>
+        <div class="flex items-center gap-2">
+          <span :if={@summary.embedding} class="text-xs text-muted">embedded</span>
+          <button
+            phx-click="embed"
+            phx-value-id={@summary.id}
+            class="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-ink transition-colors duration-150 ease-out-quart hover:bg-surface-inset"
+          >
+            {if @summary.embedding, do: "Regenerate embedding", else: "Generate embedding"}
+          </button>
+          <button
+            :if={@published_id != @summary.id}
+            phx-click="publish"
+            phx-value-id={@summary.id}
+            class="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-ink transition-colors duration-150 ease-out-quart hover:bg-surface-inset"
+          >
+            Publish
+          </button>
+          <span
+            :if={@published_id == @summary.id}
+            class="inline-flex items-center gap-1 text-xs font-semibold text-primary"
+          >
+            <.icon name="hero-check-circle-micro" class="size-4" /> published
+          </span>
+        </div>
+      </div>
+      <p :if={@summary.headline} class="mt-3 font-display text-base font-semibold text-ink">
+        {@summary.headline}
+      </p>
+      <p class={[
+        "font-serif text-[1.0625rem] leading-relaxed text-ink",
+        if(@summary.headline, do: "mt-2", else: "mt-3")
+      ]}>
+        {@summary.plain_text}
+      </p>
+      <div :if={@summary.domains != []} class="mt-2 flex flex-wrap gap-1.5">
+        <.domain_tag :for={d <- @summary.domains} label={to_string(d)} />
+      </div>
+    </article>
+    """
+  end
+
+  # One column of the side-by-side comparison. Header stacks the run's metadata
+  # vertically (there's no room for a horizontal strip); body carries the prose.
+  attr :summary, :any, required: true
+  attr :published_id, :any, default: nil
+
+  defp summary_column(assigns) do
+    assigns = assign(assigns, :published?, assigns.published_id == assigns.summary.id)
+
+    ~H"""
+    <article class={[
+      "flex w-80 shrink-0 flex-col rounded-md border p-4",
+      (@published? && "border-primary bg-surface") || "border-border"
+    ]}>
+      <header class="border-b border-border pb-3">
+        <div class="flex items-baseline justify-between gap-2">
+          <span class="font-semibold text-ink">{provider_name(@summary)}</span>
+          <span
+            :if={@published?}
+            class="inline-flex items-center gap-1 text-xs font-semibold text-primary"
+          >
+            <.icon name="hero-check-circle-micro" class="size-4" /> published
+          </span>
+        </div>
+        <dl class="mt-2 space-y-0.5 text-xs text-muted">
+          <div><span class="text-ink">{@summary.model || "—"}</span></div>
+          <div :if={strategy_label(@summary)}>{strategy_label(@summary)}</div>
+          <div :if={tokens_label(@summary)} class="tabular-nums">{tokens_label(@summary)}</div>
+          <div :if={cost_label(@summary)} class="tabular-nums">{cost_label(@summary)}</div>
+          <div :if={duration_label(@summary)} class="tabular-nums">{duration_label(@summary)}</div>
+          <div :if={generated_label(@summary)} class="tabular-nums">{generated_label(@summary)}</div>
+        </dl>
+        <div class="mt-2 flex flex-wrap items-center gap-1.5">
+          <.provenance_badge summary={@summary} />
+          <.domain_tag :for={d <- @summary.domains} label={to_string(d)} />
+        </div>
+        <button
+          :if={not @published?}
+          phx-click="publish"
+          phx-value-id={@summary.id}
+          class="mt-3 w-full rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-ink transition-colors duration-150 ease-out-quart hover:bg-surface-inset"
+        >
+          Make canonical
+        </button>
+      </header>
+      <p :if={@summary.headline} class="mt-3 font-display text-sm font-semibold text-ink">
+        {@summary.headline}
+      </p>
+      <p class={[
+        "font-serif text-[0.9375rem] leading-relaxed text-ink",
+        if(@summary.headline, do: "mt-2", else: "mt-3")
+      ]}>
+        {@summary.plain_text}
+      </p>
+    </article>
     """
   end
 
@@ -254,4 +326,11 @@ defmodule OQueMudouWeb.AdminActLive do
   end
 
   defp duration_label(_), do: nil
+
+  # When the run finished, to the minute — the comparison columns show it so runs
+  # can be ordered by recency at a glance.
+  defp generated_label(%{generated_at: %DateTime{} = dt}),
+    do: Calendar.strftime(dt, "%Y-%m-%d %H:%M")
+
+  defp generated_label(_), do: nil
 end

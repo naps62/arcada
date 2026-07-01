@@ -104,6 +104,22 @@ defmodule OQueMudou.Register do
     |> Repo.all()
   end
 
+  @doc """
+  List acts for the admin browser: same ordering and `:domain`/`:period`/`:limit`
+  filters as `list_acts/1`, but preloads each summary's `:provider` so the
+  canonical provider/model can be shown per row without an N+1.
+  """
+  def admin_list_acts(opts \\ []) do
+    from(a in Act,
+      order_by: [desc: a.published_at, desc: a.id],
+      preload: [:edition, summaries: :provider]
+    )
+    |> filter_domain(opts[:domain])
+    |> join_period(fetch_period(opts[:period]))
+    |> maybe_limit(opts[:limit])
+    |> Repo.all()
+  end
+
   # An act can carry the same domain across several summaries; dedupe the rows.
   defp filter_domain(query, nil), do: query
   defp filter_domain(query, domain), do: from(q in join_domain(query, domain), distinct: true)
