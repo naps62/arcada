@@ -64,27 +64,50 @@ defmodule OQueMudouWeb.RegisterLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <section class="border-b border-border py-4">
+    <%!-- The hero's closing element: search is a first-class masthead affordance
+         (Arcada = the arcade you come to look something up in). Bold field +
+         the one primary action the palette allows, then a heavy rule closes the
+         whole masthead before the filters/results. --%>
+    <section class="pb-7 pt-4 sm:pb-9 sm:pt-6">
       <form id="search-form" phx-change="search" phx-submit="search">
-        <label for="search-q" class="sr-only">Pesquisar</label>
-        <div class="relative">
-          <.icon
-            name="hero-magnifying-glass-micro"
-            class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted"
-          />
-          <input
-            type="text"
-            id="search-q"
-            name="q"
-            value={@query}
-            phx-debounce="300"
-            autocomplete="off"
-            placeholder="Descreve a mudança que procuras — ex.: apoios ao arrendamento jovem, alterações ao IRS…"
-            class="w-full rounded-md border border-border bg-surface py-2.5 pl-9 pr-3 text-sm text-ink placeholder:text-muted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-          />
+        <label for="search-q" class="sr-only">Pesquisar diplomas</label>
+        <div class="flex items-stretch gap-2 sm:gap-2.5">
+          <div class="relative flex-1">
+            <.icon
+              name="hero-magnifying-glass"
+              class="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted"
+            />
+            <input
+              type="text"
+              id="search-q"
+              name="q"
+              value={@query}
+              phx-debounce="300"
+              autocomplete="off"
+              placeholder="Descreve a mudança que procuras…"
+              class="h-14 w-full rounded-md border-2 border-border bg-surface pl-12 pr-4 text-base text-ink transition-colors duration-150 ease-out-quart placeholder:text-muted focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/15 sm:h-16 sm:pl-14 sm:text-lg"
+            />
+          </div>
+          <%!-- Desktop only: a strong primary affordance. On mobile the live
+               (debounced) field + Enter is enough, and a second search glyph
+               beside the field's own icon would just be redundant. --%>
+          <button
+            type="submit"
+            class="hidden shrink-0 items-center justify-center rounded-md bg-primary px-8 text-base font-semibold text-primary-fg transition-colors duration-150 ease-out-quart hover:bg-primary-hover focus:outline-none focus:ring-4 focus:ring-primary/25 sm:inline-flex"
+          >
+            Pesquisar
+          </button>
         </div>
+        <p class="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-muted">
+          <.icon name="hero-information-circle-micro" class="size-3.5 shrink-0" />
+          <span>
+            Pesquisa por significado — não precisas das palavras exatas. Isto não é aconselhamento jurídico.
+          </span>
+        </p>
       </form>
     </section>
+
+    <div class="border-b-2 border-rule-strong"></div>
 
     <div :if={@search_results}>
       <p :if={@search_results == []} class="border-b border-border py-16 text-center">

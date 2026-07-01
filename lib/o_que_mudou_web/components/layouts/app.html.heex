@@ -12,7 +12,7 @@
   <div class="border-b border-border">
     <nav
       aria-label="Navegação"
-      class="mx-auto flex min-h-11 max-w-3xl flex-wrap items-center justify-between gap-x-2 gap-y-1 px-4 py-1 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted sm:flex-nowrap sm:gap-x-3 sm:px-6 sm:py-0 sm:tracking-[0.12em]"
+      class="mx-auto flex min-h-12 max-w-3xl flex-wrap items-center justify-between gap-x-2 gap-y-1 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-muted sm:min-h-[3.25rem] sm:flex-nowrap sm:gap-x-3 sm:px-6 sm:py-1 sm:tracking-[0.14em]"
     >
       <div class="flex items-center gap-0.5 sm:gap-1">
         <.link
@@ -65,20 +65,20 @@
       href="/"
       class={[
         "group block text-center transition-colors duration-150 ease-out-quart",
-        assigns[:front_page] && "pt-9 sm:pt-14",
+        assigns[:front_page] && "pt-12 sm:pt-20",
         !assigns[:front_page] && "pt-6"
       ]}
       aria-label="Arcada — início"
     >
       <span
         :if={assigns[:front_page]}
-        class="mb-3 block text-[0.6875rem] font-semibold uppercase tracking-[0.22em] text-muted"
+        class="mb-4 block text-[0.6875rem] font-semibold uppercase tracking-[0.22em] text-muted sm:text-xs"
       >
         Diário da República · Série I
       </span>
       <span class={[
-        "block font-display font-black leading-[0.92] tracking-[-0.03em] text-ink transition-colors duration-150 ease-out-quart group-hover:text-primary",
-        assigns[:front_page] && "text-[clamp(2.5rem,9vw,5rem)]",
+        "block font-display font-black leading-[0.9] tracking-[-0.03em] text-ink transition-colors duration-150 ease-out-quart group-hover:text-primary",
+        assigns[:front_page] && "text-[clamp(2.75rem,10.5vw,5.5rem)]",
         !assigns[:front_page] && "text-[2rem] sm:text-[3.25rem]"
       ]}>
         Arcada
@@ -88,25 +88,15 @@
     <%!-- Front-page standfirst — the page's h1. --%>
     <h1
       :if={assigns[:front_page]}
-      class="mt-4 text-balance px-2 text-center font-display text-[1.5rem] font-light italic leading-tight text-ink sm:text-[1.875rem]"
+      class="mt-5 text-balance px-2 text-center font-display text-[1.75rem] font-light italic leading-tight text-ink sm:mt-6 sm:text-[2.25rem]"
     >
       O que muda, para quem, e quando.
     </h1>
-    <p
-      :if={assigns[:front_page]}
-      class="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-muted"
-    >
-      <.icon name="hero-information-circle-micro" class="size-3.5 shrink-0" />
-      <span>Isto não é aconselhamento jurídico.</span>
-    </p>
 
-    <%!-- Close the masthead: a heavy rule under the hero, a hairline under the
-         compact inner-page nameplate. --%>
-    <div class={[
-      assigns[:front_page] && "mt-8 border-b-2 border-rule-strong sm:mt-10",
-      !assigns[:front_page] && "mt-6 border-b border-border"
-    ]}>
-    </div>
+    <%!-- Inner pages close the compact nameplate with a hairline. The front page
+         leaves the masthead open: the search box below is the hero's closing
+         element (see RegisterLive), so no rule divides them. --%>
+    <div :if={!assigns[:front_page]} class="mt-6 border-b border-border"></div>
   </div>
 </header>
 
