@@ -34,12 +34,44 @@
         apply(theme);
       })();
     </script>
-    <.live_title default="O que mudou — Diário da República em linguagem simples" suffix=" · O que mudou">
+    <.live_title
+      default="Arcada — o Diário da República em linguagem simples"
+      suffix=" · Arcada"
+    >
       {assigns[:page_title]}
     </.live_title>
-    <link rel="preload" href={~p"/fonts/fraunces-latin-wght-normal.woff2"} as="font" type="font/woff2" crossorigin="anonymous" />
-    <link rel="preload" href={~p"/fonts/inter-latin-wght-normal.woff2"} as="font" type="font/woff2" crossorigin="anonymous" />
-    <link rel="preload" href={~p"/fonts/newsreader-latin-wght-normal.woff2"} as="font" type="font/woff2" crossorigin="anonymous" />
+    <link rel="icon" href={~p"/favicon.svg"} type="image/svg+xml" />
+    <link rel="icon" href={~p"/favicon.ico"} sizes="any" />
+    <%!-- Site-level social defaults. Per-page cards/images land with the SEO pass. --%>
+    <meta property="og:site_name" content="Arcada" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pt_PT" />
+    <meta property="og:title" content={assigns[:page_title] || "Arcada"} />
+    <meta property="og:description" content="O Diário da República em linguagem simples." />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={assigns[:page_title] || "Arcada"} />
+    <meta name="twitter:description" content="O Diário da República em linguagem simples." />
+    <link
+      rel="preload"
+      href={~p"/fonts/fraunces-latin-wght-normal.woff2"}
+      as="font"
+      type="font/woff2"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="preload"
+      href={~p"/fonts/inter-latin-wght-normal.woff2"}
+      as="font"
+      type="font/woff2"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="preload"
+      href={~p"/fonts/newsreader-latin-wght-normal.woff2"}
+      as="font"
+      type="font/woff2"
+      crossorigin="anonymous"
+    />
     <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
     <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
     </script>

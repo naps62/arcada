@@ -14,7 +14,7 @@ defmodule OQueMudou.Accounts.UserNotifier do
       Application.get_env(
         :o_que_mudou,
         :mailer_from,
-        {"O que mudou", "nao-responder@o-que-mudou.local"}
+        {"Arcada", "nao-responder@arcada.local"}
       )
 
     email =
@@ -48,7 +48,7 @@ defmodule OQueMudou.Accounts.UserNotifier do
 
     Olá,
 
-    Recebemos um pedido para criar uma conta em O que mudou com este endereço.
+    Recebemos um pedido para criar uma conta na Arcada com este endereço.
 
     Para a activar, confirme a conta neste endereço:
 
@@ -66,7 +66,7 @@ defmodule OQueMudou.Accounts.UserNotifier do
 
     Olá,
 
-    Recebemos um pedido para repor a palavra-passe da sua conta em O que mudou.
+    Recebemos um pedido para repor a palavra-passe da sua conta na Arcada.
 
     Para escolher uma nova palavra-passe, siga este endereço:
 
@@ -85,8 +85,8 @@ defmodule OQueMudou.Accounts.UserNotifier do
 
     Olá,
 
-    Recebemos um pedido para alterar o endereço de email da sua conta em
-    O que mudou para este.
+    Recebemos um pedido para alterar o endereço de email da sua conta na
+    Arcada para este.
 
     Para confirmar a alteração, siga este endereço:
 

@@ -152,7 +152,7 @@ config :swoosh, api_client: Swoosh.ApiClient.Req
 # From address for account emails. Overridden at runtime in prod
 # (MAILER_FROM_EMAIL / MAILER_FROM_NAME) — the Resend sender must be on a
 # verified domain. The dev/test default is only ever seen in the mailbox preview.
-config :o_que_mudou, :mailer_from, {"O que mudou", "nao-responder@o-que-mudou.local"}
+config :o_que_mudou, :mailer_from, {"Arcada", "nao-responder@arcada.local"}
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

@@ -1,6 +1,6 @@
 # o-que-mudou
 
-**"O que mudou para mim" — Diário da República tracker**
+**Arcada — o Diário da República em linguagem simples**
 
 > Status: early planning. This README captures the loose project description; scope and architecture are still being worked out.
 

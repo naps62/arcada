@@ -108,7 +108,7 @@ if config_env() == :prod do
   if from_email = System.get_env("MAILER_FROM_EMAIL") do
     config :o_que_mudou,
            :mailer_from,
-           {System.get_env("MAILER_FROM_NAME") || "O que mudou", from_email}
+           {System.get_env("MAILER_FROM_NAME") || "Arcada", from_email}
   end
 end
 

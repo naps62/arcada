@@ -1,5 +1,5 @@
 ---
-name: O que mudou
+name: Arcada
 description: Plain-language broadsheet for Diário da República — a civic signpost, not an authority.
 colors:
   # Light theme (newsprint, canonical). Dark variants carry the `-dark` suffix.
@@ -102,9 +102,19 @@ components:
     typography: "{typography.kicker}"
 ---
 
-# Design System: O que mudou
+# Design System: Arcada
 
 ## 1. Overview
+
+**The name.** *Arcada* is the arcaded public square — the covered arcade where, historically,
+markets ran and public notices were posted and read aloud. It reads as a *type of civic gathering
+place*, not a toponym, so it scales past the Diário da República to câmaras municipais, juntas and
+other public bodies. (It also nods quietly to Braga's Arcada, which crowns Praça da *República* —
+the founder's home city — but nothing in the product should lean on Braga-specific claims.)
+
+**Tagline / descriptor:** *"O Diário da República em linguagem simples."* — used in the document
+title, meta and social cards. The front-page standfirst ("Para quem muda, e quando.") is the
+editorial deck, kept separate from the descriptor.
 
 **Creative North Star: "The Plain-Language Broadsheet"**
 
@@ -180,7 +190,7 @@ voice that says "this is written for you to read." Inter handles all furniture. 
 three unambiguous jobs; never blurred.
 
 ### Hierarchy
-- **Nameplate** (Fraunces 900, clamp 2.25→3.25rem, lh 1): the masthead "O que mudou", centered,
+- **Nameplate** (Fraunces 900, clamp 2.25→3.25rem, lh 1): the masthead "Arcada", centered,
   with a kicker line above and a heavy rule below.
 - **Deck** (Fraunces 300 italic, ~2rem): the standfirst under the masthead — the standing line.
 - **Headline** (Fraunces 600, 1.25→1.375rem): each act's title, the story headline.
