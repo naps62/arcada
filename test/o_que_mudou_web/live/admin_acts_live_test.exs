@@ -18,7 +18,11 @@ defmodule OQueMudouWeb.AdminActsLiveTest do
 
   defp edition(date) do
     %Edition{}
-    |> Edition.changeset(%{serie: "I", number: "#{System.unique_integer([:positive])}/2026", date: date})
+    |> Edition.changeset(%{
+      serie: "I",
+      number: "#{System.unique_integer([:positive])}/2026",
+      date: date
+    })
     |> Repo.insert!()
   end
 

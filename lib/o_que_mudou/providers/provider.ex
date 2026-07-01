@@ -62,7 +62,11 @@ defmodule OQueMudou.Providers.Provider do
     if get_field(changeset, :max_concurrency) do
       changeset
     else
-      put_change(changeset, :max_concurrency, default_max_concurrency(get_field(changeset, :kind)))
+      put_change(
+        changeset,
+        :max_concurrency,
+        default_max_concurrency(get_field(changeset, :kind))
+      )
     end
   end
 

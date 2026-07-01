@@ -165,7 +165,12 @@ defmodule OQueMudouWeb.AdminActLive do
       </div>
 
       <%!-- One (or zero): a single full-width card reads better than a lone column. --%>
-      <.summary_card :for={s <- @summaries} :if={length(@summaries) < 2} summary={s} published_id={@published_id} />
+      <.summary_card
+        :for={s <- @summaries}
+        :if={length(@summaries) < 2}
+        summary={s}
+        published_id={@published_id}
+      />
     </section>
     """
   end

@@ -74,7 +74,9 @@
     <script
       :if={assigns[:json_ld]}
       type="application/ld+json"
-    ><%= raw(Jason.encode!(@json_ld)) %></script>
+    >
+      <%= raw(Jason.encode!(@json_ld)) %>
+    </script>
     <link
       rel="preload"
       href={~p"/fonts/fraunces-latin-wght-normal.woff2"}

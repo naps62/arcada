@@ -118,7 +118,6 @@ defmodule OQueMudou.RegisterTest do
       refute changeset.valid?
       assert %{domains: [_]} = errors_on(changeset)
     end
-
   end
 
   test "Register.life_domains/0 exposes the fixed taxonomy" do

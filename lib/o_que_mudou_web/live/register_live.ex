@@ -44,7 +44,11 @@ defmodule OQueMudouWeb.RegisterLive do
   # No-op once every ranked id is loaded (the viewport binding is also dropped in
   # the template at that point) or in browse mode. The search token is left
   # untouched so appends don't re-flash the whole results container.
-  def handle_event("load-more", _params, %{assigns: %{search_ids: ids, search_results: loaded}} = socket)
+  def handle_event(
+        "load-more",
+        _params,
+        %{assigns: %{search_ids: ids, search_results: loaded}} = socket
+      )
       when is_list(ids) do
     page = Search.load_page(ids, length(loaded), Search.page_size())
     results = loaded ++ page
@@ -55,12 +59,22 @@ defmodule OQueMudouWeb.RegisterLive do
 
   # Browse mode: append the next page of days. Days are date-disjoint and older
   # than everything loaded, so the new groups just concatenate onto the tail.
-  def handle_event("load-more", _params, %{assigns: %{browse_cursor: %Date{} = cursor} = a} = socket) do
+  def handle_event(
+        "load-more",
+        _params,
+        %{assigns: %{browse_cursor: %Date{} = cursor} = a} = socket
+      ) do
     {more_groups, more?} =
       Register.list_acts_by_day(domain: a.active_domain, period: a.active_period, before: cursor)
 
     groups = a.groups ++ more_groups
-    {:noreply, assign(socket, groups: groups, browse_cursor: oldest_day(groups) || cursor, browse_more?: more?)}
+
+    {:noreply,
+     assign(socket,
+       groups: groups,
+       browse_cursor: oldest_day(groups) || cursor,
+       browse_more?: more?
+     )}
   end
 
   def handle_event("load-more", _params, socket), do: {:noreply, socket}

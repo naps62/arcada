@@ -99,7 +99,10 @@ defmodule OQueMudouWeb.AdminLive do
             </span>
           </.readout>
           <.readout label="Model">
-            <span class={[@settings.active_model && "font-medium text-ink", !@settings.active_model && "text-muted"]}>
+            <span class={[
+              @settings.active_model && "font-medium text-ink",
+              !@settings.active_model && "text-muted"
+            ]}>
               {@settings.active_model || "— not set —"}
             </span>
           </.readout>
@@ -233,7 +236,10 @@ defmodule OQueMudouWeb.AdminLive do
         </div>
       <% else %>
         <ul class="mt-1 divide-y divide-border">
-          <li :for={p <- @providers} class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 py-3.5">
+          <li
+            :for={p <- @providers}
+            class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 py-3.5"
+          >
             <div class="min-w-0">
               <p class="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span class="font-display text-base text-ink">{p.name}</span>

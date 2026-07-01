@@ -102,8 +102,7 @@ defmodule OQueMudouWeb.AdminActsLive do
     <section class="mt-6">
       <h2 class="flex items-baseline justify-between border-b-2 border-rule-strong pb-2 text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-muted">
         <span>
-          Acts
-          <span :if={@acts != []} class="ml-1 font-normal tabular-nums">{length(@acts)}</span>
+          Acts <span :if={@acts != []} class="ml-1 font-normal tabular-nums">{length(@acts)}</span>
         </span>
         <span :if={length(@acts) >= @limit} class="font-normal normal-case tracking-normal">
           showing first {@limit}

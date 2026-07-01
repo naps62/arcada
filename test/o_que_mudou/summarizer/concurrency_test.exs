@@ -12,7 +12,8 @@ defmodule OQueMudou.Summarizer.ConcurrencyTest do
   # Insert a summarize job straight into oban_jobs in the given state, so the gate
   # (which counts executing rows) has something to count without actually running.
   # Ids ascend with insertion order, which is what the id-ordered gate keys on.
-  defp job(state, args), do: Repo.insert!(%Oban.Job{worker: @worker, queue: "summarize", state: state, args: args})
+  defp job(state, args),
+    do: Repo.insert!(%Oban.Job{worker: @worker, queue: "summarize", state: state, args: args})
 
   defp pinned(provider, act_id), do: %{"act_id" => act_id, "provider_id" => provider.id}
 

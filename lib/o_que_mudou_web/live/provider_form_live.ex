@@ -47,8 +47,7 @@ defmodule OQueMudouWeb.ProviderFormLive do
 
     case saved do
       {:ok, _} ->
-        {:noreply,
-         socket |> put_flash(:info, "Provider saved.") |> push_navigate(to: ~p"/admin")}
+        {:noreply, socket |> put_flash(:info, "Provider saved.") |> push_navigate(to: ~p"/admin")}
 
       {:error, cs} ->
         {:noreply, assign_form(socket, cs)}
@@ -166,7 +165,10 @@ defmodule OQueMudouWeb.ProviderFormLive do
         >
           Save provider
         </button>
-        <.link navigate={~p"/admin"} class="text-sm font-medium text-muted hover:text-primary hover:underline">
+        <.link
+          navigate={~p"/admin"}
+          class="text-sm font-medium text-muted hover:text-primary hover:underline"
+        >
           Cancel
         </.link>
       </div>

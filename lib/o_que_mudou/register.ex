@@ -174,7 +174,8 @@ defmodule OQueMudou.Register do
 
   defp acts_on_days(dates, domain) do
     from(a in Act,
-      join: e in assoc(a, :edition), as: :ed,
+      join: e in assoc(a, :edition),
+      as: :ed,
       where: e.date in ^dates,
       order_by: [desc: a.published_at, desc: a.id],
       preload: [:edition, :summaries]
