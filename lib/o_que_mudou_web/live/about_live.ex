@@ -35,6 +35,29 @@ defmodule OQueMudouWeb.AboutLive do
       </div>
 
       <h2 class="mt-11 font-display text-[1.375rem] font-semibold leading-tight text-ink">
+        Como usamos inteligência artificial
+      </h2>
+      <div class="mt-4 space-y-5 font-serif text-[1.0625rem] leading-relaxed text-ink">
+        <p>
+          Sim, usamos modelos de linguagem para escrever os resumos. É o tipo de
+          trabalho que faz sentido entregar a uma máquina: pegar todos os dias em
+          diplomas densos e reescrevê-los, um a um, em português simples.
+        </p>
+        <p>
+          Nada é inventado. O modelo trabalha a partir do texto oficial de cada
+          diploma e resume o que lá está, com instruções para ser factual e não dar
+          opiniões nem conselhos. Nos diplomas mais longos, começamos por
+          identificar as partes que mexem mesmo em alguma coisa e é sobre essas que
+          ele se concentra, em vez de se perder no enchimento.
+        </p>
+        <p>
+          Os modelos também erram. Por isso cada resumo mostra quanto foi revisto:
+          só pela máquina (🤖), pela comunidade (👥) ou verificado (✓). E o texto
+          oficial fica sempre a um clique, para confirmar o que precisar.
+        </p>
+      </div>
+
+      <h2 class="mt-11 font-display text-[1.375rem] font-semibold leading-tight text-ink">
         O nome
       </h2>
       <div class="mt-4 space-y-5 font-serif text-[1.0625rem] leading-relaxed text-ink">

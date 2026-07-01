@@ -8,6 +8,9 @@ defmodule OQueMudouWeb.AboutLiveTest do
     assert html =~ "Sobre a Arcada"
     assert html =~ "Diário da República"
     assert html =~ "Praça da República"
+    # Transparent about the AI processing and the provenance seals.
+    assert html =~ "Como usamos inteligência artificial"
+    assert html =~ "🤖"
     # The Braga photo is embedded and its CC attribution is present.
     assert html =~ "/images/arcada-braga.jpg"
     assert html =~ "CC BY-SA 4.0"
