@@ -7,9 +7,12 @@ defmodule OQueMudou.SummarizerHelpers do
   @doc """
   The `claude -p --output-format json` envelope wrapping our inner JSON. `extra`
   merges envelope-level fields (e.g. `total_cost_usd`, `usage`, `duration_ms`).
+  `headline` defaults to a placeholder so existing call sites that don't care
+  about it still get a valid inner payload.
   """
-  def claude_envelope(plain_text, domains, extra \\ %{}) do
-    inner = Jason.encode!(%{"plain_text" => plain_text, "domains" => domains})
+  def claude_envelope(plain_text, domains, extra \\ %{}, headline \\ "Título de teste") do
+    inner =
+      Jason.encode!(%{"plain_text" => plain_text, "headline" => headline, "domains" => domains})
 
     %{"type" => "result", "subtype" => "success", "result" => inner}
     |> Map.merge(extra)

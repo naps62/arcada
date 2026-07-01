@@ -17,11 +17,11 @@ defmodule OQueMudou.Summarizer.Adapters.OpenAI do
   alias OQueMudou.Register.Act
   alias OQueMudou.Providers.Provider
 
-  @prompt_version "2026-06-28.openai.1"
+  @prompt_version "2026-07-01.openai.1"
 
   @json_format """
   Responde APENAS com um objeto JSON válido, sem texto antes ou depois, no formato:
-  {"plain_text": "<resumo>", "domains": ["<dominio>", ...]}
+  {"plain_text": "<resumo>", "headline": "<título>", "domains": ["<dominio>", ...]}
   Os domínios válidos são EXATAMENTE: #{Enum.join(OQueMudou.Register.life_domains(), ", ")}.
   """
 
@@ -36,6 +36,7 @@ defmodule OQueMudou.Summarizer.Adapters.OpenAI do
       {:ok,
        %{
          plain_text: obj["plain_text"],
+         headline: obj["headline"],
          domains: valid_domains(obj["domains"]),
          model: model,
          prompt_version: @prompt_version

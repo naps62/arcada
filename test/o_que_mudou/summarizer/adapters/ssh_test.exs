@@ -19,10 +19,19 @@ defmodule OQueMudou.Summarizer.Adapters.SshTest do
     do: Ssh.summarize(act, ssh_provider(), model, act.full_text || act.title)
 
   test "parses claude envelope into the summary contract" do
-    stub_ssh_runner(fn _ -> {:ok, claude_envelope("Muda o IRS.", ["fiscal", "trabalho"])} end)
+    stub_ssh_runner(fn _ ->
+      {:ok,
+       claude_envelope(
+         "Muda o IRS.",
+         ["fiscal", "trabalho"],
+         %{},
+         "IRS muda para quem trabalha por conta própria"
+       )}
+    end)
 
     assert {:ok, attrs} = run()
     assert attrs.plain_text == "Muda o IRS."
+    assert attrs.headline == "IRS muda para quem trabalha por conta própria"
     assert attrs.domains == [:fiscal, :trabalho]
     assert attrs.model == "claude-cli"
     assert is_binary(attrs.prompt_version)
@@ -75,7 +84,7 @@ defmodule OQueMudou.Summarizer.Adapters.SshTest do
   test "tolerates code-fenced JSON from the model" do
     inner = "```json\n" <> Jason.encode!(%{"plain_text" => "y", "domains" => []}) <> "\n```"
     stub_ssh_runner(fn _ -> {:ok, Jason.encode!(%{"result" => inner})} end)
-    assert {:ok, %{plain_text: "y", domains: []}} = run()
+    assert {:ok, %{plain_text: "y", headline: nil, domains: []}} = run()
   end
 
   test "surfaces ssh failures" do

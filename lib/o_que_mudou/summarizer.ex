@@ -36,6 +36,11 @@ defmodule OQueMudou.Summarizer do
   concreto; para quem (quem fica afetado); e a partir de quando, se o diploma o \
   indicar. Classifica também o diploma em um ou mais domínios de vida.
 
+  Escreve também um título curto (6 a 10 palavras) que diga, em linguagem simples, \
+  o que muda — não a designação formal do diploma (não repitas "Decreto-Lei n.º \
+  .../2026" nem o nome do emissor). É o título que substitui a designação formal na \
+  interface; deve fazer sentido sozinho, sem ler o resumo.
+
   Regras de escrita:
   - Começa pela própria mudança, não pela instituição que a emitiu. Não nomeies o \
   emissor (ministério, tribunal, secretaria, etc.) a não ser que seja essencial \

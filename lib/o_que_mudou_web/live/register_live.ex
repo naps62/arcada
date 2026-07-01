@@ -249,9 +249,12 @@ defmodule OQueMudouWeb.RegisterLive do
           </p>
           <h3 class="mt-1.5 text-pretty font-display text-xl font-semibold leading-snug text-ink sm:text-[1.375rem]">
             <.link navigate={~p"/acts/#{@act.id}"} class="rounded-sm hover:text-primary">
-              {@act.title || @act.tipo}
+              {@summary.headline || @act.title || @act.tipo}
             </.link>
           </h3>
+          <p :if={@summary.headline} class="mt-1 text-xs text-muted">
+            {@act.title || @act.tipo}
+          </p>
         </div>
         <div class="mt-0.5 flex shrink-0 flex-col items-end gap-1">
           <.provenance_badge summary={@summary} />

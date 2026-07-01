@@ -176,7 +176,15 @@ defmodule OQueMudouWeb.AdminActLive do
             <.icon name="hero-check-circle-micro" class="size-4" /> published
           </span>
         </div>
-        <p class="mt-3 font-serif text-[1.0625rem] leading-relaxed text-ink">{s.plain_text}</p>
+        <p :if={s.headline} class="mt-3 font-display text-base font-semibold text-ink">
+          {s.headline}
+        </p>
+        <p class={[
+          "font-serif text-[1.0625rem] leading-relaxed text-ink",
+          if(s.headline, do: "mt-2", else: "mt-3")
+        ]}>
+          {s.plain_text}
+        </p>
         <div :if={s.domains != []} class="mt-2 flex flex-wrap gap-1.5">
           <.domain_tag :for={d <- s.domains} label={to_string(d)} />
         </div>

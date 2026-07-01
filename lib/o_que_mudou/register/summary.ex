@@ -15,6 +15,10 @@ defmodule OQueMudou.Register.Summary do
 
   schema "summaries" do
     field :plain_text, :string
+    # Short plain-language headline ("what changed", ~6-10 words) shown as the
+    # story headline in place of the act's formal designation. Null on legacy
+    # rows / summaries that predate this field.
+    field :headline, :string
 
     field :domains, {:array, Ecto.Enum},
       values: Register.life_domains() |> Enum.map(&String.to_atom/1),
@@ -51,7 +55,7 @@ defmodule OQueMudou.Register.Summary do
   end
 
   @required ~w(act_id plain_text)a
-  @optional ~w(domains model prompt_version status truncated text_strategy ranker_model input_tokens output_tokens cost_usd cost_source duration_ms provider_id generated_at validated_at)a
+  @optional ~w(headline domains model prompt_version status truncated text_strategy ranker_model input_tokens output_tokens cost_usd cost_source duration_ms provider_id generated_at validated_at)a
 
   def changeset(summary, attrs) do
     summary
