@@ -12,11 +12,15 @@ defmodule OQueMudou.Scraper.Client do
        (a self-generated `Session_GUID` is accepted).
 
   `apiVersion` hashes also rotate; they're read from config with the
-  last-known-good values as defaults. The list action is the load-bearing one;
-  the detail action degrades gracefully when its hash drifts.
+  last-known-good values as defaults, then **self-healed at runtime**: when a
+  data-action reports `versionInfo.hasApiVersionChanged: true`, we re-derive the
+  current hash via `OQueMudou.Scraper.ApiVersionResolver`, swap it in, and retry
+  once — so the scraper survives DRE redeploys without a config edit.
   """
 
-  alias OQueMudou.Scraper.Parser
+  require Logger
+
+  alias OQueMudou.Scraper.{ApiVersionResolver, Parser}
 
   @list_path "/dr/screenservices/dr/Home/WB_Serie1_List/DataActionGetDataAndApplicationSettings"
   @detail_path "/dr/screenservices/dr/Legislacao_Conteudos/Conteudo_Detalhe/DataActionGetAllConteudoDetalheData"
@@ -63,8 +67,33 @@ defmodule OQueMudou.Scraper.Client do
     end
   end
 
-  @doc "List the Série I edition(s) (with their acts) published on `date`. Returns `{:ok, raw_json}`."
+  @doc """
+  List the Série I edition(s) (with their acts) published on `date`.
+
+  Returns `{:ok, raw_json, client}` — the returned client carries any
+  self-healed `list_api_version` so callers can reuse it for the rest of the
+  run. Returns `{:error, reason}` on transport failure.
+  """
   def list_editions(%__MODULE__{} = client, %Date{} = date) do
+    with {:ok, body} <- do_list(client, date) do
+      if version_changed?(body) do
+        case heal(client, :list) do
+          {:ok, healed} ->
+            case do_list(healed, date) do
+              {:ok, retried} -> {:ok, retried, healed}
+              {:error, reason} -> {:error, reason}
+            end
+
+          :error ->
+            {:ok, body, client}
+        end
+      else
+        {:ok, body, client}
+      end
+    end
+  end
+
+  defp do_list(client, date) do
     iso = Date.to_iso8601(date)
 
     variables = %{
@@ -86,10 +115,28 @@ defmodule OQueMudou.Scraper.Client do
 
   @doc """
   Fetch an act's detail (full text + PDF URL) by `tipo` slug + `key`.
-  Returns `{:ok, %{full_text:, pdf_url:}}` or `{:error, reason}` — callers treat
-  any error as "no enrichment" rather than failing the scrape.
+
+  Returns `{:ok, %{full_text:, pdf_url:}, client}` or `{:error, reason, client}`
+  — callers treat any error as "no enrichment" rather than failing the scrape.
+  The returned client carries any self-healed `detail_api_version`.
+
+  On a rotated `apiVersion` (`{:error, :api_version_changed}`) we re-derive the
+  current hash once and retry before giving up.
   """
   def act_detail(%__MODULE__{} = client, tipo, key) do
+    case do_act_detail(client, tipo, key) do
+      {:error, :api_version_changed} ->
+        case heal(client, :detail) do
+          {:ok, healed} -> with_client(do_act_detail(healed, tipo, key), healed)
+          :error -> {:error, :api_version_changed, client}
+        end
+
+      result ->
+        with_client(result, client)
+    end
+  end
+
+  defp do_act_detail(client, tipo, key) do
     variables = %{
       "Tipo" => tipo,
       "Key" => key,
@@ -110,6 +157,45 @@ defmodule OQueMudou.Scraper.Client do
       Parser.parse_detail(resp.body)
     end
   end
+
+  @doc "Plain GET returning the (Req-decoded) response body — used by the resolver."
+  def http_get(%__MODULE__{} = client, path) do
+    case request(client, :get, path) do
+      {:ok, resp} -> {:ok, resp.body}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  # --- self-healing ---
+
+  defp with_client({:ok, attrs}, client), do: {:ok, attrs, client}
+  defp with_client({:error, reason}, client), do: {:error, reason, client}
+
+  defp version_changed?(%{"versionInfo" => %{"hasApiVersionChanged" => true}}), do: true
+  defp version_changed?(_), do: false
+
+  # Re-derive one action's live apiVersion. Returns `{:ok, client}` with the
+  # fresh hash only if it actually differs from the current one (otherwise a
+  # retry would fail identically), else `:error`.
+  defp heal(client, key) do
+    current = version_of(client, key)
+
+    case ApiVersionResolver.resolve(client, [key]) do
+      {:ok, %{^key => fresh}} when is_binary(fresh) and fresh != current ->
+        Logger.info("scraper: re-derived #{key} apiVersion #{current} -> #{fresh}")
+        {:ok, put_version(client, key, fresh)}
+
+      other ->
+        Logger.warning("scraper: could not re-derive #{key} apiVersion (#{inspect(other)})")
+        :error
+    end
+  end
+
+  defp version_of(client, :list), do: client.list_api_version
+  defp version_of(client, :detail), do: client.detail_api_version
+
+  defp put_version(client, :list, v), do: %{client | list_api_version: v}
+  defp put_version(client, :detail, v), do: %{client | detail_api_version: v}
 
   # --- internals ---
 

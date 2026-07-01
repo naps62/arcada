@@ -108,6 +108,26 @@ Example resolved artifacts:
 5. Tolerant parsing + re-derive `moduleVersion`/`apiVersion` on a version-changed flag so
    the scraper survives DRE redeploys. Idempotent on re-run.
 
+## Self-healing apiVersion re-derivation (issue #14 — DONE)
+
+The scraper re-derives a rotated `apiVersion` at runtime, over **plain HTTP** (no
+browser). When a data-action responds `versionInfo.hasApiVersionChanged: true`,
+`OQueMudou.Scraper.Client` re-derives the current hash, swaps it into the client,
+and retries the call once — surviving DRE redeploys with no config edit. The
+threaded client means the fresh hash is reused for the rest of the run.
+
+Derivation (`OQueMudou.Scraper.ApiVersionResolver`):
+1. `GET /dr/moduleservices/moduleinfo` → `manifest.urlVersions`: every asset path
+   (incl. each screen's `*.mvc.js`) mapped to its rotating `?<hash>` suffix. This
+   is the piece that made **option 1** (static mvc.js parse) viable — the hashed
+   script URL is discoverable without running the OutSystems manifest loader.
+2. `GET /dr/scripts/<Module>.<Screen>.mvc.js?<hash>` → the screen bundle.
+3. Extract the 3rd arg of the target `callDataAction("<Action>", "<path>",
+   "<apiVersion>", …)`.
+
+The hashes below are still the compile-time defaults (last-known-good); they're
+now just the seed/fallback if re-derivation ever fails.
+
 ## apiVersion hash table (re-derive on deploy)
 | action | apiVersion |
 |---|---|
