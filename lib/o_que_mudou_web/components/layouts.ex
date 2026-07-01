@@ -158,7 +158,7 @@ defmodule OQueMudouWeb.Layouts do
         aria-pressed="false"
         title={label}
         aria-label={"Tema: #{label}"}
-        class="flex size-7 items-center justify-center rounded-full text-muted transition-colors duration-150 ease-out-quart hover:text-ink aria-pressed:bg-ink aria-pressed:text-bg"
+        class="flex size-6 items-center justify-center rounded-full text-muted transition-colors duration-150 ease-out-quart hover:text-ink aria-pressed:bg-ink aria-pressed:text-bg sm:size-7"
       >
         <.icon name={icon} class="size-3.5" />
       </button>
