@@ -17,6 +17,28 @@ defmodule OQueMudouWeb.AboutLive do
     <article class="mx-auto max-w-reading py-12 sm:py-16">
       <h1 class="sr-only">Sobre a Arcada</h1>
 
+      <figure class="mb-8">
+        <img
+          src={~p"/images/arcada-braga.jpg"}
+          width="1280"
+          height="910"
+          loading="lazy"
+          alt="A Arcada e a Igreja da Lapa, ao anoitecer, na Praça da República em Braga."
+          class="w-full rounded-[3px] border border-border"
+        />
+        <figcaption class="mt-2 text-center text-xs text-muted">
+          A Arcada, na Praça da República, em Braga.
+          <span aria-hidden="true">·</span>
+          <a
+            href="https://commons.wikimedia.org/wiki/File:Arcada_in_Braga_03.jpg"
+            rel="noopener"
+            class="hover:text-primary hover:underline"
+          >
+            Foto: Krzysztof Golik, CC BY-SA 4.0
+          </a>
+        </figcaption>
+      </figure>
+
       <div class="space-y-5 font-serif text-[1.0625rem] leading-relaxed text-ink">
         <p>
           A Arcada pega no <em>Diário da República, Série I</em>
@@ -70,28 +92,6 @@ defmodule OQueMudouWeb.AboutLive do
           as pessoas se juntam e se fala claro.
         </p>
       </div>
-
-      <figure class="mt-8">
-        <img
-          src={~p"/images/arcada-braga.jpg"}
-          width="1280"
-          height="910"
-          loading="lazy"
-          alt="A Arcada e a Igreja da Lapa, ao anoitecer, na Praça da República em Braga."
-          class="w-full rounded-[3px] border border-border"
-        />
-        <figcaption class="mt-2 text-center text-xs text-muted">
-          A Arcada, na Praça da República, em Braga.
-          <span aria-hidden="true">·</span>
-          <a
-            href="https://commons.wikimedia.org/wiki/File:Arcada_in_Braga_03.jpg"
-            rel="noopener"
-            class="hover:text-primary hover:underline"
-          >
-            Foto: Krzysztof Golik, CC BY-SA 4.0
-          </a>
-        </figcaption>
-      </figure>
 
       <h2 class="mt-11 font-display text-[1.375rem] font-semibold leading-tight text-ink">
         Contacto
