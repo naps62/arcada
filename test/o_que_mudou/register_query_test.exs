@@ -156,4 +156,62 @@ defmodule OQueMudou.RegisterQueryTest do
       assert [%Summary{} | _] = act.summaries
     end
   end
+
+  describe "list_acts_by_day/1" do
+    # One act on each of three consecutive days.
+    defp three_days do
+      for d <- 1..3 do
+        date = Date.new!(2026, 6, d)
+        act(edition(date), "a-#{d}", date)
+      end
+    end
+
+    test "returns days newest-first, grouped, capping the page and flagging more" do
+      three_days()
+
+      {groups, more?} = Register.list_acts_by_day(days: 2)
+
+      assert more?
+      assert Enum.map(groups, &elem(&1, 0)) == [~D[2026-06-03], ~D[2026-06-02]]
+    end
+
+    test "the :before cursor pages to strictly older days, exhausting the list" do
+      three_days()
+
+      {groups, more?} = Register.list_acts_by_day(days: 2, before: ~D[2026-06-02])
+
+      refute more?
+      assert Enum.map(groups, &elem(&1, 0)) == [~D[2026-06-01]]
+    end
+
+    test "keeps a day's acts whole — a day is never split across the boundary" do
+      date = ~D[2026-06-10]
+      ed = edition(date)
+      for i <- 1..3, do: act(ed, "x-#{i}", date)
+
+      {groups, more?} = Register.list_acts_by_day(days: 5)
+
+      refute more?
+      assert [{^date, acts}] = groups
+      assert length(acts) == 3
+    end
+
+    test "filters by domain and preloads" do
+      date = ~D[2026-06-24]
+      ed = edition(date)
+      summarize(act(ed, "f", date), [:fiscal])
+      summarize(act(ed, "t", date), [:trabalho])
+
+      {groups, _more?} = Register.list_acts_by_day(domain: "fiscal")
+
+      assert [{^date, [act]}] = groups
+      assert act.dre_id == "f"
+      assert %Edition{} = act.edition
+      assert [%Summary{} | _] = act.summaries
+    end
+
+    test "empty listing returns no groups and no more pages" do
+      assert Register.list_acts_by_day() == {[], false}
+    end
+  end
 end

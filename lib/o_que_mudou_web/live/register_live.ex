@@ -20,6 +20,8 @@ defmodule OQueMudouWeb.RegisterLive do
        search_results: nil,
        search_ids: nil,
        search_more?: false,
+       browse_cursor: nil,
+       browse_more?: false,
        # Bumped on every completed search so the results container patches (and
        # the FlashOnResult hook fires) even when the results are identical —
        # e.g. deleting a character re-runs the search but returns the same acts.
@@ -51,6 +53,16 @@ defmodule OQueMudouWeb.RegisterLive do
      assign(socket, search_results: results, search_more?: length(ids) > length(results))}
   end
 
+  # Browse mode: append the next page of days. Days are date-disjoint and older
+  # than everything loaded, so the new groups just concatenate onto the tail.
+  def handle_event("load-more", _params, %{assigns: %{browse_cursor: %Date{} = cursor} = a} = socket) do
+    {more_groups, more?} =
+      Register.list_acts_by_day(domain: a.active_domain, period: a.active_period, before: cursor)
+
+    groups = a.groups ++ more_groups
+    {:noreply, assign(socket, groups: groups, browse_cursor: oldest_day(groups) || cursor, browse_more?: more?)}
+  end
+
   def handle_event("load-more", _params, socket), do: {:noreply, socket}
 
   # The URL is the source of truth: `?q=…` is search mode (deep-linkable),
@@ -75,6 +87,8 @@ defmodule OQueMudouWeb.RegisterLive do
       search_ids: ids,
       search_results: page,
       search_more?: length(ids) > length(page),
+      browse_cursor: nil,
+      browse_more?: false,
       search_token: socket.assigns.search_token + 1,
       page_title: "Pesquisa: #{query}",
       page_description: SEO.default_description(),
@@ -86,10 +100,15 @@ defmodule OQueMudouWeb.RegisterLive do
     )
   end
 
+  # Browse mode is paginated by day (infinite scroll): load the newest page of
+  # days now, then "load-more" appends older days. `@total` is the *true* filtered
+  # count (from the period badges), not just what's loaded — it's a per-period
+  # tally, so read off the active period (or `:tudo` for all-time).
   defp assign_browse(socket, params) do
     domain = params["domain"]
     period = Register.fetch_period(params["period"])
-    acts = Register.list_acts(domain: domain, period: period, limit: 300)
+    period_counts = Register.period_counts(domain: domain)
+    {groups, more?} = Register.list_acts_by_day(domain: domain, period: period)
 
     assign(socket,
       query: "",
@@ -100,9 +119,11 @@ defmodule OQueMudouWeb.RegisterLive do
       active_period: period,
       # Each axis's badges reflect the *other* axis's selection.
       domain_counts: Register.domain_counts(period: period),
-      period_counts: Register.period_counts(domain: domain),
-      groups: group_by_date(acts),
-      total: length(acts),
+      period_counts: period_counts,
+      groups: groups,
+      browse_cursor: oldest_day(groups),
+      browse_more?: more?,
+      total: Map.get(period_counts, period || :tudo, 0),
       page_title: page_title(domain, period),
       page_description: browse_description(domain, period),
       canonical_url: browse_canonical(domain, period),
@@ -155,12 +176,10 @@ defmodule OQueMudouWeb.RegisterLive do
     SEO.url(~p"/?#{params}")
   end
 
-  # Group acts by their edition's publication date, newest day first.
-  defp group_by_date(acts) do
-    acts
-    |> Enum.group_by(& &1.edition.date)
-    |> Enum.sort_by(fn {date, _} -> date end, {:desc, Date})
-  end
+  # The cursor for the next page: the oldest day loaded so far (groups run newest
+  # day first, so it's the last group). `nil` when nothing is loaded.
+  defp oldest_day([]), do: nil
+  defp oldest_day(groups), do: groups |> List.last() |> elem(0)
 
   # Show the published summary (falls back to the latest) so the homepage
   # reflects the admin's published choice.
@@ -348,6 +367,18 @@ defmodule OQueMudouWeb.RegisterLive do
           </li>
         </ul>
       </section>
+
+      <%!-- Infinite scroll: this sentinel loads the next page of days when it
+           scrolls into view. Dropped once the oldest day is loaded, so scrolling
+           stops firing. `pb-24` gives it runway below the last day. --%>
+      <div
+        :if={@browse_more?}
+        id="browse-sentinel"
+        phx-viewport-bottom="load-more"
+        phx-throttle="300"
+        class="pb-24"
+      >
+      </div>
     </div>
     """
   end

@@ -117,6 +117,79 @@ defmodule OQueMudou.Register do
     |> Repo.all()
   end
 
+  @days_per_page 10
+
+  @doc "The page size (in distinct publication days) used by `list_acts_by_day/1`."
+  def days_per_page, do: @days_per_page
+
+  @doc """
+  One page of the browse listing, already grouped by publication day and newest
+  day first — the unit of the homepage's infinite scroll. A day is never split
+  across pages (each day's acts arrive whole), so callers can simply concatenate
+  successive pages' groups.
+
+  Returns `{groups, more?}` where `groups` is `[{date, [act]}]` and `more?` says
+  whether older days remain. `opts`: `:domain` and `:period` (as in
+  `list_acts/1`), `:before` (a `Date` cursor — only days strictly older than it;
+  omit for the newest page) and `:days` (page size, default `days_per_page/0`).
+  """
+  def list_acts_by_day(opts \\ []) do
+    days = Keyword.get(opts, :days, @days_per_page)
+    domain = opts[:domain]
+    period = fetch_period(opts[:period])
+
+    # Ask for one extra day so we learn whether more remain without a 2nd query.
+    # `join_domain` (not `filter_domain`) here: `distinct_dates` owns the single
+    # DISTINCT, and Ecto forbids two distinct expressions in one query.
+    dates =
+      from(a in Act, join: e in assoc(a, :edition), as: :ed)
+      |> join_domain(domain)
+      |> filter_day_period(period)
+      |> filter_before(opts[:before])
+      |> distinct_dates(days + 1)
+      |> Repo.all()
+
+    {page_dates, more?} = Enum.split(dates, days)
+    {page_dates |> acts_on_days(domain) |> group_by_day(), more? != []}
+  end
+
+  defp distinct_dates(query, limit) do
+    from([ed: e] in query,
+      select: e.date,
+      distinct: true,
+      order_by: [desc: e.date],
+      limit: ^limit
+    )
+  end
+
+  defp filter_day_period(query, nil), do: query
+
+  defp filter_day_period(query, period),
+    do: from([ed: e] in query, where: e.date >= ^period_start(period))
+
+  defp filter_before(query, nil), do: query
+  defp filter_before(query, %Date{} = before), do: from([ed: e] in query, where: e.date < ^before)
+
+  defp acts_on_days([], _domain), do: []
+
+  defp acts_on_days(dates, domain) do
+    from(a in Act,
+      join: e in assoc(a, :edition), as: :ed,
+      where: e.date in ^dates,
+      order_by: [desc: a.published_at, desc: a.id],
+      preload: [:edition, :summaries]
+    )
+    |> filter_domain(domain)
+    |> Repo.all()
+  end
+
+  # Group acts by their edition's publication date, newest day first.
+  defp group_by_day(acts) do
+    acts
+    |> Enum.group_by(& &1.edition.date)
+    |> Enum.sort_by(fn {date, _} -> date end, {:desc, Date})
+  end
+
   # An act can carry the same domain across several summaries; dedupe the rows.
   defp filter_domain(query, nil), do: query
   defp filter_domain(query, domain), do: from(q in join_domain(query, domain), distinct: true)

@@ -83,4 +83,46 @@ defmodule OQueMudouWeb.RegisterLiveTest do
     assert html =~ "fiscal"
     assert html =~ "Tudo"
   end
+
+  test "browse infinite-scrolls older days on demand", %{conn: conn} do
+    # 12 publication days, one act each; the page size is 10 days, so the two
+    # oldest days only appear after a load-more. Zero-padded titles so no title
+    # is a substring of another (e.g. "01" vs "12").
+    for d <- 1..12 do
+      date = Date.new!(2026, 6, d)
+      label = String.pad_leading("#{d}", 2, "0")
+
+      ed =
+        %Edition{}
+        |> Edition.changeset(%{serie: "I", number: "n-#{d}", date: date})
+        |> Repo.insert!()
+
+      %Act{}
+      |> Act.changeset(%{
+        edition_id: ed.id,
+        dre_id: "d-#{d}",
+        title: "Diploma #{label}",
+        published_at: date
+      })
+      |> Repo.insert!()
+    end
+
+    {:ok, lv, html} = live(conn, ~p"/")
+
+    # Newest 10 days (12 down to 03) are on the first page; 02 and 01 are not.
+    assert html =~ "Diploma 12"
+    assert html =~ "Diploma 03"
+    refute html =~ "Diploma 02"
+    refute html =~ "Diploma 01"
+    assert html =~ ~s(phx-viewport-bottom="load-more")
+
+    html = render_hook(lv, "load-more", %{})
+
+    # The remaining days append; the sentinel drops once everything is loaded.
+    assert html =~ "Diploma 02"
+    assert html =~ "Diploma 01"
+    # …without dropping the already-loaded days.
+    assert html =~ "Diploma 12"
+    refute html =~ ~s(phx-viewport-bottom="load-more")
+  end
 end
