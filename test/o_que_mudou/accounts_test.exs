@@ -430,6 +430,19 @@ defmodule OQueMudou.AccountsTest do
       assert user_token.sent_to == user.email
       assert user_token.context == "confirm"
     end
+
+    test "omits Reply-To by default", %{user: user} do
+      {:ok, email} = Accounts.deliver_user_confirmation_instructions(user, & &1)
+      assert email.reply_to == nil
+    end
+
+    test "sets Reply-To when :mailer_reply_to is configured", %{user: user} do
+      Application.put_env(:o_que_mudou, :mailer_reply_to, "oquemudou@example.com")
+      on_exit(fn -> Application.delete_env(:o_que_mudou, :mailer_reply_to) end)
+
+      {:ok, email} = Accounts.deliver_user_confirmation_instructions(user, & &1)
+      assert {_name, "oquemudou@example.com"} = email.reply_to
+    end
   end
 
   describe "confirm_user/1" do

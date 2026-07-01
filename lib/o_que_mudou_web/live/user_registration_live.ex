@@ -12,7 +12,7 @@ defmodule OQueMudouWeb.UserRegistrationLive do
         <:subtitle>
           Já tem conta? <.link
             navigate={~p"/users/log_in"}
-            class="font-semibold text-brand hover:underline"
+            class="font-semibold text-primary hover:underline"
           >
             Entrar
           </.link>.

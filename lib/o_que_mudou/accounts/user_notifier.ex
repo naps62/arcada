@@ -23,9 +23,20 @@ defmodule OQueMudou.Accounts.UserNotifier do
       |> from(from)
       |> subject(subject)
       |> text_body(body)
+      |> maybe_reply_to()
 
     with {:ok, _metadata} <- Mailer.deliver(email) do
       {:ok, email}
+    end
+  end
+
+  # We send from a no-reply address. When `:mailer_reply_to` is configured
+  # (MAILER_REPLY_TO env), point replies at a real, monitored inbox so people
+  # who reply anyway are heard. Unset → no Reply-To (plain no-reply).
+  defp maybe_reply_to(email) do
+    case Application.get_env(:o_que_mudou, :mailer_reply_to) do
+      addr when is_binary(addr) and addr != "" -> reply_to(email, addr)
+      _ -> email
     end
   end
 

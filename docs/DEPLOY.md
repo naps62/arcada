@@ -30,6 +30,7 @@ cron `{"0 9 * * 1-5", OQueMudou.Scraper.IngestWorker}` with queues
 | `RESEND_API_KEY` | **secret**; enables real delivery of account emails (verification + password reset) via Resend. Without it the mailer no-ops. |
 | `MAILER_FROM_EMAIL` | sender for account emails — must be on a Resend-verified domain (e.g. `nao-responder@oqm.example`) |
 | `MAILER_FROM_NAME` | optional; display name for the sender (defaults to `O que mudou`) |
+| `MAILER_REPLY_TO` | optional; a real monitored inbox (e.g. a SimpleLogin alias) that replies to account emails are directed to. Unset = plain no-reply. |
 
 > Without a configured summarizer the app stays on the `manual` adapter
 > (no external calls); ingestion still runs and acts appear unsummarized.
