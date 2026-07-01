@@ -6,7 +6,7 @@ defmodule OQueMudouWeb.RegisterLive do
   """
   use OQueMudouWeb, :live_view
 
-  alias OQueMudou.Register
+  alias OQueMudou.{Register, Search}
 
   @impl true
   def mount(_params, _session, socket) do
@@ -14,8 +14,17 @@ defmodule OQueMudouWeb.RegisterLive do
      assign(socket,
        front_page: true,
        domains: Register.life_domains(),
-       periods: Register.periods()
+       periods: Register.periods(),
+       query: "",
+       search_results: nil
      )}
+  end
+
+  @impl true
+  def handle_event("search", %{"q" => query}, socket) do
+    query = String.trim(query)
+    results = if query == "", do: nil, else: Search.search(query)
+    {:noreply, assign(socket, query: query, search_results: results)}
   end
 
   @impl true
@@ -55,101 +64,139 @@ defmodule OQueMudouWeb.RegisterLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <section aria-label="Filtros" class="border-b border-border">
-      <.filter_row id="filtro-quando" label="Quando">
-        <li>
-          <.section_link
-            label="Tudo"
-            patch={filter_path(@active_domain, nil)}
-            active={is_nil(@active_period)}
+    <section class="border-b border-border py-4">
+      <form id="search-form" phx-change="search" phx-submit="search">
+        <label for="search-q" class="sr-only">Pesquisar</label>
+        <div class="relative">
+          <.icon
+            name="hero-magnifying-glass-micro"
+            class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted"
           />
-        </li>
-        <li :for={p <- @periods}>
-          <.section_link
-            label={period_label(p)}
-            count={@period_counts[p]}
-            patch={filter_path(@active_domain, p)}
-            active={@active_period == p}
+          <input
+            type="text"
+            id="search-q"
+            name="q"
+            value={@query}
+            phx-debounce="300"
+            autocomplete="off"
+            placeholder="Descreve a mudança que procuras — ex.: apoios ao arrendamento jovem, alterações ao IRS…"
+            class="w-full rounded-md border border-border bg-surface py-2.5 pl-9 pr-3 text-sm text-ink placeholder:text-muted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
-        </li>
-      </.filter_row>
-
-      <.filter_row id="filtro-tema" label="Tema" class="border-t border-border">
-        <li>
-          <.section_link
-            label="Tudo"
-            patch={filter_path(nil, @active_period)}
-            active={is_nil(@active_domain)}
-          />
-        </li>
-        <li :for={d <- @domains}>
-          <.section_link
-            label={d}
-            count={@domain_counts[d]}
-            patch={filter_path(d, @active_period)}
-            active={@active_domain == d}
-          />
-        </li>
-      </.filter_row>
+        </div>
+      </form>
     </section>
 
-    <%!-- Only while filtering: this is the filter's feedback + reset, not a
-         page-wide tally (a grand total clashes with the per-day section counts). --%>
-    <div
-      :if={@groups != [] && (@active_domain || @active_period)}
-      class="flex items-baseline justify-between gap-4 border-b border-border py-2.5"
-    >
-      <p class="text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
-        <span class="font-semibold tabular-nums text-ink">{@total}</span>
-        {if @total == 1, do: "diploma", else: "diplomas"}
-        <span :if={@active_period}>
-          · {String.downcase(period_label(@active_period))}
-        </span><span :if={@active_domain}>
-          · {@active_domain}
+    <div :if={@search_results}>
+      <p :if={@search_results == []} class="border-b border-border py-16 text-center">
+        <.icon name="hero-document-magnifying-glass" class="mx-auto size-8 text-muted" />
+        <span class="mt-3 block font-display text-lg text-ink">
+          Nada encontrado para "{@query}".
         </span>
       </p>
-      <.link
-        patch={~p"/"}
-        class="inline-flex shrink-0 items-center gap-1 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted transition-colors duration-150 ease-out-quart hover:text-primary"
-      >
-        <.icon name="hero-x-mark-micro" class="size-3.5" /> limpar
-      </.link>
-    </div>
-
-    <div :if={@groups == []} class="border-b border-border py-16 text-center">
-      <.icon name="hero-document-magnifying-glass" class="mx-auto size-8 text-muted" />
-      <p class="mt-3 font-display text-lg text-ink">
-        Nada a mostrar<span :if={@active_domain}> em "{@active_domain}"</span><span :if={
-          @active_period
-        }> {period_label(@active_period) |> String.downcase()}</span>.
-      </p>
-      <p :if={@active_domain || @active_period} class="mt-1 text-sm text-muted">
-        Experimenta alargar o período ou limpar os filtros.
-      </p>
-      <.link
-        :if={@active_domain || @active_period}
-        patch={~p"/"}
-        class="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-      >
-        Ver tudo
-      </.link>
-    </div>
-
-    <section :for={{date, acts} <- @groups} class="mt-8 first:mt-7">
-      <div class="mb-1 flex items-baseline justify-between gap-3 border-b-2 border-rule-strong pb-1.5">
-        <h2 class="font-display text-[0.8125rem] font-bold uppercase tracking-[0.08em] text-ink">
-          <time datetime={Date.to_iso8601(date)}>{format_date(date)}</time>
-        </h2>
-        <span class="text-xs text-muted">
-          {length(acts)} {if length(acts) == 1, do: "diploma", else: "diplomas"}
-        </span>
-      </div>
-      <ul class="divide-y divide-border">
-        <li :for={act <- acts}>
-          <.act_entry act={act} summary={latest_summary(act)} />
+      <ul :if={@search_results != []} class="mt-2 divide-y divide-border">
+        <li :for={act <- @search_results}>
+          <.act_entry act={act} summary={Register.published_summary(act)} />
         </li>
       </ul>
-    </section>
+    </div>
+
+    <div :if={!@search_results}>
+      <section aria-label="Filtros" class="border-b border-border">
+        <.filter_row id="filtro-quando" label="Quando">
+          <li>
+            <.section_link
+              label="Tudo"
+              patch={filter_path(@active_domain, nil)}
+              active={is_nil(@active_period)}
+            />
+          </li>
+          <li :for={p <- @periods}>
+            <.section_link
+              label={period_label(p)}
+              count={@period_counts[p]}
+              patch={filter_path(@active_domain, p)}
+              active={@active_period == p}
+            />
+          </li>
+        </.filter_row>
+
+        <.filter_row id="filtro-tema" label="Tema" class="border-t border-border">
+          <li>
+            <.section_link
+              label="Tudo"
+              patch={filter_path(nil, @active_period)}
+              active={is_nil(@active_domain)}
+            />
+          </li>
+          <li :for={d <- @domains}>
+            <.section_link
+              label={d}
+              count={@domain_counts[d]}
+              patch={filter_path(d, @active_period)}
+              active={@active_domain == d}
+            />
+          </li>
+        </.filter_row>
+      </section>
+
+      <%!-- Only while filtering: this is the filter's feedback + reset, not a
+           page-wide tally (a grand total clashes with the per-day section counts). --%>
+      <div
+        :if={@groups != [] && (@active_domain || @active_period)}
+        class="flex items-baseline justify-between gap-4 border-b border-border py-2.5"
+      >
+        <p class="text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
+          <span class="font-semibold tabular-nums text-ink">{@total}</span>
+          {if @total == 1, do: "diploma", else: "diplomas"}
+          <span :if={@active_period}>
+            · {String.downcase(period_label(@active_period))}
+          </span><span :if={@active_domain}>
+            · {@active_domain}
+          </span>
+        </p>
+        <.link
+          patch={~p"/"}
+          class="inline-flex shrink-0 items-center gap-1 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted transition-colors duration-150 ease-out-quart hover:text-primary"
+        >
+          <.icon name="hero-x-mark-micro" class="size-3.5" /> limpar
+        </.link>
+      </div>
+
+      <div :if={@groups == []} class="border-b border-border py-16 text-center">
+        <.icon name="hero-document-magnifying-glass" class="mx-auto size-8 text-muted" />
+        <p class="mt-3 font-display text-lg text-ink">
+          Nada a mostrar<span :if={@active_domain}> em "{@active_domain}"</span><span :if={
+            @active_period
+          }> {period_label(@active_period) |> String.downcase()}</span>.
+        </p>
+        <p :if={@active_domain || @active_period} class="mt-1 text-sm text-muted">
+          Experimenta alargar o período ou limpar os filtros.
+        </p>
+        <.link
+          :if={@active_domain || @active_period}
+          patch={~p"/"}
+          class="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+        >
+          Ver tudo
+        </.link>
+      </div>
+
+      <section :for={{date, acts} <- @groups} class="mt-8 first:mt-7">
+        <div class="mb-1 flex items-baseline justify-between gap-3 border-b-2 border-rule-strong pb-1.5">
+          <h2 class="font-display text-[0.8125rem] font-bold uppercase tracking-[0.08em] text-ink">
+            <time datetime={Date.to_iso8601(date)}>{format_date(date)}</time>
+          </h2>
+          <span class="text-xs text-muted">
+            {length(acts)} {if length(acts) == 1, do: "diploma", else: "diplomas"}
+          </span>
+        </div>
+        <ul class="divide-y divide-border">
+          <li :for={act <- acts}>
+            <.act_entry act={act} summary={latest_summary(act)} />
+          </li>
+        </ul>
+      </section>
+    </div>
     """
   end
 

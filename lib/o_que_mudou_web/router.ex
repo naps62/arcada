@@ -32,7 +32,6 @@ defmodule OQueMudouWeb.Router do
     live_session :public,
       on_mount: [{OQueMudouWeb.UserAuth, :mount_current_user}] do
       live "/", RegisterLive, :index
-      live "/pesquisar", SearchLive, :index
       live "/faq", FaqLive, :index
       live "/sobre", AboutLive, :index
       live "/acts/:id", ActLive, :show

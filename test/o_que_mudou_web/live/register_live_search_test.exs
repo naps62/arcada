@@ -1,4 +1,9 @@
-defmodule OQueMudouWeb.SearchLiveTest do
+defmodule OQueMudouWeb.RegisterLiveSearchTest do
+  @moduledoc """
+  The semantic search box lives on the register front page itself (issue #27),
+  above the domain/period filters — not a separate page. `async: false`: search
+  goes through the process-wide `OQueMudou.Search.Index` singleton.
+  """
   use OQueMudouWeb.ConnCase, async: false
   import Phoenix.LiveViewTest
 
@@ -42,36 +47,48 @@ defmodule OQueMudouWeb.SearchLiveTest do
     act
   end
 
-  test "renders the empty search box with no results yet", %{conn: conn} do
-    {:ok, _lv, html} = live(conn, ~p"/pesquisar")
-    assert html =~ "Pesquisar"
-    refute html =~ "Nada encontrado"
+  test "renders the search box above the filters", %{conn: conn} do
+    {:ok, _lv, html} = live(conn, ~p"/")
+    assert html =~ "search-form"
+    assert html =~ "Descreve a mudança que procuras"
   end
 
-  test "typing a query returns semantically-ranked acts", %{conn: conn} do
+  test "typing a query shows ranked results instead of the filters", %{conn: conn} do
     seed_indexed_act([1.0, 0.0])
     set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
 
-    {:ok, lv, _html} = live(conn, ~p"/pesquisar")
-    html = lv |> form("form", %{"q" => "apoio ao arrendamento"}) |> render_change()
+    {:ok, lv, _html} = live(conn, ~p"/")
+    html = lv |> form("#search-form", %{"q" => "apoio ao arrendamento"}) |> render_change()
 
     assert html =~ "Muda o escalão do IRS."
+    refute html =~ "Filtros"
   end
 
   test "an unmatched query shows the empty state", %{conn: conn} do
     set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
 
-    {:ok, lv, _html} = live(conn, ~p"/pesquisar")
-    html = lv |> form("form", %{"q" => "algo sem resultados"}) |> render_change()
+    {:ok, lv, _html} = live(conn, ~p"/")
+    html = lv |> form("#search-form", %{"q" => "algo sem resultados"}) |> render_change()
 
     assert html =~ "Nada encontrado"
+  end
+
+  test "clearing the query restores the normal filtered listing", %{conn: conn} do
+    seed_indexed_act([1.0, 0.0])
+    set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+
+    {:ok, lv, _html} = live(conn, ~p"/")
+    lv |> form("#search-form", %{"q" => "algo"}) |> render_change()
+    html = lv |> form("#search-form", %{"q" => ""}) |> render_change()
+
+    assert html =~ "Filtros" or html =~ "Quando"
   end
 
   test "never crashes when the embeddings server is disabled", %{conn: conn} do
     set_embeddings([])
 
-    {:ok, lv, _html} = live(conn, ~p"/pesquisar")
-    html = lv |> form("form", %{"q" => "qualquer coisa"}) |> render_change()
+    {:ok, lv, _html} = live(conn, ~p"/")
+    html = lv |> form("#search-form", %{"q" => "qualquer coisa"}) |> render_change()
 
     assert html =~ "Nada encontrado"
   end
