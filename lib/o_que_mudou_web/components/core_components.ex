@@ -17,6 +17,13 @@ defmodule OQueMudouWeb.CoreComponents do
   use Phoenix.Component
   use Gettext, backend: OQueMudouWeb.Gettext
 
+  # `~p` verified routes, needed by `act_entry/1` (shared between RegisterLive
+  # and SearchLive).
+  use Phoenix.VerifiedRoutes,
+    endpoint: OQueMudouWeb.Endpoint,
+    router: OQueMudouWeb.Router,
+    statics: OQueMudouWeb.static_paths()
+
   alias Phoenix.LiveView.JS
 
   @doc """
@@ -351,7 +358,8 @@ defmodule OQueMudouWeb.CoreComponents do
         class={[
           "mt-1.5 block w-full rounded-md border bg-surface px-3 py-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-1",
           @errors == [] && "border-border focus:border-primary focus:ring-primary",
-          @errors != [] && "border-state-error-ink focus:border-state-error-ink focus:ring-state-error-ink"
+          @errors != [] &&
+            "border-state-error-ink focus:border-state-error-ink focus:ring-state-error-ink"
         ]}
         multiple={@multiple}
         {@rest}
@@ -374,7 +382,8 @@ defmodule OQueMudouWeb.CoreComponents do
         class={[
           "mt-1.5 block min-h-[6rem] w-full rounded-md border bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted/60 focus:outline-none focus:ring-1",
           @errors == [] && "border-border focus:border-primary focus:ring-primary",
-          @errors != [] && "border-state-error-ink focus:border-state-error-ink focus:ring-state-error-ink"
+          @errors != [] &&
+            "border-state-error-ink focus:border-state-error-ink focus:ring-state-error-ink"
         ]}
         {@rest}
       >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
@@ -396,7 +405,8 @@ defmodule OQueMudouWeb.CoreComponents do
         class={[
           "mt-1.5 block w-full rounded-md border bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted/60 focus:outline-none focus:ring-1",
           @errors == [] && "border-border focus:border-primary focus:ring-primary",
-          @errors != [] && "border-state-error-ink focus:border-state-error-ink focus:ring-state-error-ink"
+          @errors != [] &&
+            "border-state-error-ink focus:border-state-error-ink focus:ring-state-error-ink"
         ]}
         {@rest}
       />
@@ -737,6 +747,83 @@ defmodule OQueMudouWeb.CoreComponents do
     ]}>
       {@label}
     </span>
+    """
+  end
+
+  @doc """
+  One act's entry in a list of acts (register front page, search results):
+  title, provenance badge, summary, domain tags, source links. Shared so both
+  places render the same card. A nil `summary` renders a quiet one-line brief
+  instead (nothing to show yet).
+  """
+  attr :act, :map, required: true
+  attr :summary, :map, default: nil
+
+  def act_entry(%{summary: nil} = assigns) do
+    ~H"""
+    <.link
+      navigate={~p"/acts/#{@act.id}"}
+      class="group flex items-baseline justify-between gap-4 py-3"
+    >
+      <span class="min-w-0 font-display text-[0.9375rem] text-ink group-hover:text-primary">
+        {@act.title || @act.tipo}
+      </span>
+      <span class="shrink-0 text-[0.625rem] uppercase tracking-[0.09em] text-muted">
+        por gerar
+      </span>
+    </.link>
+    """
+  end
+
+  def act_entry(assigns) do
+    ~H"""
+    <article class="py-5">
+      <div class="flex items-start justify-between gap-4">
+        <div class="min-w-0">
+          <p class="text-[0.6875rem] font-semibold uppercase tracking-[0.09em] text-muted">
+            {@act.emitter || @act.tipo}
+          </p>
+          <h3 class="mt-1.5 text-pretty font-display text-xl font-semibold leading-snug text-ink sm:text-[1.375rem]">
+            <.link navigate={~p"/acts/#{@act.id}"} class="rounded-sm hover:text-primary">
+              {@act.title || @act.tipo}
+            </.link>
+          </h3>
+        </div>
+        <div class="mt-0.5 flex shrink-0 flex-col items-end gap-1">
+          <.provenance_badge summary={@summary} />
+        </div>
+      </div>
+
+      <p class="mt-2.5 max-w-reading text-pretty font-serif text-[1.0625rem] leading-relaxed text-ink">
+        {@summary.plain_text}
+      </p>
+
+      <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+        <div :if={@summary.domains != []} class="flex flex-wrap gap-1.5">
+          <.domain_tag :for={d <- @summary.domains} label={to_string(d)} />
+        </div>
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.8125rem]">
+          <a
+            :if={@act.source_url}
+            href={@act.source_url}
+            target="_blank"
+            rel="noopener"
+            class="inline-flex items-center gap-1 text-muted hover:text-primary hover:underline"
+          >
+            <.icon name="hero-arrow-top-right-on-square-micro" class="size-3.5" /> fonte oficial
+          </a>
+          <a
+            :if={@act.pdf_url}
+            href={@act.pdf_url}
+            target="_blank"
+            rel="noopener"
+            class="inline-flex items-center gap-1 text-muted hover:text-primary hover:underline"
+          >
+            <.icon name="hero-document-text-micro" class="size-3.5" /> PDF
+          </a>
+        </div>
+      </div>
+    </article>
     """
   end
 
