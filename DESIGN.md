@@ -113,8 +113,9 @@ other public bodies. (It also nods quietly to Braga's Arcada, which crowns Praç
 the founder's home city — but nothing in the product should lean on Braga-specific claims.)
 
 **Tagline / descriptor:** *"O Diário da República em linguagem simples."* — used in the document
-title, meta and social cards. The front-page standfirst ("O que muda, para quem, e quando.") is the
-editorial deck, kept separate from the descriptor.
+title, meta and social cards. The front-page standfirst ("A praça onde a lei fala português.") is
+the editorial deck, kept separate from the descriptor — it leans on the *Arcada* (square) metaphor
+and the idiom "fala português!" (= make sense): the law, finally, in plain Portuguese.
 
 **Creative North Star: "The Plain-Language Broadsheet"**
 
