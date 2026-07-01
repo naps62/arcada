@@ -25,7 +25,7 @@ defmodule OQueMudouWeb.FaqLive do
       </p>
 
       <div class="mt-11 border-t border-border">
-        <.faq_item question="O que é a Arcada?">
+        <.faq_item id="faq-o-que" question="O que é a Arcada?">
           <p>
             Pegamos no <em>Diário da República, Série I</em>
             e reescrevemo-lo em linguagem simples: o que muda, para quem, e a
@@ -34,7 +34,7 @@ defmodule OQueMudouWeb.FaqLive do
           </p>
         </.faq_item>
 
-        <.faq_item question="Isto substitui aconselhamento jurídico?">
+        <.faq_item id="faq-juridico" question="Isto substitui aconselhamento jurídico?">
           <p>
             A Arcada ajuda-o a estar a par da lei, numa linguagem que todos
             entendemos, sem ter de folhear páginas e páginas de burocracia.
@@ -46,7 +46,7 @@ defmodule OQueMudouWeb.FaqLive do
           </p>
         </.faq_item>
 
-        <.faq_item question="De onde vêm os resumos?">
+        <.faq_item id="faq-fontes-resumos" question="De onde vêm os resumos?">
           <p>
             Cada resumo é feito a partir do próprio diploma publicado no
             <em>Diário da República</em>, com citações ao nível do artigo. A ligação
@@ -55,7 +55,7 @@ defmodule OQueMudouWeb.FaqLive do
           </p>
         </.faq_item>
 
-        <.faq_item question="Os resumos podem estar errados?">
+        <.faq_item id="faq-erros" question="Os resumos podem estar errados?">
           <p>
             Podem. São resumos gerados de forma automática e, como qualquer
             tradução, podem escorregar num detalhe. É por isso que mostramos sempre
@@ -64,7 +64,7 @@ defmodule OQueMudouWeb.FaqLive do
           </p>
         </.faq_item>
 
-        <.faq_item question="Que fontes cobrem?">
+        <.faq_item id="faq-fontes" question="Que fontes cobrem?">
           <p>
             Começamos pelo <em>Diário da República, Série I</em>. A ideia é, com o
             tempo, fazer o mesmo às câmaras municipais, juntas de freguesia e a
@@ -73,11 +73,12 @@ defmodule OQueMudouWeb.FaqLive do
           </p>
         </.faq_item>
 
-        <.faq_item question="Quem fez isto?">
+        <.faq_item id="faq-quem" question="Quem fez isto?">
           <p>
             A Arcada é um projeto independente de <a
               href="https://naps.pt"
-              rel="noopener"
+              target="_blank"
+              rel="noopener noreferrer"
               class="font-medium text-primary hover:underline"
             >Miguel Palhas</a>, sem ligação a qualquer organismo oficial. Nasceu de
             uma ideia simples: a lei é de todos, mas está escrita de uma forma que
@@ -105,13 +106,16 @@ defmodule OQueMudouWeb.FaqLive do
   end
 
   # One collapsible FAQ entry. Native <details>, so it opens on click or Enter
-  # and works with JS off; the chevron flips via the group-open state.
+  # and works with JS off; the Collapsible hook adds a smooth height animation
+  # on top (and steps aside under prefers-reduced-motion). The chevron flips via
+  # the group-open state.
+  attr :id, :string, required: true
   attr :question, :string, required: true
   slot :inner_block, required: true
 
   defp faq_item(assigns) do
     ~H"""
-    <details class="group border-b border-border">
+    <details id={@id} phx-hook="Collapsible" class="group border-b border-border">
       <summary class="flex cursor-pointer list-none items-center justify-between gap-4 rounded-[3px] py-4 font-display text-[1.1875rem] font-semibold text-ink marker:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 [&::-webkit-details-marker]:hidden">
         {@question}
         <.icon
@@ -119,7 +123,10 @@ defmodule OQueMudouWeb.FaqLive do
           class="size-5 shrink-0 text-muted transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none"
         />
       </summary>
-      <div class="-mt-1 space-y-4 pb-5 font-serif text-[1.0625rem] leading-relaxed text-ink">
+      <div
+        data-collapsible-content
+        class="space-y-4 pb-5 font-serif text-[1.0625rem] leading-relaxed text-ink"
+      >
         {render_slot(@inner_block)}
       </div>
     </details>
