@@ -121,6 +121,11 @@ defmodule OQueMudouWeb.KaffyTheme do
     }
     .main-panel { width: calc(100% - var(--oqm-sidebar-w)) !important; }
 
+    /* Stock Star Admin gives .nav-item its own 2.25rem side padding on top of
+       .nav-link's own padding below — 36px of dead space per side in a
+       sidebar that's only 216px wide. .nav-link's padding is enough on its
+       own; drop the outer one entirely. */
+    .sidebar .nav .nav-item { padding: 0 !important; }
     .sidebar .nav .nav-item .nav-link,
     .sidebar .nav .nav-item .nav-link i.menu-icon,
     .sidebar .nav .nav-item .nav-link i.menu-arrow {
@@ -131,10 +136,23 @@ defmodule OQueMudouWeb.KaffyTheme do
       font-size: 0.82rem !important;
     }
     .sidebar .nav .nav-item .nav-link .menu-title { font-size: 0.82rem !important; }
+    /* Every context group (Accounts, Admin, ...) renders a stock fa-bars
+       "hamburger" alongside the expand/collapse caret (.menu-arrow) — the
+       caret alone already carries that meaning, so the hamburger is pure
+       redundant clutter. */
+    .sidebar .nav .nav-item .nav-link i.menu-arrow + .menu-icon {
+      display: none !important;
+    }
+    /* Star Admin paints the hover background on .nav-item itself (which has
+       horizontal padding wider than .nav-link), not just on .nav-link — so
+       overriding only .nav-link left its stock blue showing through on both
+       sides. Override at the .nav-item level, same as .active below. */
+    .sidebar .nav .nav-item:hover {
+      background: var(--oqm-surface-inset) !important;
+    }
     .sidebar .nav .nav-item:hover > .nav-link,
     .sidebar .nav .nav-item:hover > .nav-link i {
       color: var(--oqm-ink) !important;
-      background: var(--oqm-surface-inset) !important;
     }
     .sidebar .nav .nav-item.active > .nav-link,
     .sidebar .nav .nav-item.active > .nav-link i,
@@ -156,6 +174,18 @@ defmodule OQueMudouWeb.KaffyTheme do
       margin-bottom: 0.75rem !important;
     }
     .card-body { padding: 0.85rem 1rem !important; }
+    /* Resource index/show/new templates put a raw h1/h3 (browser default
+       size, plus a <br/> before the record-count badge on index) straight
+       inside .card-header — stock size ballooned the header to ~87px before
+       the table/form even started. */
+    .card-header h1,
+    .card-header h2,
+    .card-header h3 {
+      font-size: 1.05rem !important;
+      line-height: 1.3 !important;
+      margin: 0 !important;
+    }
+    .card-header h3 .badge { margin-top: 0.2rem !important; }
     .card-title { font-size: 0.95rem !important; margin-bottom: 0.6rem !important; }
 
     /* ── Content headers / breadcrumb ────────────────────────────────────── */

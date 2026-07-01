@@ -1,7 +1,8 @@
 defmodule OQueMudouWeb.AboutLive do
   @moduledoc """
-  Sobre — placeholder. Explains the project's purpose and provenance model once
-  written; for now it teaches what the page will hold and links home.
+  Sobre — explains what the Arcada does, where the name comes from, and the
+  trust posture (a civic signpost, never an authority). The historical notes on
+  Braga's Arcada are sourced from pt.wikipedia.org/wiki/Arcada_(Braga).
   """
   use OQueMudouWeb, :live_view
 
@@ -13,13 +14,99 @@ defmodule OQueMudouWeb.AboutLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <.page_placeholder title="Sobre o projecto">
-      Em breve, a história por trás do registo: porque transformamos o
-      <em>Diário da República, Série I</em>
-      em linguagem simples, como funciona a
-      escada de proveniência e quem está por detrás disto. Um sinal de confiança
-      pública — nunca uma autoridade.
-    </.page_placeholder>
+    <article class="mx-auto max-w-reading py-12 sm:py-16">
+      <h1 class="text-balance text-center font-display text-[2rem] font-semibold leading-tight text-ink sm:text-[2.625rem]">
+        Sobre a Arcada
+      </h1>
+
+      <div class="mt-6 space-y-5 font-serif text-[1.0625rem] leading-relaxed text-ink">
+        <p>
+          A Arcada pega no <em>Diário da República, Série I</em>
+          e reconta-o em linguagem simples: o que muda, para quem, e quando.
+        </p>
+        <p>
+          Isto é só um resumo. Não substitui o Diário original, que fica sempre a
+          um clique, nem serve de aconselhamento jurídico.
+        </p>
+        <p>
+          Começamos pelo Diário da República. A ideia é, com o tempo, fazer o mesmo
+          às câmaras municipais, juntas de freguesia e a outras entidades públicas.
+        </p>
+      </div>
+
+      <h2 class="mt-11 font-display text-[1.375rem] font-semibold leading-tight text-ink">
+        Como usamos inteligência artificial
+      </h2>
+      <div class="mt-4 space-y-5 font-serif text-[1.0625rem] leading-relaxed text-ink">
+        <p>
+          Sim, usamos modelos de linguagem para escrever os resumos. É o tipo de
+          trabalho que faz sentido entregar a uma máquina: pegar todos os dias em
+          diplomas densos e reescrevê-los, um a um, em português simples.
+        </p>
+        <p>
+          Mas não é só pedir a um modelo que resuma. Cada diploma passa por uma
+          série de passos. Partimos sempre do texto oficial; nos diplomas longos,
+          dividimo-lo em secções e medimos, por semelhança de significado, quais
+          introduzem mudanças concretas — são essas que entregamos ao modelo, sem o
+          enchimento à volta. Só então ele escreve o título e o resumo e arruma o
+          diploma por área da vida. No fim, indexamos tudo para poder ser
+          pesquisado por significado, e não apenas por palavras exatas.
+        </p>
+        <p>
+          Os modelos também erram. Por isso o texto oficial fica sempre a um clique,
+          para confirmar o que quiser.
+        </p>
+      </div>
+
+      <h2 class="mt-11 font-display text-[1.375rem] font-semibold leading-tight text-ink">
+        O nome
+      </h2>
+      <div class="mt-4 space-y-5 font-serif text-[1.0625rem] leading-relaxed text-ink">
+        <p>
+          <em>Arcada</em>
+          é a galeria de arcos da praça central de Braga — o lugar coberto onde,
+          desde o século XVI, se fazia o mercado e se juntava a cidade. A arcada
+          que lhe dá o nome é setecentista. Em 1910, com a implantação da
+          República, a praça passou a chamar-se <strong>Praça da República</strong> —
+          e é assim que partilha o nome com o Diário que aqui resumimos.
+        </p>
+        <p>
+          Escolhemos o nome por isso mesmo: uma arcada é uma praça, um sítio onde
+          as pessoas se juntam e se fala claro.
+        </p>
+      </div>
+
+      <figure class="mt-8">
+        <img
+          src={~p"/images/arcada-braga.jpg"}
+          width="1280"
+          height="910"
+          loading="lazy"
+          alt="A Arcada e a Igreja da Lapa, ao anoitecer, na Praça da República em Braga."
+          class="w-full rounded-[3px] border border-border"
+        />
+        <figcaption class="mt-2 text-center text-xs text-muted">
+          A Arcada, na Praça da República, em Braga.
+          <span aria-hidden="true">·</span>
+          <a
+            href="https://commons.wikimedia.org/wiki/File:Arcada_in_Braga_03.jpg"
+            rel="noopener"
+            class="hover:text-primary hover:underline"
+          >
+            Foto: Krzysztof Golik, CC BY-SA 4.0
+          </a>
+        </figcaption>
+      </figure>
+
+      <div class="mt-11 border-t border-border pt-6">
+        <.link
+          navigate="/"
+          class="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+        >
+          <.icon name="hero-arrow-left-micro" class="size-4" /> Voltar ao registo
+        </.link>
+      </div>
+    </article>
     """
   end
 end
