@@ -64,12 +64,41 @@ defmodule OQueMudouWeb.FaqLive do
           </p>
         </.faq_item>
 
+        <.faq_item id="faq-ia" question="Usam inteligência artificial?">
+          <p>
+            Sim. Usamos modelos de linguagem para reescrever cada diploma em
+            português simples — é o tipo de trabalho denso e repetitivo que faz
+            sentido entregar a uma máquina.
+          </p>
+          <p>
+            Não é só pedir um resumo: há um pipeline que parte do texto oficial,
+            escolhe as secções relevantes e gera o título, o resumo e a
+            classificação por área. Contamos como funciona em detalhe na página
+            <.link navigate="/sobre" class="font-medium text-primary hover:underline">
+              Sobre
+            </.link>.
+          </p>
+        </.faq_item>
+
         <.faq_item id="faq-fontes" question="Que fontes cobrem?">
           <p>
             Começamos pelo <em>Diário da República, Série I</em>. A ideia é, com o
             tempo, fazer o mesmo às câmaras municipais, juntas de freguesia e a
             outras entidades públicas — trazer o mesmo trabalho de tradução para
             linguagem simples a mais fontes oficiais.
+          </p>
+        </.faq_item>
+
+        <.faq_item id="faq-gratis" question="Isto é grátis?">
+          <p>
+            Sim. A Arcada é gratuita e nasceu como um serviço público — a ideia é
+            pôr a lei ao alcance de toda a gente, sem barreira à entrada.
+          </p>
+          <p>
+            Consoante o projeto evoluir, poderemos vir a introduzir algumas
+            funcionalidades de uso mais limitado, apenas para ajudar a cobrir os
+            custos dos servidores. O essencial — ler e pesquisar os resumos —
+            continuará gratuito.
           </p>
         </.faq_item>
 
