@@ -91,6 +91,13 @@ config :o_que_mudou, Oban, queues: [summarize: summarize_concurrency]
 # delivery no-ops (safe default). MAILER_FROM_EMAIL must be on a Resend-verified
 # domain. Read at runtime so it works for releases; guarded so dev/test keep the
 # Local/Test adapters from config/*.exs.
+# Reply-To for account emails. We send from a no-reply address; set this to a
+# real monitored inbox (e.g. a SimpleLogin alias) so replies reach you. Read in
+# every env so it also shows in the dev mailbox preview. Unset → plain no-reply.
+if reply_to = System.get_env("MAILER_REPLY_TO") do
+  config :o_que_mudou, :mailer_reply_to, reply_to
+end
+
 if config_env() == :prod do
   if resend_key = System.get_env("RESEND_API_KEY") do
     config :o_que_mudou, OQueMudou.Mailer,
