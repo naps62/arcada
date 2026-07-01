@@ -637,7 +637,7 @@ defmodule OQueMudouWeb.CoreComponents do
   attr :id, :string, default: nil
   attr :value, :string, default: nil
   attr :hint, :string, default: nil
-  attr :rest, :global, include: ~w(placeholder autocomplete rows)
+  attr :rest, :global, include: ~w(placeholder autocomplete rows min max step)
   slot :inner_block
 
   def admin_field(assigns) do

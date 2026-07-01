@@ -30,6 +30,30 @@ defmodule OQueMudou.ProvidersTest do
     assert "has already been taken" in errors_on(cs).name
   end
 
+  test "max_concurrency defaults by kind and honours an explicit value" do
+    {:ok, ssh} = Providers.create_provider(%{"name" => "s", "kind" => "ssh", "ssh_host" => "h"})
+    assert ssh.max_concurrency == 1
+
+    {:ok, api} = Providers.create_provider(%{"name" => "a", "kind" => "anthropic"})
+    assert api.max_concurrency == 5
+
+    {:ok, custom} =
+      Providers.create_provider(%{"name" => "c", "kind" => "anthropic", "max_concurrency" => "12"})
+
+    assert custom.max_concurrency == 12
+  end
+
+  test "max_concurrency must be positive" do
+    assert {:error, cs} =
+             Providers.create_provider(%{
+               "name" => "z",
+               "kind" => "anthropic",
+               "max_concurrency" => "0"
+             })
+
+    assert "must be greater than 0" in errors_on(cs).max_concurrency
+  end
+
   test "lists, enabled-filters, and deletes" do
     {:ok, on} = Providers.create_provider(%{"name" => "on", "kind" => "anthropic"})
 

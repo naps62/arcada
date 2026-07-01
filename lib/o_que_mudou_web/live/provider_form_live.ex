@@ -137,6 +137,17 @@ defmodule OQueMudouWeb.ProviderFormLive do
         value={Enum.join(@provider.models || [], "\n")}
       />
 
+      <.admin_field
+        field={@form[:max_concurrency]}
+        type="number"
+        min="1"
+        label="Max concurrency"
+        hint={
+          "Parallel summarize jobs for this provider. SSH must stay at 1; " <>
+            "API providers can go higher. Blank uses the per-type default (SSH 1, API 5)."
+        }
+      />
+
       <label class="flex items-center gap-2 text-sm text-ink">
         <input type="hidden" name="provider[enabled]" value="false" />
         <input

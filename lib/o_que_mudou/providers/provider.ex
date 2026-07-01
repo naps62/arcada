@@ -26,6 +26,7 @@ defmodule OQueMudou.Providers.Provider do
     field :ssh_identity_file, :string
     field :ssh_claude_cmd, :string
     field :models, {:array, :string}, default: []
+    field :max_concurrency, :integer
     field :enabled, :boolean, default: true
 
     timestamps(type: :utc_datetime)
@@ -33,8 +34,16 @@ defmodule OQueMudou.Providers.Provider do
 
   def kinds, do: @kinds
 
+  @doc "Default max summarize concurrency for a kind: SSH = 1 session, API = 5."
+  def default_max_concurrency(:ssh), do: 1
+  def default_max_concurrency(_), do: 5
+
+  @doc "Effective max concurrency: the stored value, or the per-kind default."
+  def max_concurrency(%__MODULE__{max_concurrency: n}) when is_integer(n) and n > 0, do: n
+  def max_concurrency(%__MODULE__{kind: kind}), do: default_max_concurrency(kind)
+
   @required ~w(name kind)a
-  @optional ~w(base_url api_key ssh_host ssh_user ssh_identity_file ssh_claude_cmd models enabled)a
+  @optional ~w(base_url api_key ssh_host ssh_user ssh_identity_file ssh_claude_cmd models max_concurrency enabled)a
 
   def changeset(provider, attrs) do
     provider
@@ -42,7 +51,19 @@ defmodule OQueMudou.Providers.Provider do
     |> validate_required(@required)
     |> validate_inclusion(:kind, @kinds)
     |> validate_kind_fields()
+    |> put_default_max_concurrency()
+    |> validate_number(:max_concurrency, greater_than: 0)
     |> unique_constraint(:name)
+  end
+
+  # SSH is capped at 1 by default; API-style providers fan out. An explicit value
+  # from the admin form always wins.
+  defp put_default_max_concurrency(changeset) do
+    if get_field(changeset, :max_concurrency) do
+      changeset
+    else
+      put_change(changeset, :max_concurrency, default_max_concurrency(get_field(changeset, :kind)))
+    end
   end
 
   # Accept `models` as a newline/comma-separated string from the admin form.

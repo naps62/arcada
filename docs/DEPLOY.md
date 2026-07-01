@@ -148,8 +148,16 @@ the daily cron / auto-summarize. Providers are DB rows (CRUD at `/admin`), kind
 summary with its provider/model, lets you trigger a run against any
 provider+model, and publish one as the canonical (public) summary.
 
-Active changes apply on the **next** summarize job. Oban queue concurrency is
-fixed at boot, so it doesn't re-tune when you switch the active provider.
+Active changes apply on the **next** summarize job.
+
+**Per-provider concurrency (issue #22).** Each provider sets its own **Max
+concurrency** (admin form; SSH defaults to 1, API providers to 5). Summarize jobs
+share a single Oban queue whose width is just the global pool ceiling
+(`SUMMARIZER_CONCURRENCY`, default 10), but each job checks how many jobs for its
+provider are already running and defers (Oban snooze) when the provider is at its
+limit. So SSH stays at one concurrent session while API providers fan out, and
+switching or editing a provider re-tunes its limit live — no restart, no queue
+churn.
 
 **Long diplomas.** The `/admin` page also sets the prompt cap (`max_text_chars`,
 default 80k) and an optional embeddings server for section ranking: when an act

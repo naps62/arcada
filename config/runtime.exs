@@ -82,20 +82,14 @@ if base_url = System.get_env("EMBEDDINGS_BASE_URL") do
     model: System.get_env("EMBEDDINGS_MODEL") || "bge-m3"
 end
 
-# Summarize-queue concurrency follows the adapter. The :ssh adapter shells out to
-# a full `claude` CLI session per job — those must NOT run concurrently (one SSH
-# session at a time), so default it to 1. API-style providers can fan out, so
-# they keep a higher default. Override explicitly with SUMMARIZER_CONCURRENCY.
-effective_adapter =
-  cond do
-    a = System.get_env("SUMMARIZER_ADAPTER") -> a
-    System.get_env("ANTHROPIC_API_KEY") -> "api"
-    true -> "manual"
-  end
-
+# Global summarize worker pool. Per-provider limits (`providers.max_concurrency`,
+# issue #22) throttle each provider *within* this pool — SSH stays at 1 via its
+# provider limit, API providers fan out up to theirs — so this is just the overall
+# ceiling across all providers, no longer tied to any single adapter. Size it to
+# the total parallelism you want. Override with SUMMARIZER_CONCURRENCY.
 summarize_concurrency =
   case System.get_env("SUMMARIZER_CONCURRENCY") do
-    nil -> if effective_adapter == "ssh", do: 1, else: 5
+    nil -> 10
     v -> String.to_integer(v)
   end
 

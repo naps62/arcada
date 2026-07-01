@@ -4,24 +4,47 @@ defmodule OQueMudou.Summarizer.SummarizeWorker do
   provider (auto) or a pinned provider+model (manual run, via job args), then
   persists the summary. A `{:async, _}` result is a no-op success. Re-running
   just inserts another summary, which the UI treats as a regeneration.
+
+  Each job is gated by its provider's `max_concurrency` (`Summarizer.Concurrency`)
+  before running, so the shared queue honours per-provider limits (issue #22).
   """
   use Oban.Worker, queue: :summarize, max_attempts: 3
 
-  alias OQueMudou.{Providers, Repo}
+  alias OQueMudou.{Admin, Providers, Repo}
+  alias OQueMudou.Providers.Provider
   alias OQueMudou.Register.Act
   alias OQueMudou.Summarizer
+  alias OQueMudou.Summarizer.Concurrency
 
   @impl Oban.Worker
-  def perform(%Oban.Job{args: %{"act_id" => act_id} = args}) do
+  def perform(%Oban.Job{args: %{"act_id" => act_id} = args} = job) do
     case Repo.get(Act, act_id) do
       nil ->
         # Act was deleted before the job ran — nothing to do, don't retry.
         :ok
 
       %Act{} = act ->
-        act |> run(args) |> handle()
+        case gate(job, args) do
+          :ok -> act |> run(args) |> handle()
+          {:snooze, _} = snooze -> snooze
+        end
     end
   end
+
+  # Throttle per the provider this job will actually use. With no resolvable
+  # provider (auto run + no active provider, or a pinned id that's gone) there's
+  # nothing to gate — `run/2` handles those as a no-op / error.
+  defp gate(job, args) do
+    case effective_provider(args) do
+      %Provider{} = provider -> Concurrency.check(job, provider)
+      nil -> :ok
+    end
+  end
+
+  defp effective_provider(%{"provider_id" => pid}) when not is_nil(pid),
+    do: Providers.get_provider(pid)
+
+  defp effective_provider(_args), do: Admin.active_provider()
 
   # A manual run pins a provider (+ optional model); otherwise use the active one.
   defp run(act, %{"provider_id" => pid} = args) when not is_nil(pid) do
