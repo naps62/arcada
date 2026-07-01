@@ -20,6 +20,13 @@ if System.get_env("PHX_SERVER") do
   config :o_que_mudou, OQueMudouWeb.Endpoint, server: true
 end
 
+# SEO indexing gate. Off by default (see config.exs); set SEO_INDEXABLE=true on
+# go-live to let crawlers index the site. Read in every env so a release can flip
+# it without a rebuild. See OQueMudouWeb.SEO and issue #36.
+if System.get_env("SEO_INDEXABLE") == "true" do
+  config :o_que_mudou, :seo, indexable: true
+end
+
 # Umami analytics (privacy-preserving, cookieless). Both vars must be set for
 # the tracking tag to render (see OQueMudouWeb.Layouts.umami/0). Read in every
 # env so it works for releases; left unset in dev and the VPN deployment.

@@ -1,0 +1,86 @@
+defmodule OQueMudouWeb.SeoControllerTest do
+  use OQueMudouWeb.ConnCase, async: false
+
+  alias OQueMudou.Repo
+  alias OQueMudou.Register.{Edition, Act, Summary}
+
+  defp seed_published_act do
+    ed =
+      %Edition{}
+      |> Edition.changeset(%{serie: "I", number: "120/2026", date: ~D[2026-06-24]})
+      |> Repo.insert!()
+
+    act =
+      %Act{}
+      |> Act.changeset(%{edition_id: ed.id, dre_id: "84", title: "Decreto n.º 84/2026"})
+      |> Repo.insert!()
+
+    summary =
+      %Summary{}
+      |> Summary.changeset(%{act_id: act.id, plain_text: "Muda X."})
+      |> Repo.insert!()
+
+    {:ok, act} = OQueMudou.Register.set_published(act, summary)
+    act
+  end
+
+  # The indexing gate defaults to off; restore whatever it was after each test.
+  setup do
+    original = Application.get_env(:o_que_mudou, :seo)
+    on_exit(fn -> Application.put_env(:o_que_mudou, :seo, original) end)
+    :ok
+  end
+
+  describe "robots.txt" do
+    test "disallows everything while not indexable", %{conn: conn} do
+      Application.put_env(:o_que_mudou, :seo, indexable: false)
+      body = conn |> get(~p"/robots.txt") |> response(200)
+
+      assert body =~ "User-agent: *"
+      assert body =~ "Disallow: /"
+      refute body =~ "Sitemap:"
+    end
+
+    test "allows crawling but guards /admin once indexable", %{conn: conn} do
+      Application.put_env(:o_que_mudou, :seo, indexable: true)
+      resp = get(conn, ~p"/robots.txt")
+      body = response(resp, 200)
+
+      assert response_content_type(resp, :txt) =~ "text/plain"
+      assert body =~ "Disallow: /admin"
+      assert body =~ "Disallow: /users"
+      assert body =~ "Sitemap: http"
+      assert body =~ "/sitemap.xml"
+    end
+  end
+
+  describe "sitemap.xml" do
+    test "lists section pages and published acts", %{conn: conn} do
+      act = seed_published_act()
+      resp = get(conn, ~p"/sitemap.xml")
+      body = response(resp, 200)
+
+      assert response_content_type(resp, :xml) =~ "xml"
+      assert body =~ "<urlset"
+      assert body =~ "/faq</loc>" or body =~ "/faq<"
+      assert body =~ "/sobre"
+      assert body =~ "domain=fiscal"
+      assert body =~ "/acts/#{act.id}</loc>"
+    end
+
+    test "omits acts without a published summary", %{conn: conn} do
+      ed =
+        %Edition{}
+        |> Edition.changeset(%{serie: "I", number: "999/2026", date: ~D[2026-06-24]})
+        |> Repo.insert!()
+
+      act =
+        %Act{}
+        |> Act.changeset(%{edition_id: ed.id, dre_id: "stub", title: "Sem resumo"})
+        |> Repo.insert!()
+
+      body = conn |> get(~p"/sitemap.xml") |> response(200)
+      refute body =~ "/acts/#{act.id}</loc>"
+    end
+  end
+end

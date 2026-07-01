@@ -26,6 +26,10 @@ defmodule OQueMudouWeb.Router do
   scope "/", OQueMudouWeb do
     pipe_through :browser
 
+    # Dynamic robots.txt + sitemap.xml (track the SEO indexing gate; see #36).
+    get "/robots.txt", SeoController, :robots
+    get "/sitemap.xml", SeoController, :sitemap
+
     # Public pages mount the current user (nil when logged out) so the masthead
     # can show account/login links. Auth is optional here — gating (issue #27)
     # happens per-route with :require_authenticated_user, not on these.

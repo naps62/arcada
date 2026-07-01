@@ -196,6 +196,21 @@ defmodule OQueMudou.Register do
     |> Repo.all()
   end
 
+  @doc """
+  Lean act rows for the sitemap: `{id, last_modified}` for every act that has a
+  published summary (an act with no summary is a stub — nothing to index yet).
+  Newest first, capped so the sitemap stays well under the 50k-URL limit.
+  """
+  def sitemap_acts(limit \\ 20_000) do
+    from(a in Act,
+      where: not is_nil(a.published_summary_id),
+      order_by: [desc: a.updated_at, desc: a.id],
+      limit: ^limit,
+      select: {a.id, a.updated_at}
+    )
+    |> Repo.all()
+  end
+
   @doc "Fetch one act with edition + summaries (each with its provider) preloaded."
   def get_act!(id) do
     Act
