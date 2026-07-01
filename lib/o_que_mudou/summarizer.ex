@@ -10,6 +10,7 @@ defmodule OQueMudou.Summarizer do
   alias OQueMudou.Admin
   alias OQueMudou.Providers.Provider
   alias OQueMudou.Register.{Act, Summary}
+  alias OQueMudou.Search.Index
   alias OQueMudou.Summarizer.{Embeddings, Sections, SummarizeWorker}
   alias OQueMudou.Summarizer.Adapters.{Api, OpenAI, Ssh}
 
@@ -275,7 +276,9 @@ defmodule OQueMudou.Summarizer do
   @doc """
   Insert a summary for an act. Used both by the async write path and by the
   manual backfill (console/SSH). Defaults `status: :unreviewed` and stamps
-  `generated_at`.
+  `generated_at`. Embeds `plain_text` for semantic search (issue #27) right
+  after insert; a disabled/unreachable embeddings server never blocks the
+  summary itself — the row is simply left without an embedding.
   """
   def create_summary(%Act{id: act_id}, attrs) do
     attrs =
@@ -284,9 +287,48 @@ defmodule OQueMudou.Summarizer do
       |> Map.put_new(:act_id, act_id)
       |> Map.put_new(:generated_at, now())
 
-    %Summary{}
-    |> Summary.changeset(attrs)
-    |> Repo.insert()
+    case %Summary{} |> Summary.changeset(attrs) |> Repo.insert() do
+      {:ok, summary} ->
+        case embed_summary(summary) do
+          {:ok, embedded} -> {:ok, embedded}
+          {:error, _reason} -> {:ok, summary}
+        end
+
+      error ->
+        error
+    end
+  end
+
+  @doc """
+  (Re)compute and persist a summary's `embedding` from its `plain_text`,
+  refreshing the search index (`OQueMudou.Search.Index`). `{:error, reason}`
+  when the embeddings server is disabled or unreachable — used by
+  `create_summary/2` (which tolerates it) and by the admin "Generate
+  embedding" action (which surfaces it).
+  """
+  def embed_summary(%Summary{} = summary) do
+    cfg = Admin.embeddings_config()
+
+    with true <- Embeddings.enabled?(cfg),
+         {:ok, [vector]} <- Embeddings.embed([embed_text(summary, cfg)], cfg) do
+      persist_embedding(summary, vector)
+    else
+      false -> {:error, :embeddings_disabled}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp embed_text(summary, cfg), do: (cfg[:document_prefix] || "") <> summary.plain_text
+
+  defp persist_embedding(summary, vector) do
+    case summary |> Summary.changeset(%{embedding: vector}) |> Repo.update() do
+      {:ok, updated} ->
+        Index.put(updated.id, updated.act_id, vector)
+        {:ok, updated}
+
+      error ->
+        error
+    end
   end
 
   # Accept the strategy as an atom (direct calls) or string (decoded job args).

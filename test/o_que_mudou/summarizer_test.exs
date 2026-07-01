@@ -6,8 +6,14 @@ defmodule OQueMudou.SummarizerTest do
 
   alias OQueMudou.{Admin, Repo}
   alias OQueMudou.Register.{Edition, Act, Summary}
+  alias OQueMudou.Search.Index
   alias OQueMudou.Summarizer
   alias OQueMudou.Summarizer.{Embeddings, SummarizeWorker}
+
+  setup do
+    Index.clear()
+    :ok
+  end
 
   defp act_fixture do
     edition =
@@ -159,6 +165,64 @@ defmodule OQueMudou.SummarizerTest do
 
       assert summary.act_id == act.id
       assert summary.generated_at
+    end
+  end
+
+  describe "create_summary/2 embedding (issue #27)" do
+    test "embeds plain_text and indexes it when the embeddings server is configured" do
+      set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 2.0] end)} end)
+      act = act_fixture()
+
+      assert {:ok, summary} =
+               Summarizer.create_summary(act, %{plain_text: "Resumo pesquisável."})
+
+      assert summary.embedding == [1.0, 2.0]
+      assert {summary.id, act.id, [1.0, 2.0]} in Index.all()
+    end
+
+    test "leaves embedding nil when the embeddings server is disabled — never blocks the summary" do
+      set_embeddings([])
+      act = act_fixture()
+
+      assert {:ok, summary} = Summarizer.create_summary(act, %{plain_text: "Resumo."})
+      assert summary.embedding == nil
+    end
+
+    test "leaves embedding nil when the embed call fails — never blocks the summary" do
+      set_embeddings(embed_fn: fn _ -> {:error, :boom} end)
+      act = act_fixture()
+
+      assert {:ok, summary} = Summarizer.create_summary(act, %{plain_text: "Resumo."})
+      assert summary.embedding == nil
+    end
+  end
+
+  describe "embed_summary/1" do
+    test "computes and persists the embedding, applying the document_prefix" do
+      test_pid = self()
+
+      set_embeddings(
+        document_prefix: "search_document: ",
+        embed_fn: fn texts ->
+          send(test_pid, {:embed_inputs, texts})
+          {:ok, Enum.map(texts, fn _ -> [3.0] end)}
+        end
+      )
+
+      act = act_fixture()
+      {:ok, summary} = Summarizer.create_summary(act, %{plain_text: "Original."})
+
+      assert {:ok, updated} = Summarizer.embed_summary(summary)
+      assert updated.embedding == [3.0]
+      assert_received {:embed_inputs, ["search_document: Original."]}
+    end
+
+    test "{:error, :embeddings_disabled} when no server is configured" do
+      set_embeddings([])
+      act = act_fixture()
+      {:ok, summary} = Summarizer.create_summary(act, %{plain_text: "x"})
+
+      assert {:error, :embeddings_disabled} = Summarizer.embed_summary(summary)
     end
   end
 
