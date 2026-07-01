@@ -36,6 +36,18 @@ defmodule OQueMudou.SearchTest do
     summary
   end
 
+  # A summary with real body text (so FTS can match it), also indexed for
+  # semantic search under `vector`.
+  defp indexed_summary(act, text, vector) do
+    summary =
+      %Summary{}
+      |> Summary.changeset(%{act_id: act.id, plain_text: text, embedding: vector})
+      |> Repo.insert!()
+
+    Index.put(summary.id, act.id, vector)
+    summary
+  end
+
   defp set_embeddings(kw) do
     prev = Application.get_env(:o_que_mudou, Embeddings, [])
     Application.put_env(:o_que_mudou, Embeddings, kw)
@@ -149,5 +161,63 @@ defmodule OQueMudou.SearchTest do
     assert Enum.map(first ++ second, & &1.id) == Enum.take(ids, 4)
     # Past the end is empty, never a crash.
     assert Search.load_page(ids, 99, 2) == []
+  end
+
+  # --- Hybrid fusion (issue #28) -------------------------------------------
+
+  test "an exact law number in the title surfaces the act even when semantic ranks it last" do
+    target = act_fixture(%{title: "Lei n.º 23/2023 das finanças públicas"})
+    noise = act_fixture(%{title: "Outro diploma qualquer"})
+
+    # Query embeds to [1.0, 0.0]: semantic puts `noise` (cosine 1) above `target`
+    # (cosine 0). FTS matches only `target` on the exact number, so RRF lifts it
+    # to the top of the fused list.
+    indexed_summary(target, "corpo do resumo", [0.0, 1.0])
+    indexed_summary(noise, "corpo do resumo", [1.0, 0.0])
+    set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+
+    ids = Search.ranked_ids("Lei 23/2023")
+
+    assert hd(ids) == target.id
+    assert noise.id in ids
+  end
+
+  test "FTS matches the summary body, not just the act header" do
+    target = act_fixture(%{title: "Act sem pistas"})
+    indexed_summary(target, "novo apoio ao arrendamento jovem", [0.0, 1.0])
+    set_embeddings([])
+
+    assert Search.ranked_ids("arrendamento") == [target.id]
+  end
+
+  test "degrades to FTS-only when the embeddings server is down" do
+    set_embeddings([])
+    target = act_fixture(%{title: "Decreto-Lei n.º 10-A/2022"})
+    indexed_summary(target, "texto do resumo", [1.0, 0.0])
+
+    # Semantic can't run (server disabled) yet the exact number still lands it.
+    assert Search.ranked_ids("10-A/2022") == [target.id]
+    assert [%Act{id: id}] = Search.search("10-A/2022")
+    assert id == target.id
+  end
+
+  test "an exact-term match still ranks when its summary has no embedding at all" do
+    set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+    target = act_fixture(%{title: "Portaria n.º 99/2026"})
+
+    # No embedding → absent from the semantic index, but FTS still finds it.
+    %Summary{}
+    |> Summary.changeset(%{act_id: target.id, plain_text: "sem vetor"})
+    |> Repo.insert!()
+
+    assert Search.ranked_ids("99/2026") == [target.id]
+  end
+
+  test "a query with no text match and no embeddings server yields nothing" do
+    set_embeddings([])
+    act = act_fixture(%{title: "Act qualquer"})
+    indexed_summary(act, "resumo sem o termo", [1.0, 0.0])
+
+    assert Search.ranked_ids("termo-inexistente-xyz") == []
   end
 end
