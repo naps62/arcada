@@ -15,7 +15,7 @@ defmodule OQueMudou.Register.ActAdmin do
   def custom_links(_schema) do
     [
       %{
-        name: "← Admin console",
+        name: "Admin console",
         url: "/admin",
         location: :top,
         icon: "arrow-left",
