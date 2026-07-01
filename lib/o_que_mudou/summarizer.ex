@@ -1,6 +1,6 @@
 defmodule OQueMudou.Summarizer do
   @moduledoc """
-  Produces 🤖 unreviewed summaries for acts. Dispatches to an adapter by the
+  Produces 🤖 summaries for acts. Dispatches to an adapter by the
   `Provider` kind (`:anthropic | :openai | :ssh`) and writes via an **async path**
   (an Oban job, never inline with the scrape). The active provider+model
   (`OQueMudou.Admin`) drives auto-summarize; manual runs pass an explicit one.
@@ -280,8 +280,8 @@ defmodule OQueMudou.Summarizer do
 
   @doc """
   Insert a summary for an act. Used both by the async write path and by the
-  manual backfill (console/SSH). Defaults `status: :unreviewed` and stamps
-  `generated_at`. Embeds `plain_text` for semantic search (issue #27) right
+  manual backfill (console/SSH). Stamps `generated_at`. Embeds `plain_text`
+  for semantic search (issue #27) right
   after insert; a disabled/unreachable embeddings server never blocks the
   summary itself — the row is simply left without an embedding.
   """

@@ -3,7 +3,7 @@ defmodule OQueMudou.Register do
   The private register of what changed in Diário da República Série I.
 
   Groups the core data model — `Edition`, `Act`, `Summary` — and the fixed
-  vocabularies (life-domain taxonomy, provenance status) shared across them.
+  life-domain taxonomy shared across them.
   See `docs/PLAN.md`.
   """
 
@@ -16,9 +16,6 @@ defmodule OQueMudou.Register do
 
   @doc "The fixed life-domain taxonomy used to tag summaries."
   def life_domains, do: @life_domains
-
-  @doc "The provenance-ladder statuses a summary can hold (MVP ships only `:unreviewed`)."
-  def statuses, do: [:unreviewed, :community_reviewed, :verified]
 
   @periods [:semana, :mes, :ano]
 
@@ -227,18 +224,6 @@ defmodule OQueMudou.Register do
   def set_published(%Act{} = act, summary) do
     act
     |> Act.changeset(%{published_summary_id: summary && summary.id})
-    |> Repo.update()
-  end
-
-  @doc """
-  Set or clear a summary's `validated_at` — the private human safety net.
-  `validate?` true stamps it now, false clears it. Returns `{:ok, summary}`.
-  """
-  def set_validated(summary, validate?) do
-    at = if validate?, do: DateTime.utc_now() |> DateTime.truncate(:second), else: nil
-
-    summary
-    |> Summary.changeset(%{validated_at: at})
     |> Repo.update()
   end
 end

@@ -5,8 +5,8 @@
 # Idempotent: re-running replaces the seed summaries (tagged prompt_version
 # "seed-v1") and upserts the demo edition. The plain-language summaries here are
 # illustrative dev fixtures, not real editorial output — they exist so the UI has
-# representative content (every provenance rung, domain tags, "por gerar", and a
-# second date group) to be built and reviewed against.
+# representative content (domain tags, "por gerar", and a second date group) to
+# be built and reviewed against.
 
 import Ecto.Query
 
@@ -64,7 +64,6 @@ summarize = fn title, attrs ->
         act_id: act.id,
         model: "claude-opus-4",
         prompt_version: "seed-v1",
-        status: :unreviewed,
         generated_at: now
       }
 
@@ -93,7 +92,6 @@ summarize.("Resolução do Conselho de Ministros n.º 134/2026", %{
   plain_text:
     "Estabelece novas regras de licenciamento ambiental para projetos de energia solar, encurtando os prazos de decisão e exigindo consulta pública obrigatória acima de uma certa dimensão.",
   domains: [:ambiente],
-  status: :community_reviewed,
   generated_at: hours_ago.(5)
 })
 
@@ -101,7 +99,6 @@ summarize.("Portaria n.º 273/2026/1", %{
   plain_text:
     "Atualiza as tabelas de retenção na fonte de IRS para a segunda metade de 2026, refletindo a descida aprovada no Orçamento. A maioria dos trabalhadores por conta de outrem verá um desconto mensal ligeiramente menor já no salário de julho.",
   domains: [:fiscal, :trabalho],
-  validated_at: hours_ago.(1),
   generated_at: hours_ago.(6)
 })
 
@@ -116,7 +113,6 @@ summarize.("Resolução da Assembleia da República n.º 160/2026", %{
   plain_text:
     "Determina a criação de uma comissão para rever os prazos da justiça cível. O objetivo declarado é reduzir o tempo médio de espera por uma decisão em tribunal.",
   domains: [:justiça],
-  status: :verified,
   generated_at: hours_ago.(8)
 })
 
@@ -146,7 +142,6 @@ summarize.("Portaria n.º 270/2026", %{
   plain_text:
     "Inclui novos medicamentos na lista de comparticipação do Estado e reduz o valor pago pelos utentes em alguns tratamentos crónicos.",
   domains: [:saúde],
-  status: :community_reviewed,
   generated_at: hours_ago.(28)
 })
 

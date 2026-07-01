@@ -1,8 +1,7 @@
 defmodule OQueMudouWeb.ActLive do
   @moduledoc """
   Act detail: plain-language summary + life-domains, with the official source,
-  PDF citation, and full legal text always one click away — plus the private
-  "marcar como validado" toggle (the human safety net before anything is trusted).
+  PDF citation, and full legal text always one click away.
   See `docs/PLAN.md` build order #4.
   """
   use OQueMudouWeb, :live_view
@@ -16,24 +15,6 @@ defmodule OQueMudouWeb.ActLive do
   end
 
   @impl true
-  def handle_event("toggle_validated", _params, socket) do
-    case socket.assigns.summary do
-      nil ->
-        {:noreply, socket}
-
-      summary ->
-        validate? = is_nil(summary.validated_at)
-        {:ok, updated} = Register.set_validated(summary, validate?)
-
-        msg =
-          if validate?,
-            do: "Resumo marcado como validado.",
-            else: "Validação removida."
-
-        {:noreply, socket |> assign(summary: updated) |> put_flash(:info, msg)}
-    end
-  end
-
   def handle_event("toggle_full", _params, socket) do
     {:noreply, assign(socket, show_full: !socket.assigns.show_full)}
   end
@@ -71,9 +52,8 @@ defmodule OQueMudouWeb.ActLive do
       <section class="mt-7">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <h2 class="flex items-center gap-2 text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-muted">
-            Em linguagem simples <.provenance_badge summary={@summary} />
+            Em linguagem simples
           </h2>
-          <.validation_control summary={@summary} />
         </div>
 
         <p
@@ -141,29 +121,6 @@ defmodule OQueMudouWeb.ActLive do
         </div>
       </section>
     </div>
-    """
-  end
-
-  attr :summary, :map, default: nil
-
-  defp validation_control(%{summary: nil} = assigns), do: ~H""
-
-  defp validation_control(assigns) do
-    ~H"""
-    <button
-      phx-click="toggle_validated"
-      aria-pressed={to_string(not is_nil(@summary.validated_at))}
-      class={[
-        "inline-flex min-h-[2.25rem] items-center gap-1.5 rounded-md px-3 py-1.5 text-[0.8125rem] font-medium",
-        "transition-colors duration-150 ease-out-quart",
-        @summary.validated_at && "bg-state-verified-bg text-state-verified-ink hover:opacity-80",
-        !@summary.validated_at &&
-          "border border-border text-muted hover:border-muted hover:text-ink"
-      ]}
-    >
-      <.icon :if={@summary.validated_at} name="hero-check-mini" class="size-4" />
-      {if @summary.validated_at, do: "Validado", else: "Marcar como validado"}
-    </button>
     """
   end
 

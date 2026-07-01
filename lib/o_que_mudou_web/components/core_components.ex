@@ -625,59 +625,6 @@ defmodule OQueMudouWeb.CoreComponents do
   end
 
   @doc """
-  The provenance badge — the one place color carries meaning on the page.
-
-  Resolves a summary to one rung of the provenance ladder and renders it as
-  icon + word + color (never color alone). A human `validated_at` stamp is the
-  strongest trust signal and reads as verified; otherwise the summary's `status`
-  drives it. A nil summary renders nothing (the caller shows a "por gerar" note).
-  """
-  attr :summary, :any, default: nil
-  attr :class, :string, default: nil
-
-  def provenance_badge(assigns) do
-    assigns = assign(assigns, :state, provenance_state(assigns.summary))
-
-    ~H"""
-    <span
-      :if={@state}
-      title={provenance_title(@state)}
-      class={[
-        "inline-flex shrink-0 items-center gap-1 rounded-[3px] px-2 py-0.5 text-[0.6875rem] font-semibold uppercase tracking-[0.06em]",
-        @state == :unreviewed && "bg-state-unreviewed-bg text-state-unreviewed-ink",
-        @state == :community && "bg-state-community-bg text-state-community-ink",
-        @state == :verified && "bg-state-verified-bg text-state-verified-ink",
-        @class
-      ]}
-    >
-      <.icon name={provenance_icon(@state)} class="size-3.5" />
-      {provenance_label(@state)}
-    </span>
-    """
-  end
-
-  @doc "Resolve a summary to a provenance rung: `:unreviewed | :community | :verified | nil`."
-  def provenance_state(nil), do: nil
-  def provenance_state(%{validated_at: %DateTime{}}), do: :verified
-  def provenance_state(%{status: :verified}), do: :verified
-  def provenance_state(%{status: :community_reviewed}), do: :community
-  def provenance_state(_summary), do: :unreviewed
-
-  defp provenance_icon(:unreviewed), do: "hero-cpu-chip-micro"
-  defp provenance_icon(:community), do: "hero-users-micro"
-  defp provenance_icon(:verified), do: "hero-check-badge-micro"
-
-  defp provenance_label(:unreviewed), do: "não revisto"
-  defp provenance_label(:community), do: "comunidade"
-  defp provenance_label(:verified), do: "verificado"
-
-  defp provenance_title(:unreviewed),
-    do: "Resumo gerado por modelo, ainda não revisto por uma pessoa."
-
-  defp provenance_title(:community), do: "Revisto pela comunidade."
-  defp provenance_title(:verified), do: "Verificado por um revisor."
-
-  @doc """
   Theme-aware form field (the default `input` hardcodes bg-white/zinc, which
   breaks dark mode). Uses the app's semantic tokens. Pass `field` (a FormField)
   or an explicit `name`. For a select, set `type="select"` and provide options
@@ -758,9 +705,9 @@ defmodule OQueMudouWeb.CoreComponents do
 
   @doc """
   One act's entry in a list of acts (register front page, search results):
-  title, provenance badge, summary, domain tags, source links. Shared so both
-  places render the same card. A nil `summary` renders a quiet one-line brief
-  instead (nothing to show yet).
+  title, summary, domain tags, source links. Shared so both places render the
+  same card. A nil `summary` renders a quiet one-line brief instead (nothing to
+  show yet).
 
   `date` (a `Date`) adds a dateline — search results aren't grouped under a date
   header the way the front-page feed is, so each result carries its own.
@@ -801,9 +748,6 @@ defmodule OQueMudouWeb.CoreComponents do
           <p :if={@summary.headline} class="mt-1 text-xs text-muted">
             {@act.title || @act.tipo}
           </p>
-        </div>
-        <div class="mt-0.5 flex shrink-0 flex-col items-end gap-1">
-          <.provenance_badge summary={@summary} />
         </div>
       </div>
 

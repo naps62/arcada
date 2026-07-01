@@ -4,7 +4,6 @@ defmodule OQueMudou.Register.Summary do
 
   Produced by the summarizer (one LLM call yields `plain_text` + `domains`).
   `model`/`prompt_version` are recorded per summary for provenance.
-  `validated_at` is the private human-validation safety net (null = unvalidated).
   """
   use Ecto.Schema
   import Ecto.Changeset
@@ -26,7 +25,6 @@ defmodule OQueMudou.Register.Summary do
 
     field :model, :string
     field :prompt_version, :string
-    field :status, Ecto.Enum, values: Register.statuses(), default: :unreviewed
     # The act's full text was capped before summarising (oversized diploma): the
     # summary reflects only part of the document, not the whole thing.
     field :truncated, :boolean, default: false
@@ -46,7 +44,6 @@ defmodule OQueMudou.Register.Summary do
     field :cost_source, :string
     field :duration_ms, :integer
     field :generated_at, :utc_datetime
-    field :validated_at, :utc_datetime
     # bge-m3 embedding of `plain_text`, for semantic search (issue #27). Null
     # when the embeddings server was disabled/unreachable at generation time —
     # such summaries are simply absent from search results, never an error.
@@ -59,7 +56,7 @@ defmodule OQueMudou.Register.Summary do
   end
 
   @required ~w(act_id plain_text)a
-  @optional ~w(headline domains model prompt_version status truncated text_strategy ranker_model input_tokens output_tokens cost_usd cost_source duration_ms provider_id generated_at validated_at embedding)a
+  @optional ~w(headline domains model prompt_version truncated text_strategy ranker_model input_tokens output_tokens cost_usd cost_source duration_ms provider_id generated_at embedding)a
 
   def changeset(summary, attrs) do
     summary

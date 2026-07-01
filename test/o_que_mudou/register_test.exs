@@ -89,15 +89,13 @@ defmodule OQueMudou.RegisterTest do
       assert %{act_id: ["can't be blank"], plain_text: ["can't be blank"]} = errors_on(changeset)
     end
 
-    test "defaults status to :unreviewed and domains to []", %{act: act} do
+    test "defaults domains to []", %{act: act} do
       summary =
         %Summary{}
         |> Summary.changeset(%{act_id: act.id, plain_text: "Em linguagem simples..."})
         |> Repo.insert!()
 
-      assert summary.status == :unreviewed
       assert summary.domains == []
-      assert is_nil(summary.validated_at)
     end
 
     test "accepts valid life-domains", %{act: act} do
@@ -121,13 +119,6 @@ defmodule OQueMudou.RegisterTest do
       assert %{domains: [_]} = errors_on(changeset)
     end
 
-    test "rejects unknown status", %{act: act} do
-      changeset =
-        Summary.changeset(%Summary{}, %{act_id: act.id, plain_text: "...", status: :bogus})
-
-      refute changeset.valid?
-      assert %{status: [_]} = errors_on(changeset)
-    end
   end
 
   test "Register.life_domains/0 exposes the fixed taxonomy" do

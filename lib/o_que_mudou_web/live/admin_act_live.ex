@@ -172,7 +172,6 @@ defmodule OQueMudouWeb.AdminActLive do
             <span :if={tokens_label(s)} class="tabular-nums">· {tokens_label(s)}</span>
             <span :if={cost_label(s)} class="tabular-nums">· {cost_label(s)}</span>
             <span :if={duration_label(s)} class="tabular-nums">· {duration_label(s)}</span>
-            <.provenance_badge summary={s} />
           </div>
           <div class="flex items-center gap-2">
             <span :if={s.embedding} class="text-xs text-muted">embedded</span>

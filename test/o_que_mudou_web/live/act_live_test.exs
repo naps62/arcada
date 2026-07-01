@@ -3,7 +3,6 @@ defmodule OQueMudouWeb.ActLiveTest do
   import Phoenix.LiveViewTest
 
   alias OQueMudou.Repo
-  alias OQueMudou.Register
   alias OQueMudou.Register.{Edition, Act, Summary}
 
   defp seed do
@@ -58,33 +57,7 @@ defmodule OQueMudouWeb.ActLiveTest do
     assert shown =~ "Texto integral do diploma"
   end
 
-  test "mark-validated toggle persists validated_at", %{conn: conn} do
-    %{act: act, summary: summary} = seed()
-    {:ok, lv, html} = live(conn, ~p"/acts/#{act.id}")
-
-    assert html =~ "Marcar como validado"
-    assert is_nil(Repo.get!(Summary, summary.id).validated_at)
-
-    after_click = lv |> element("button", "Marcar como validado") |> render_click()
-    assert after_click =~ "verificado"
-    refute is_nil(Repo.get!(Summary, summary.id).validated_at)
-
-    # toggling again clears it
-    lv |> element("button", "Validado") |> render_click()
-    assert is_nil(Repo.get!(Summary, summary.id).validated_at)
-  end
-
   test "unknown act id raises (404)", %{conn: conn} do
     assert_raise Ecto.NoResultsError, fn -> live(conn, ~p"/acts/999999") end
-  end
-
-  describe "Register.set_validated/2" do
-    test "stamps and clears validated_at" do
-      %{summary: summary} = seed()
-      assert {:ok, v} = Register.set_validated(summary, true)
-      assert v.validated_at
-      assert {:ok, cleared} = Register.set_validated(v, false)
-      assert is_nil(cleared.validated_at)
-    end
   end
 end

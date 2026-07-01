@@ -63,7 +63,6 @@ defmodule OQueMudou.SummarizerTest do
       assert summary.domains == [:fiscal, :trabalho]
       assert summary.model == "claude-cli"
       assert summary.provider_id == provider.id
-      assert summary.status == :unreviewed
       assert summary.generated_at
     end
 

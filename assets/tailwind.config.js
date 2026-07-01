@@ -29,12 +29,6 @@ module.exports = {
           fg: "var(--on-primary)",
         },
         state: {
-          "unreviewed-bg": "var(--state-unreviewed-bg)",
-          "unreviewed-ink": "var(--state-unreviewed-ink)",
-          "community-bg": "var(--state-community-bg)",
-          "community-ink": "var(--state-community-ink)",
-          "verified-bg": "var(--state-verified-bg)",
-          "verified-ink": "var(--state-verified-ink)",
           "error-bg": "var(--state-error-bg)",
           "error-ink": "var(--state-error-ink)",
         },

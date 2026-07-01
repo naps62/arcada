@@ -44,8 +44,7 @@ defmodule OQueMudouWeb.RegisterLiveTest do
     |> Summary.changeset(%{
       act_id: trabalho.id,
       plain_text: "Atualiza regras de trabalho.",
-      domains: [:trabalho],
-      validated_at: DateTime.utc_now() |> DateTime.truncate(:second)
+      domains: [:trabalho]
     })
     |> Repo.insert!()
 
@@ -60,14 +59,6 @@ defmodule OQueMudouWeb.RegisterLiveTest do
     assert html =~ "24 de junho de 2026"
     assert html =~ "Muda o escalão do IRS."
     assert html =~ "Atualiza regras de trabalho."
-  end
-
-  test "surfaces unreviewed vs validated state", %{conn: conn} do
-    seed()
-    {:ok, _lv, html} = live(conn, ~p"/")
-
-    assert html =~ "não revisto"
-    assert html =~ "verificado"
   end
 
   test "domain filter narrows the list", %{conn: conn} do

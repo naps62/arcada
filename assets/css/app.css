@@ -59,13 +59,7 @@
   --primary-hover: oklch(0.4 0.12 255);
   --on-primary: oklch(0.97 0.008 85);
 
-  /* Provenance ladder — the only saturated color on the page */
-  --state-unreviewed-bg: oklch(0.93 0.06 80);
-  --state-unreviewed-ink: oklch(0.42 0.11 60);
-  --state-community-bg: oklch(0.93 0.04 250);
-  --state-community-ink: oklch(0.37 0.10 255);
-  --state-verified-bg: oklch(0.93 0.05 150);
-  --state-verified-ink: oklch(0.35 0.10 150);
+  /* Error state — the only saturated color on the page */
   --state-error-bg: oklch(0.93 0.05 27);
   --state-error-ink: oklch(0.47 0.16 27);
 
@@ -90,12 +84,6 @@
     --primary-hover: oklch(0.82 0.1 250);
     --on-primary: oklch(0.18 0.006 70);
 
-    --state-unreviewed-bg: oklch(0.32 0.05 70 / 0.6);
-    --state-unreviewed-ink: oklch(0.85 0.1 80);
-    --state-community-bg: oklch(0.32 0.05 255 / 0.6);
-    --state-community-ink: oklch(0.83 0.08 255);
-    --state-verified-bg: oklch(0.32 0.05 152 / 0.55);
-    --state-verified-ink: oklch(0.83 0.1 155);
     --state-error-bg: oklch(0.33 0.07 27 / 0.6);
     --state-error-ink: oklch(0.81 0.13 27);
 
@@ -117,12 +105,6 @@
   --primary-hover: oklch(0.82 0.1 250);
   --on-primary: oklch(0.18 0.006 70);
 
-  --state-unreviewed-bg: oklch(0.32 0.05 70 / 0.6);
-  --state-unreviewed-ink: oklch(0.85 0.1 80);
-  --state-community-bg: oklch(0.32 0.05 255 / 0.6);
-  --state-community-ink: oklch(0.83 0.08 255);
-  --state-verified-bg: oklch(0.32 0.05 152 / 0.55);
-  --state-verified-ink: oklch(0.83 0.1 155);
   --state-error-bg: oklch(0.33 0.07 27 / 0.6);
   --state-error-ink: oklch(0.81 0.13 27);
 
