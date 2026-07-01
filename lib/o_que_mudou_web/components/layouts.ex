@@ -25,6 +25,12 @@ defmodule OQueMudouWeb.Layouts do
       icon: "hero-adjustments-horizontal"
     },
     %{
+      section: :acts,
+      label: "Acts",
+      path: "/admin/acts",
+      icon: "hero-newspaper"
+    },
+    %{
       section: :db,
       label: "Database",
       path: "/admin/db",
@@ -112,6 +118,7 @@ defmodule OQueMudouWeb.Layouts do
   # Which sidebar section owns the current path. Everything under /admin/db is
   # Kaffy's territory; the rest of /admin is the custom console.
   defp admin_section("/admin/db" <> _), do: :db
+  defp admin_section("/admin/acts" <> _), do: :acts
   defp admin_section(_), do: :settings
 
   # Kaffy (external) pages render their own full chrome, so open them in a new

@@ -17,9 +17,13 @@ defmodule OQueMudouWeb.Router do
     plug :accepts, ["json"]
   end
 
-  # Edge-gated by Traefik (authelia + VPN ACL); this plug re-checks the
-  # Remote-Groups header as defense in depth. See issue #19.
+  # Edge-gated by Traefik (authelia + VPN ACL); these plugs re-check as defense in
+  # depth (issues #19, #37). RequireAdminHost 404s /admin* on the public host so
+  # the surface only exists on the private VPN host; RequireAdminGroup then checks
+  # the Remote-Groups header. Host check first so the public host always 404s
+  # (never 403 — which would confirm the surface).
   pipeline :admin do
+    plug OQueMudouWeb.Plugs.RequireAdminHost
     plug OQueMudouWeb.Plugs.RequireAdminGroup
   end
 
@@ -45,6 +49,7 @@ defmodule OQueMudouWeb.Router do
     live "/summarizer", AdminLive, :index
     live "/providers/new", ProviderFormLive, :new
     live "/providers/:id/edit", ProviderFormLive, :edit
+    live "/acts", AdminActsLive, :index
     live "/acts/:id", AdminActLive, :show
   end
 
