@@ -44,16 +44,17 @@ defmodule OQueMudouWeb.AboutLive do
           diplomas densos e reescrevê-los, um a um, em português simples.
         </p>
         <p>
-          Nada é inventado. O modelo trabalha a partir do texto oficial de cada
-          diploma e resume o que lá está, com instruções para ser factual e não dar
-          opiniões nem conselhos. Nos diplomas mais longos, começamos por
-          identificar as partes que mexem mesmo em alguma coisa e é sobre essas que
-          ele se concentra, em vez de se perder no enchimento.
+          Mas não é só pedir a um modelo que resuma. Cada diploma passa por uma
+          série de passos. Partimos sempre do texto oficial; nos diplomas longos,
+          dividimo-lo em secções e medimos, por semelhança de significado, quais
+          introduzem mudanças concretas — são essas que entregamos ao modelo, sem o
+          enchimento à volta. Só então ele escreve o título e o resumo e arruma o
+          diploma por área da vida. No fim, indexamos tudo para poder ser
+          pesquisado por significado, e não apenas por palavras exatas.
         </p>
         <p>
-          Os modelos também erram. Por isso cada resumo mostra quanto foi revisto:
-          só pela máquina (🤖), pela comunidade (👥) ou verificado (✓). E o texto
-          oficial fica sempre a um clique, para confirmar o que precisar.
+          Os modelos também erram. Por isso o texto oficial fica sempre a um clique,
+          para confirmar o que quiser.
         </p>
       </div>
 
