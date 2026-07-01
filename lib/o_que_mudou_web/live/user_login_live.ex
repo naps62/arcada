@@ -9,7 +9,7 @@ defmodule OQueMudouWeb.UserLoginLive do
         <:subtitle>
           Ainda não tem conta? <.link
             navigate={~p"/users/register"}
-            class="font-semibold text-brand hover:underline"
+            class="font-semibold text-primary hover:underline"
           >
             Criar conta
           </.link>.

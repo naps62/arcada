@@ -214,7 +214,7 @@ defmodule OQueMudouWeb.CoreComponents do
   def simple_form(assigns) do
     ~H"""
     <.form :let={f} for={@for} as={@as} {@rest}>
-      <div class="mt-10 space-y-8 bg-white">
+      <div class="mt-10 space-y-8">
         {render_slot(@inner_block, f)}
         <div :for={action <- @actions} class="mt-2 flex items-center justify-between gap-6">
           {render_slot(action, f)}
@@ -243,8 +243,9 @@ defmodule OQueMudouWeb.CoreComponents do
     <button
       type={@type}
       class={[
-        "phx-submit-loading:opacity-75 rounded-lg bg-zinc-900 hover:bg-zinc-700 py-2 px-3",
-        "text-sm font-semibold leading-6 text-white active:text-white/80",
+        "phx-submit-loading:opacity-75 rounded-md bg-primary hover:bg-primary-hover py-2 px-3",
+        "text-sm font-semibold leading-6 text-primary-fg active:opacity-90",
+        "transition-colors duration-150 ease-out-quart",
         @class
       ]}
       {@rest}
@@ -322,7 +323,7 @@ defmodule OQueMudouWeb.CoreComponents do
 
     ~H"""
     <div>
-      <label class="flex items-center gap-4 text-sm leading-6 text-zinc-600">
+      <label class="flex items-center gap-4 text-sm leading-6 text-ink">
         <input type="hidden" name={@name} value="false" disabled={@rest[:disabled]} />
         <input
           type="checkbox"
@@ -330,7 +331,7 @@ defmodule OQueMudouWeb.CoreComponents do
           name={@name}
           value="true"
           checked={@checked}
-          class="rounded border-zinc-300 text-zinc-900 focus:ring-0"
+          class="rounded border-border bg-surface text-primary focus:ring-primary"
           {@rest}
         />
         {@label}
@@ -347,7 +348,11 @@ defmodule OQueMudouWeb.CoreComponents do
       <select
         id={@id}
         name={@name}
-        class="mt-2 block w-full rounded-md border border-gray-300 bg-white shadow-sm focus:border-zinc-400 focus:ring-0 sm:text-sm"
+        class={[
+          "mt-1.5 block w-full rounded-md border bg-surface px-3 py-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-1",
+          @errors == [] && "border-border focus:border-primary focus:ring-primary",
+          @errors != [] && "border-state-error-ink focus:border-state-error-ink focus:ring-state-error-ink"
+        ]}
         multiple={@multiple}
         {@rest}
       >
@@ -367,9 +372,9 @@ defmodule OQueMudouWeb.CoreComponents do
         id={@id}
         name={@name}
         class={[
-          "mt-2 block w-full rounded-lg text-zinc-900 focus:ring-0 sm:text-sm sm:leading-6 min-h-[6rem]",
-          @errors == [] && "border-zinc-300 focus:border-zinc-400",
-          @errors != [] && "border-rose-400 focus:border-rose-400"
+          "mt-1.5 block min-h-[6rem] w-full rounded-md border bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted/60 focus:outline-none focus:ring-1",
+          @errors == [] && "border-border focus:border-primary focus:ring-primary",
+          @errors != [] && "border-state-error-ink focus:border-state-error-ink focus:ring-state-error-ink"
         ]}
         {@rest}
       >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
@@ -389,9 +394,9 @@ defmodule OQueMudouWeb.CoreComponents do
         id={@id}
         value={Phoenix.HTML.Form.normalize_value(@type, @value)}
         class={[
-          "mt-2 block w-full rounded-lg text-zinc-900 focus:ring-0 sm:text-sm sm:leading-6",
-          @errors == [] && "border-zinc-300 focus:border-zinc-400",
-          @errors != [] && "border-rose-400 focus:border-rose-400"
+          "mt-1.5 block w-full rounded-md border bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted/60 focus:outline-none focus:ring-1",
+          @errors == [] && "border-border focus:border-primary focus:ring-primary",
+          @errors != [] && "border-state-error-ink focus:border-state-error-ink focus:ring-state-error-ink"
         ]}
         {@rest}
       />
@@ -408,7 +413,7 @@ defmodule OQueMudouWeb.CoreComponents do
 
   def label(assigns) do
     ~H"""
-    <label for={@for} class="block text-sm font-semibold leading-6 text-zinc-800">
+    <label for={@for} class="block text-sm font-semibold leading-6 text-ink">
       {render_slot(@inner_block)}
     </label>
     """
@@ -421,7 +426,7 @@ defmodule OQueMudouWeb.CoreComponents do
 
   def error(assigns) do
     ~H"""
-    <p class="mt-3 flex gap-3 text-sm leading-6 text-rose-600">
+    <p class="mt-3 flex gap-3 text-sm leading-6 text-state-error-ink">
       <.icon name="hero-exclamation-circle-mini" class="mt-0.5 h-5 w-5 flex-none" />
       {render_slot(@inner_block)}
     </p>
@@ -441,10 +446,10 @@ defmodule OQueMudouWeb.CoreComponents do
     ~H"""
     <header class={[@actions != [] && "flex items-center justify-between gap-6", @class]}>
       <div>
-        <h1 class="text-lg font-semibold leading-8 text-zinc-800">
+        <h1 class="text-lg font-semibold leading-8 text-ink">
           {render_slot(@inner_block)}
         </h1>
-        <p :if={@subtitle != []} class="mt-2 text-sm leading-6 text-zinc-600">
+        <p :if={@subtitle != []} class="mt-2 text-sm leading-6 text-muted">
           {render_slot(@subtitle)}
         </p>
       </div>
