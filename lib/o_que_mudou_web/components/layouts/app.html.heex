@@ -41,49 +41,55 @@
       <span>Isto não é aconselhamento jurídico.</span>
     </p>
 
-    <%!-- Standing page nav: a centered section line closing the masthead. --%>
+    <%!-- Standing page nav: a centered section line closing the masthead.
+         Three columns keep the links optically centered while the theme
+         control sits at the trailing edge. --%>
     <nav
       aria-label="Páginas"
-      class="mt-6 flex items-center justify-center gap-3 border-b border-border pb-3 text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-muted"
+      class="mt-6 grid grid-cols-[1fr_auto_1fr] items-center border-b border-border pb-3"
     >
-      <.link
-        navigate={~p"/faq"}
-        class="transition-colors duration-150 ease-out-quart hover:text-primary"
-      >
-        Perguntas
-      </.link>
-      <span aria-hidden="true" class="text-border">·</span>
-      <.link
-        navigate={~p"/sobre"}
-        class="transition-colors duration-150 ease-out-quart hover:text-primary"
-      >
-        Sobre
-      </.link>
-      <%= if assigns[:current_user] do %>
-        <span aria-hidden="true" class="text-border">·</span>
+      <div aria-hidden="true"></div>
+      <div class="flex items-center justify-center gap-3 text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-muted">
         <.link
-          navigate={~p"/users/settings"}
+          navigate={~p"/faq"}
           class="transition-colors duration-150 ease-out-quart hover:text-primary"
         >
-          Conta
+          Perguntas
         </.link>
         <span aria-hidden="true" class="text-border">·</span>
         <.link
-          href={~p"/users/log_out"}
-          method="delete"
+          navigate={~p"/sobre"}
           class="transition-colors duration-150 ease-out-quart hover:text-primary"
         >
-          Sair
+          Sobre
         </.link>
-      <% else %>
-        <span aria-hidden="true" class="text-border">·</span>
-        <.link
-          navigate={~p"/users/log_in"}
-          class="transition-colors duration-150 ease-out-quart hover:text-primary"
-        >
-          Entrar
-        </.link>
-      <% end %>
+        <%= if assigns[:current_user] do %>
+          <span aria-hidden="true" class="text-border">·</span>
+          <.link
+            navigate={~p"/users/settings"}
+            class="transition-colors duration-150 ease-out-quart hover:text-primary"
+          >
+            Conta
+          </.link>
+          <span aria-hidden="true" class="text-border">·</span>
+          <.link
+            href={~p"/users/log_out"}
+            method="delete"
+            class="transition-colors duration-150 ease-out-quart hover:text-primary"
+          >
+            Sair
+          </.link>
+        <% else %>
+          <span aria-hidden="true" class="text-border">·</span>
+          <.link
+            navigate={~p"/users/log_in"}
+            class="transition-colors duration-150 ease-out-quart hover:text-primary"
+          >
+            Entrar
+          </.link>
+        <% end %>
+      </div>
+      <.theme_toggle class="justify-self-end" />
     </nav>
   </div>
 </header>
