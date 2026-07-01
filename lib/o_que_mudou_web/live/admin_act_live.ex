@@ -36,6 +36,19 @@ defmodule OQueMudouWeb.AdminActLive do
     {:noreply, socket |> put_flash(:info, "Summary published.") |> load(socket.assigns.act.id)}
   end
 
+  def handle_event("embed", %{"id" => sid}, socket) do
+    summary = Enum.find(socket.assigns.summaries, &(&1.id == String.to_integer(sid)))
+
+    case Summarizer.embed_summary(summary) do
+      {:ok, _updated} ->
+        {:noreply,
+         socket |> put_flash(:info, "Embedding generated.") |> load(socket.assigns.act.id)}
+
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "Embedding failed: #{inspect(reason)}")}
+    end
+  end
+
   def handle_event("pick_provider", %{"provider_id" => pid}, socket) do
     {:noreply, assign(socket, trigger_id: parse_id(pid))}
   end
@@ -161,20 +174,30 @@ defmodule OQueMudouWeb.AdminActLive do
             <span :if={duration_label(s)} class="tabular-nums">· {duration_label(s)}</span>
             <.provenance_badge summary={s} />
           </div>
-          <button
-            :if={@published_id != s.id}
-            phx-click="publish"
-            phx-value-id={s.id}
-            class="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-ink transition-colors duration-150 ease-out-quart hover:bg-surface-inset"
-          >
-            Publish
-          </button>
-          <span
-            :if={@published_id == s.id}
-            class="inline-flex items-center gap-1 text-xs font-semibold text-primary"
-          >
-            <.icon name="hero-check-circle-micro" class="size-4" /> published
-          </span>
+          <div class="flex items-center gap-2">
+            <span :if={s.embedding} class="text-xs text-muted">embedded</span>
+            <button
+              phx-click="embed"
+              phx-value-id={s.id}
+              class="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-ink transition-colors duration-150 ease-out-quart hover:bg-surface-inset"
+            >
+              {if s.embedding, do: "Regenerate embedding", else: "Generate embedding"}
+            </button>
+            <button
+              :if={@published_id != s.id}
+              phx-click="publish"
+              phx-value-id={s.id}
+              class="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-ink transition-colors duration-150 ease-out-quart hover:bg-surface-inset"
+            >
+              Publish
+            </button>
+            <span
+              :if={@published_id == s.id}
+              class="inline-flex items-center gap-1 text-xs font-semibold text-primary"
+            >
+              <.icon name="hero-check-circle-micro" class="size-4" /> published
+            </span>
+          </div>
         </div>
         <p class="mt-3 font-serif text-[1.0625rem] leading-relaxed text-ink">{s.plain_text}</p>
         <div :if={s.domains != []} class="mt-2 flex flex-wrap gap-1.5">
