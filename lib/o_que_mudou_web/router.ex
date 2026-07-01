@@ -45,6 +45,7 @@ defmodule OQueMudouWeb.Router do
     live "/summarizer", AdminLive, :index
     live "/providers/new", ProviderFormLive, :new
     live "/providers/:id/edit", ProviderFormLive, :edit
+    live "/acts", AdminActsLive, :index
     live "/acts/:id", AdminActLive, :show
   end
 
