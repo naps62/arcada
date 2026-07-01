@@ -69,7 +69,6 @@ defmodule OQueMudouWeb.ActLive do
         <div class="flex flex-wrap items-center justify-between gap-3">
           <h2 class="flex items-center gap-2 text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-muted">
             Em linguagem simples <.provenance_badge summary={@summary} />
-            <.partial_summary_badge summary={@summary} />
           </h2>
           <.validation_control summary={@summary} />
         </div>
@@ -82,17 +81,6 @@ defmodule OQueMudouWeb.ActLive do
         </p>
         <p :if={is_nil(@summary)} class="mt-4 font-serif text-lg italic text-muted">
           Ainda sem resumo em linguagem simples.
-        </p>
-
-        <p
-          :if={@summary && @summary.truncated}
-          class="mt-4 flex max-w-reading items-start gap-2 rounded-md border border-border bg-surface-inset px-3.5 py-2.5 text-[0.8125rem] leading-relaxed text-muted"
-        >
-          <.icon name="hero-scissors-micro" class="mt-0.5 size-4 shrink-0" />
-          <span>
-            Este diploma é extenso: o resumo cobre apenas o início do texto e pode não
-            refletir os anexos. Consulte o <strong>texto integral</strong> e a fonte oficial.
-          </span>
         </p>
 
         <div :if={@summary && @summary.domains != []} class="mt-5 flex flex-wrap gap-1.5">
@@ -176,13 +164,25 @@ defmodule OQueMudouWeb.ActLive do
     """
   end
 
-  defp model_line(%{provider: %{name: name}, model: model}) when is_binary(model),
-    do: "Gerado por #{name} · #{model}"
+  defp model_line(%{provider: %{name: name}, model: model} = s) when is_binary(model),
+    do: join_meta(["Gerado por #{name} · #{model}", strategy_meta(s)])
 
-  defp model_line(%{model: model, prompt_version: pv}) when is_binary(model),
-    do: "Gerado por #{model} · prompt #{pv}"
+  defp model_line(%{model: model, prompt_version: pv} = s) when is_binary(model),
+    do: join_meta(["Gerado por #{model} · prompt #{pv}", strategy_meta(s)])
 
   defp model_line(_), do: "Resumo manual"
+
+  defp join_meta(parts), do: parts |> Enum.reject(&is_nil/1) |> Enum.join(" · ")
+
+  # Which slice of an oversized diploma fed the summary. nil when the whole act
+  # fit (`text_strategy` "full" or a legacy row) — nothing worth noting. Ranked
+  # rows also name the embeddings model that scored the sections.
+  defp strategy_meta(%{text_strategy: "rank", ranker_model: m}) when is_binary(m),
+    do: "secções relevantes · #{m}"
+
+  defp strategy_meta(%{text_strategy: "rank"}), do: "secções relevantes"
+  defp strategy_meta(%{text_strategy: "truncate"}), do: "início do texto"
+  defp strategy_meta(_), do: nil
 
   @months ~w(janeiro fevereiro março abril maio junho julho agosto setembro outubro novembro dezembro)
   defp format_date(%Date{} = d), do: "#{d.day} de #{Enum.at(@months, d.month - 1)} de #{d.year}"

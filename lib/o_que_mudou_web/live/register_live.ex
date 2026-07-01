@@ -255,7 +255,6 @@ defmodule OQueMudouWeb.RegisterLive do
         </div>
         <div class="mt-0.5 flex shrink-0 flex-col items-end gap-1">
           <.provenance_badge summary={@summary} />
-          <.partial_summary_badge summary={@summary} />
         </div>
       </div>
 

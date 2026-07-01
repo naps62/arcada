@@ -160,7 +160,6 @@ defmodule OQueMudouWeb.AdminActLive do
             <span :if={cost_label(s)} class="tabular-nums">· {cost_label(s)}</span>
             <span :if={duration_label(s)} class="tabular-nums">· {duration_label(s)}</span>
             <.provenance_badge summary={s} />
-            <.partial_summary_badge summary={s} />
           </div>
           <button
             :if={@published_id != s.id}
