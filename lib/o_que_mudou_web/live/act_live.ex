@@ -7,12 +7,66 @@ defmodule OQueMudouWeb.ActLive do
   use OQueMudouWeb, :live_view
 
   alias OQueMudou.Register
+  alias OQueMudouWeb.SEO
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
     act = Register.get_act!(id)
-    {:ok, assign(socket, act: act, summary: Register.published_summary(act), show_full: false)}
+    summary = Register.published_summary(act)
+
+    {:ok,
+     socket
+     |> assign(act: act, summary: summary, show_full: false)
+     |> assign(seo(act, summary))}
   end
+
+  # Per-act SEO: the headline is the page title, the plain-language summary the
+  # description, and the page ships an schema.org Article with a canonical URL.
+  defp seo(act, summary) do
+    title = (summary && summary.headline) || act.title || act.tipo || "Ato"
+    description = act_description(act, summary)
+    canonical = SEO.url(~p"/acts/#{act.id}")
+
+    %{
+      page_title: title,
+      page_description: description,
+      canonical_url: canonical,
+      og_type: "article",
+      json_ld: article_json_ld(act, title, description, canonical)
+    }
+  end
+
+  # Meta description: the summary in plain language, trimmed to a sane length;
+  # falls back to the act's formal title when there's no summary yet.
+  defp act_description(_act, %{plain_text: text}) when is_binary(text),
+    do: truncate(text, 300)
+
+  defp act_description(%{title: title}, _summary) when is_binary(title), do: truncate(title, 300)
+  defp act_description(_act, _summary), do: SEO.default_description()
+
+  defp truncate(text, max) do
+    text = text |> String.replace(~r/\s+/, " ") |> String.trim()
+    if String.length(text) > max, do: String.slice(text, 0, max - 1) <> "…", else: text
+  end
+
+  defp article_json_ld(act, title, description, canonical) do
+    %{
+      "@context" => "https://schema.org",
+      "@type" => "Article",
+      "headline" => title,
+      "description" => description,
+      "inLanguage" => "pt-PT",
+      "isAccessibleForFree" => true,
+      "mainEntityOfPage" => canonical,
+      "publisher" => %{"@type" => "Organization", "name" => "Arcada"}
+    }
+    |> maybe_put("datePublished", act.published_at && Date.to_iso8601(act.published_at))
+    |> maybe_put("articleSection", act.tipo)
+    |> maybe_put("isBasedOn", act.source_url)
+  end
+
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
   @impl true
   def handle_event("toggle_full", _params, socket) do

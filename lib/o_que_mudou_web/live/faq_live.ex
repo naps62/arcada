@@ -8,9 +8,17 @@ defmodule OQueMudouWeb.FaqLive do
   """
   use OQueMudouWeb, :live_view
 
+  alias OQueMudouWeb.SEO
+
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, page_title: "Perguntas frequentes")}
+    {:ok,
+     assign(socket,
+       page_title: "Perguntas frequentes",
+       page_description:
+         "Respostas às dúvidas mais comuns sobre a Arcada: o que é, de onde vêm os resumos, o uso de IA, e por que não é aconselhamento jurídico.",
+       canonical_url: SEO.url(~p"/faq")
+     )}
   end
 
   @impl true
@@ -48,8 +56,7 @@ defmodule OQueMudouWeb.FaqLive do
 
         <.faq_item id="faq-fontes-resumos" question="De onde vêm os resumos?">
           <p>
-            Cada resumo é feito a partir do próprio diploma publicado no
-            <em>Diário da República</em>, com citações ao nível do artigo. A ligação
+            Cada resumo é feito a partir do próprio diploma publicado no <em>Diário da República</em>, com citações ao nível do artigo. A ligação
             para o texto oficial está sempre presente — a ideia é que possa
             confirmar tudo por si, na fonte.
           </p>
@@ -73,8 +80,10 @@ defmodule OQueMudouWeb.FaqLive do
           <p>
             Não é só pedir um resumo: há um pipeline que parte do texto oficial,
             escolhe as secções relevantes e gera o título, o resumo e a
-            classificação por área. Está explicado em detalhe na página
-            <.link navigate="/sobre" class="font-medium text-primary hover:underline">
+            classificação por área. Está explicado em detalhe na página <.link
+              navigate="/sobre"
+              class="font-medium text-primary hover:underline"
+            >
               Sobre
             </.link>.
           </p>
