@@ -265,6 +265,135 @@ defmodule OQueMudouWeb.KaffyTheme do
       border-color: var(--oqm-primary) !important;
       color: var(--oqm-on-primary) !important;
     }
+
+    /* ── Stray Bootstrap blues → our primary ─────────────────────────────── */
+    .text-primary { color: var(--oqm-primary) !important; }
+    .navbar-brand,
+    .navbar-brand:hover,
+    .navbar-brand:focus { color: var(--oqm-ink) !important; }
+    .breadcrumb-item a { color: var(--oqm-primary) !important; }
+    .breadcrumb-item.active,
+    .breadcrumb-item + .breadcrumb-item::before { color: var(--oqm-muted) !important; }
+
+    .btn-outline-primary {
+      color: var(--oqm-primary) !important;
+      border-color: var(--oqm-primary) !important;
+      background: transparent !important;
+    }
+    .btn-outline-primary:hover,
+    .btn-outline-primary:focus {
+      color: var(--oqm-on-primary) !important;
+      background: var(--oqm-primary) !important;
+    }
+    .btn-link { color: var(--oqm-primary) !important; }
+    .btn-link:hover { color: var(--oqm-primary-hover) !important; }
+    .btn-danger {
+      background: var(--oqm-err-ink) !important;
+      border-color: var(--oqm-err-ink) !important;
+      color: var(--oqm-bg) !important;
+    }
+
+    /* Checkbox / radio checked state (Star Admin uses #007bff). */
+    .custom-control-input:checked ~ .custom-control-label::before {
+      background: var(--oqm-primary) !important;
+      border-color: var(--oqm-primary) !important;
+    }
+    .custom-control-label::before { border-color: var(--oqm-border) !important; }
+
+    /* ── Stray white / near-white surfaces → our surfaces ────────────────── */
+    .bg-light { background: var(--oqm-surface) !important; }
+    .card-header {
+      background: var(--oqm-surface-inset) !important;
+      border-bottom: 1px solid var(--oqm-border) !important;
+      color: var(--oqm-ink) !important;
+      padding: 0.5rem 1rem !important;
+    }
+    .table-striped tbody tr:nth-of-type(odd),
+    .table-striped tbody tr:nth-of-type(odd) > td,
+    .table-striped tbody tr:nth-of-type(odd) > th {
+      background: var(--oqm-surface-inset) !important;
+    }
+    .custom-select {
+      background-color: var(--oqm-bg) !important;
+      color: var(--oqm-ink) !important;
+      border: 1px solid var(--oqm-border) !important;
+      height: auto !important;
+      min-height: 2.1rem !important;
+      padding: 0.35rem 1.75rem 0.35rem 0.6rem !important;
+      font-size: 0.83rem !important;
+    }
+    .input-group-text {
+      background: var(--oqm-surface-inset) !important;
+      color: var(--oqm-muted) !important;
+      border: 1px solid var(--oqm-border) !important;
+      padding: 0.35rem 0.6rem !important;
+    }
+    .dropdown-menu {
+      background: var(--oqm-surface) !important;
+      border: 1px solid var(--oqm-border) !important;
+    }
+    .dropdown-item { color: var(--oqm-ink) !important; }
+    .dropdown-item:hover,
+    .dropdown-item:focus {
+      background: var(--oqm-surface-inset) !important;
+      color: var(--oqm-ink) !important;
+    }
+    .modal-content {
+      background: var(--oqm-surface) !important;
+      border: 1px solid var(--oqm-border) !important;
+      color: var(--oqm-ink) !important;
+    }
+    .modal-header,
+    .modal-footer { border-color: var(--oqm-border) !important; }
+
+    /* ── Badges ──────────────────────────────────────────────────────────── */
+    .badge-secondary {
+      background: var(--oqm-surface-inset) !important;
+      color: var(--oqm-ink) !important;
+    }
+
+    /* ── Tighter vertical rhythm ─────────────────────────────────────────── */
+    .grid-margin { margin-bottom: 0.85rem !important; }
+    .card-description { margin-bottom: 0.6rem !important; color: var(--oqm-muted) !important; }
+    .text-muted { color: var(--oqm-muted) !important; }
+
+    /* ── Sidebar: kill the stock blue active bar + submenu blues ─────────── */
+    .sidebar .nav .nav-item.active { background: var(--oqm-surface-inset) !important; }
+    .sidebar .nav .nav-item.active > .nav-link .menu-title,
+    .sidebar .nav .nav-item.active > .nav-link i { color: var(--oqm-primary) !important; }
+    .sidebar .nav .nav-item .nav-link .menu-arrow,
+    .sidebar .nav .nav-item .nav-link .menu-arrow::before { color: var(--oqm-muted) !important; }
+
+    .sidebar .nav.sub-menu { margin-bottom: 0.4rem !important; }
+    .sidebar .nav.sub-menu .nav-item .nav-link { color: var(--oqm-muted) !important; }
+    .sidebar .nav.sub-menu .nav-item .nav-link::before { color: var(--oqm-border) !important; }
+    .sidebar .nav.sub-menu .nav-item .nav-link:hover { color: var(--oqm-ink) !important; background: transparent !important; }
+    .sidebar .nav.sub-menu .nav-item .nav-link.active { color: var(--oqm-primary) !important; }
+
+    /* Table sort-links in the header read as headers, not body links. */
+    .table thead th a,
+    .table thead th a:hover,
+    a.kaffy-order-field,
+    a.kaffy-order-field:hover { color: var(--oqm-muted) !important; }
+
+    /* ── Brand: swap the stock blue Kaffy logo for our wordmark ──────────── */
+    .navbar-brand.brand-logo img,
+    .navbar-brand.brand-logo-mini img { display: none !important; }
+    .navbar-brand.brand-logo::after {
+      content: "o-que-mudou";
+      font-family: Georgia, "Times New Roman", serif;
+      font-weight: 600;
+      font-size: 1rem;
+      letter-spacing: -0.01em;
+      color: var(--oqm-ink);
+    }
+    .navbar-brand.brand-logo-mini::after {
+      content: "oqm";
+      font-family: Georgia, "Times New Roman", serif;
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--oqm-ink);
+    }
     """
   end
 end
