@@ -155,6 +155,27 @@ defmodule OQueMudou.SummarizerTest do
     test "missing act is a no-op success" do
       assert :ok = perform_job(SummarizeWorker, %{act_id: 999_999})
     end
+
+    test "snoozes when the provider is at its concurrency limit" do
+      provider = ssh_provider()
+      act = act_fixture()
+
+      # One job already executing for this (limit-1 SSH) provider, ahead of ours.
+      Repo.insert!(%Oban.Job{
+        worker: "OQueMudou.Summarizer.SummarizeWorker",
+        queue: "summarize",
+        state: "executing",
+        args: %{"act_id" => act.id, "provider_id" => provider.id}
+      })
+
+      job = %Oban.Job{
+        id: 100_000_000,
+        args: %{"act_id" => act.id, "provider_id" => provider.id}
+      }
+
+      assert {:snooze, _} = SummarizeWorker.perform(job)
+      assert Repo.aggregate(Summary, :count) == 0
+    end
   end
 
   describe "create_summary/2 (manual backfill)" do

@@ -7,6 +7,7 @@ defmodule OQueMudouWeb.AdminLive do
   use OQueMudouWeb, :live_view_admin
 
   alias OQueMudou.{Admin, Providers}
+  alias OQueMudou.Providers.Provider
 
   @default_cap 80_000
 
@@ -254,6 +255,8 @@ defmodule OQueMudouWeb.AdminLive do
               </p>
               <p class="mt-0.5 truncate text-xs text-muted">
                 {(p.models != [] && Enum.join(p.models, ", ")) || "no models"}
+                <span aria-hidden="true" class="mx-1 text-border">·</span>
+                {Provider.max_concurrency(p)}× concurrent
               </p>
             </div>
             <div class="flex shrink-0 items-center gap-3 text-sm">
