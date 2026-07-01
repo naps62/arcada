@@ -22,6 +22,8 @@ defmodule OQueMudou.Application do
       {DNSCluster, query: Application.get_env(:o_que_mudou, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: OQueMudou.PubSub},
       {Oban, Application.fetch_env!(:o_que_mudou, Oban)},
+      # Semantic-search index (issue #27): loads summary embeddings into ETS.
+      OQueMudou.Search.Index,
       # Start a worker by calling: OQueMudou.Worker.start_link(arg)
       # {OQueMudou.Worker, arg},
       # Start to serve requests, typically the last entry
