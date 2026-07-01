@@ -15,11 +15,9 @@ defmodule OQueMudouWeb.AboutLive do
   def render(assigns) do
     ~H"""
     <article class="mx-auto max-w-reading py-12 sm:py-16">
-      <h1 class="text-balance text-center font-display text-[2rem] font-semibold leading-tight text-ink sm:text-[2.625rem]">
-        Sobre a Arcada
-      </h1>
+      <h1 class="sr-only">Sobre a Arcada</h1>
 
-      <div class="mt-6 space-y-5 font-serif text-[1.0625rem] leading-relaxed text-ink">
+      <div class="space-y-5 font-serif text-[1.0625rem] leading-relaxed text-ink">
         <p>
           A Arcada pega no <em>Diário da República, Série I</em>
           e reconta-o em linguagem simples: o que muda, para quem, e quando.
