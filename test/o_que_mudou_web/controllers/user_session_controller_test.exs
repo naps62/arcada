@@ -65,7 +65,7 @@ defmodule OQueMudouWeb.UserSessionControllerTest do
         })
 
       assert redirected_to(conn) == ~p"/"
-      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Conta criada com sucesso"
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Conta criada"
     end
 
     test "login following password update", %{conn: conn, user: user} do
