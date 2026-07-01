@@ -83,6 +83,28 @@ defmodule OQueMudouWeb.RegisterLiveSearchTest do
     refute html =~ "Filtros"
     # The field is pre-filled from the URL so the shared link is self-explanatory.
     assert html =~ ~s(value="arrendamento")
+    # Search results aren't grouped under a date header, so each carries its own.
+    assert html =~ "24 de junho de 2026"
+  end
+
+  test "each new search re-flashes the results even when they're identical", %{conn: conn} do
+    seed_indexed_act([1.0, 0.0])
+    set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+
+    {:ok, lv, _html} = live(conn, ~p"/")
+
+    html1 = lv |> form("#search-form", %{"q" => "arrendamento"}) |> render_change()
+    html2 = lv |> form("#search-form", %{"q" => "arrendament"}) |> render_change()
+
+    # The FlashOnResult hook keys off data-token; it must change between searches
+    # so an identical result set still visibly refreshes.
+    assert token(html1) != token(html2)
+    assert html1 =~ ~s(phx-hook="FlashOnResult")
+  end
+
+  defp token(html) do
+    [_, tok] = Regex.run(~r/id="search-results"[^>]*data-token="(\d+)"/, html)
+    tok
   end
 
   test "an unmatched query shows the empty state", %{conn: conn} do

@@ -16,7 +16,11 @@ defmodule OQueMudouWeb.RegisterLive do
        domains: Register.life_domains(),
        periods: Register.periods(),
        query: "",
-       search_results: nil
+       search_results: nil,
+       # Bumped on every completed search so the results container patches (and
+       # the FlashOnResult hook fires) even when the results are identical —
+       # e.g. deleting a character re-runs the search but returns the same acts.
+       search_token: 0
      )}
   end
 
@@ -45,6 +49,7 @@ defmodule OQueMudouWeb.RegisterLive do
     assign(socket,
       query: query,
       search_results: Search.search(query),
+      search_token: socket.assigns.search_token + 1,
       page_title: "Pesquisa: #{query}"
     )
   end
@@ -136,7 +141,12 @@ defmodule OQueMudouWeb.RegisterLive do
 
     <div class="border-b-2 border-rule-strong"></div>
 
-    <div :if={@search_results}>
+    <div
+      :if={@search_results}
+      id="search-results"
+      phx-hook="FlashOnResult"
+      data-token={@search_token}
+    >
       <p :if={@search_results == []} class="border-b border-border py-16 text-center">
         <.icon name="hero-document-magnifying-glass" class="mx-auto size-8 text-muted" />
         <span class="mt-3 block font-display text-lg text-ink">
@@ -145,7 +155,11 @@ defmodule OQueMudouWeb.RegisterLive do
       </p>
       <ul :if={@search_results != []} class="mt-2 divide-y divide-border">
         <li :for={act <- @search_results}>
-          <.act_entry act={act} summary={Register.published_summary(act)} />
+          <.act_entry
+            act={act}
+            summary={Register.published_summary(act)}
+            date={act.edition.date}
+          />
         </li>
       </ul>
     </div>
@@ -234,7 +248,7 @@ defmodule OQueMudouWeb.RegisterLive do
       <section :for={{date, acts} <- @groups} class="mt-8 first:mt-7">
         <div class="mb-1 flex items-baseline justify-between gap-3 border-b-2 border-rule-strong pb-1.5">
           <h2 class="font-display text-[0.8125rem] font-bold uppercase tracking-[0.08em] text-ink">
-            <time datetime={Date.to_iso8601(date)}>{format_date(date)}</time>
+            <time datetime={Date.to_iso8601(date)}>{format_pt_date(date)}</time>
           </h2>
           <span class="text-xs text-muted">
             {length(acts)} {if length(acts) == 1, do: "diploma", else: "diplomas"}
@@ -337,7 +351,4 @@ defmodule OQueMudouWeb.RegisterLive do
   defp page_title(domain, nil), do: to_string(domain)
   defp page_title(nil, period), do: period_label(period)
   defp page_title(domain, period), do: "#{domain} · #{period_label(period)}"
-
-  @months ~w(janeiro fevereiro março abril maio junho julho agosto setembro outubro novembro dezembro)
-  defp format_date(%Date{} = d), do: "#{d.day} de #{Enum.at(@months, d.month - 1)} de #{d.year}"
 end

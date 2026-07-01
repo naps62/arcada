@@ -735,6 +735,12 @@ defmodule OQueMudouWeb.CoreComponents do
       "placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
   end
 
+  @pt_months ~w(janeiro fevereiro março abril maio junho julho agosto setembro outubro novembro dezembro)
+
+  @doc ~S(Portuguese long date, e.g. `~D[2026-06-27]` → "27 de junho de 2026".)
+  def format_pt_date(%Date{} = d),
+    do: "#{d.day} de #{Enum.at(@pt_months, d.month - 1)} de #{d.year}"
+
   @doc "A life-domain tag — quiet, neutral, never a status color."
   attr :label, :string, required: true
   attr :class, :string, default: nil
@@ -755,9 +761,13 @@ defmodule OQueMudouWeb.CoreComponents do
   title, provenance badge, summary, domain tags, source links. Shared so both
   places render the same card. A nil `summary` renders a quiet one-line brief
   instead (nothing to show yet).
+
+  `date` (a `Date`) adds a dateline — search results aren't grouped under a date
+  header the way the front-page feed is, so each result carries its own.
   """
   attr :act, :map, required: true
   attr :summary, :map, default: nil
+  attr :date, :any, default: nil
 
   def act_entry(%{summary: nil} = assigns) do
     ~H"""
@@ -802,6 +812,13 @@ defmodule OQueMudouWeb.CoreComponents do
       </p>
 
       <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+        <time
+          :if={@date}
+          datetime={Date.to_iso8601(@date)}
+          class="text-[0.6875rem] font-semibold uppercase tracking-[0.09em] text-muted"
+        >
+          {format_pt_date(@date)}
+        </time>
         <div :if={@summary.domains != []} class="flex flex-wrap gap-1.5">
           <.domain_tag :for={d <- @summary.domains} label={to_string(d)} />
         </div>
