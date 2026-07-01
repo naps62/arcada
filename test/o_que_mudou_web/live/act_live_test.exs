@@ -60,4 +60,17 @@ defmodule OQueMudouWeb.ActLiveTest do
   test "unknown act id raises (404)", %{conn: conn} do
     assert_raise Ecto.NoResultsError, fn -> live(conn, ~p"/acts/999999") end
   end
+
+  test "emits per-act SEO: canonical, article OG, JSON-LD", %{conn: conn} do
+    %{act: act} = seed()
+    {:ok, _lv, html} = live(conn, ~p"/acts/#{act.id}")
+
+    assert html =~ ~s(rel="canonical")
+    assert html =~ "/acts/#{act.id}"
+    assert html =~ ~s(property="og:type" content="article")
+    assert html =~ ~s(name="description")
+    assert html =~ "Em linguagem simples: muda X."
+    assert html =~ "application/ld+json"
+    assert html =~ ~s("@type":"Article")
+  end
 end

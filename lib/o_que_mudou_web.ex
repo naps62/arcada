@@ -17,7 +17,9 @@ defmodule OQueMudouWeb do
   those modules here.
   """
 
-  def static_paths, do: ~w(assets fonts images favicon.ico favicon.svg robots.txt)
+  # robots.txt + sitemap.xml are served dynamically by SeoController, not from
+  # priv/static, so they can reflect the SEO indexing gate (see #36).
+  def static_paths, do: ~w(assets fonts images favicon.ico favicon.svg)
 
   def router do
     quote do
@@ -108,6 +110,9 @@ defmodule OQueMudouWeb do
       import Phoenix.HTML
       # Core UI components
       import OQueMudouWeb.CoreComponents
+
+      # SEO helpers (canonical URLs, robots gate) used by the root layout
+      alias OQueMudouWeb.SEO
 
       # Shortcut for generating JS commands
       alias Phoenix.LiveView.JS

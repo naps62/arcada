@@ -40,17 +40,41 @@
     >
       {assigns[:page_title]}
     </.live_title>
+    <%!-- Meta description + canonical. `page_description`/`canonical_url` are set
+         per LiveView; both fall back to sensible site-wide defaults. `robots` is
+         gated site-wide until go-live (SEO_INDEXABLE) — see OQueMudouWeb.SEO. --%>
+    <meta name="description" content={assigns[:page_description] || SEO.default_description()} />
+    <meta name="robots" content={SEO.robots_meta(assigns[:page_noindex] || false)} />
+    <link rel="canonical" href={assigns[:canonical_url] || SEO.url(~p"/")} />
     <link rel="icon" href={~p"/favicon.svg"} type="image/svg+xml" />
     <link rel="icon" href={~p"/favicon.ico"} sizes="any" />
-    <%!-- Site-level social defaults. Per-page cards/images land with the SEO pass. --%>
+    <%!-- Social cards. Title/description/url track the page; type is "website"
+         except on act pages, which pass "article". --%>
     <meta property="og:site_name" content="Arcada" />
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={assigns[:og_type] || "website"} />
     <meta property="og:locale" content="pt_PT" />
-    <meta property="og:title" content={assigns[:page_title] || "Arcada"} />
-    <meta property="og:description" content="O Diário da República em linguagem simples." />
+    <meta property="og:url" content={assigns[:canonical_url] || SEO.url(~p"/")} />
+    <meta
+      property="og:title"
+      content={(assigns[:page_title] && "#{assigns[:page_title]} · Arcada") || "Arcada"}
+    />
+    <meta
+      property="og:description"
+      content={assigns[:page_description] || SEO.default_description()}
+    />
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content={assigns[:page_title] || "Arcada"} />
-    <meta name="twitter:description" content="O Diário da República em linguagem simples." />
+    <meta
+      name="twitter:title"
+      content={(assigns[:page_title] && "#{assigns[:page_title]} · Arcada") || "Arcada"}
+    />
+    <meta
+      name="twitter:description"
+      content={assigns[:page_description] || SEO.default_description()}
+    />
+    <script
+      :if={assigns[:json_ld]}
+      type="application/ld+json"
+    ><%= raw(Jason.encode!(@json_ld)) %></script>
     <link
       rel="preload"
       href={~p"/fonts/fraunces-latin-wght-normal.woff2"}

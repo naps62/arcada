@@ -6,9 +6,17 @@ defmodule OQueMudouWeb.AboutLive do
   """
   use OQueMudouWeb, :live_view
 
+  alias OQueMudouWeb.SEO
+
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, page_title: "Sobre")}
+    {:ok,
+     assign(socket,
+       page_title: "Sobre",
+       page_description:
+         "O que é a Arcada, de onde vem o nome, e a sua postura de confiança: um sinaleiro cívico que traduz o Diário da República — nunca uma autoridade legal.",
+       canonical_url: SEO.url(~p"/sobre")
+     )}
   end
 
   @impl true
@@ -27,8 +35,7 @@ defmodule OQueMudouWeb.AboutLive do
           class="w-full rounded-[3px] border border-border"
         />
         <figcaption class="mt-2 text-center text-xs text-muted">
-          A Arcada, na Praça da República, em Braga.
-          <span aria-hidden="true">·</span>
+          A Arcada, na Praça da República, em Braga. <span aria-hidden="true">·</span>
           <a
             href="https://commons.wikimedia.org/wiki/File:Arcada_in_Braga_03.jpg"
             rel="noopener"
@@ -80,8 +87,7 @@ defmodule OQueMudouWeb.AboutLive do
       </h2>
       <div class="mt-4 space-y-5 font-serif text-[1.0625rem] leading-relaxed text-ink">
         <p>
-          <em>Arcada</em>
-          é a galeria de arcos da praça central de Braga — o lugar coberto onde,
+          <em>Arcada</em> é a galeria de arcos da praça central de Braga — o lugar coberto onde,
           desde o século XVI, se fazia o mercado e se juntava a cidade. A arcada
           que lhe dá o nome é setecentista. Em 1910, com a implantação da
           República, a praça passou a chamar-se <strong>Praça da República</strong> —
@@ -101,8 +107,10 @@ defmodule OQueMudouWeb.AboutLive do
           href="https://naps.pt"
           rel="noopener"
           class="text-primary hover:underline"
-        >naps.pt</a>). Dúvidas, erros ou sugestões:
-        <a href="mailto:arcada@naps62.com" class="text-primary hover:underline">
+        >naps.pt</a>). Dúvidas, erros ou sugestões: <a
+          href="mailto:arcada@naps62.com"
+          class="text-primary hover:underline"
+        >
           arcada@naps62.com
         </a>.
       </p>

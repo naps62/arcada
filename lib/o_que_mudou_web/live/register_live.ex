@@ -7,6 +7,7 @@ defmodule OQueMudouWeb.RegisterLive do
   use OQueMudouWeb, :live_view
 
   alias OQueMudou.{Register, Search}
+  alias OQueMudouWeb.SEO
 
   @impl true
   def mount(_params, _session, socket) do
@@ -75,7 +76,13 @@ defmodule OQueMudouWeb.RegisterLive do
       search_results: page,
       search_more?: length(ids) > length(page),
       search_token: socket.assigns.search_token + 1,
-      page_title: "Pesquisa: #{query}"
+      page_title: "Pesquisa: #{query}",
+      page_description: SEO.default_description(),
+      # Search-result pages carry a query string and thin, shifting content —
+      # keep them out of the index, canonicalise to the register root.
+      page_noindex: true,
+      canonical_url: SEO.url(~p"/"),
+      json_ld: nil
     )
   end
 
@@ -96,8 +103,56 @@ defmodule OQueMudouWeb.RegisterLive do
       period_counts: Register.period_counts(domain: domain),
       groups: group_by_date(acts),
       total: length(acts),
-      page_title: page_title(domain, period)
+      page_title: page_title(domain, period),
+      page_description: browse_description(domain, period),
+      canonical_url: browse_canonical(domain, period),
+      page_noindex: false,
+      json_ld: home_json_ld(domain, period)
     )
+  end
+
+  # The register root is the site's front door: describe the whole product and
+  # advertise the on-site search (WebSite + SearchAction) for rich results. On a
+  # filtered view we drop the SearchAction and just describe the slice.
+  defp home_json_ld(nil, nil) do
+    %{
+      "@context" => "https://schema.org",
+      "@type" => "WebSite",
+      "name" => "Arcada",
+      "url" => SEO.url(~p"/"),
+      "inLanguage" => "pt-PT",
+      "description" => SEO.default_description(),
+      "potentialAction" => %{
+        "@type" => "SearchAction",
+        "target" => %{
+          "@type" => "EntryPoint",
+          "urlTemplate" => SEO.url(~p"/") <> "?q={search_term_string}"
+        },
+        "query-input" => "required name=search_term_string"
+      }
+    }
+  end
+
+  defp home_json_ld(_domain, _period), do: nil
+
+  defp browse_description(nil, nil), do: SEO.default_description()
+
+  defp browse_description(domain, period) do
+    scope = page_title(domain, period)
+
+    "Atos do Diário da República, Série I — #{scope} — em linguagem simples, com a fonte oficial ao lado."
+  end
+
+  # Canonical for a filtered browse view preserves the active domain/period so
+  # each section page is its own canonical; the unfiltered root canonicalises to /.
+  defp browse_canonical(nil, nil), do: SEO.url(~p"/")
+
+  defp browse_canonical(domain, period) do
+    params =
+      [domain: domain, period: period && to_string(period)]
+      |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+
+    SEO.url(~p"/?#{params}")
   end
 
   # Group acts by their edition's publication date, newest day first.
