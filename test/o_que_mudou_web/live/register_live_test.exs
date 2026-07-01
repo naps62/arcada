@@ -56,7 +56,7 @@ defmodule OQueMudouWeb.RegisterLiveTest do
     seed()
     {:ok, _lv, html} = live(conn, ~p"/")
 
-    assert html =~ "O que mudou"
+    assert html =~ "Arcada"
     assert html =~ "24 de junho de 2026"
     assert html =~ "Muda o escalão do IRS."
     assert html =~ "Atualiza regras de trabalho."

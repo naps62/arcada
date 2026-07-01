@@ -17,7 +17,7 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
   @anthropic_version "2023-06-01"
   @default_model "claude-sonnet-4-6"
   # Bump when the prompt/schema change so summaries record which version produced them.
-  @prompt_version "2026-06-28.2"
+  @prompt_version "2026-07-01.1"
 
   # Published per-million-token prices ({input, output}), matched by model-id
   # prefix so minor version bumps don't need a table update. Turns the response's
@@ -41,6 +41,7 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
       {:ok,
        %{
          plain_text: parsed["plain_text"],
+         headline: parsed["headline"],
          domains: Enum.map(parsed["domains"] || [], &String.to_existing_atom/1),
          model: model,
          prompt_version: @prompt_version
@@ -81,9 +82,10 @@ defmodule OQueMudou.Summarizer.Adapters.Api do
     %{
       "type" => "object",
       "additionalProperties" => false,
-      "required" => ["plain_text", "domains"],
+      "required" => ["plain_text", "headline", "domains"],
       "properties" => %{
         "plain_text" => %{"type" => "string"},
+        "headline" => %{"type" => "string"},
         "domains" => %{
           "type" => "array",
           "items" => %{"type" => "string", "enum" => Register.life_domains()}

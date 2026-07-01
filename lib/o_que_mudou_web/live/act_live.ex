@@ -57,8 +57,11 @@ defmodule OQueMudouWeb.ActLive do
           {@act.tipo}
         </p>
         <h1 class="mt-1.5 text-pretty font-display text-[1.75rem] font-semibold leading-tight text-ink sm:text-[2.25rem]">
-          {@act.title || @act.tipo}
+          {(@summary && @summary.headline) || @act.title || @act.tipo}
         </h1>
+        <p :if={@summary && @summary.headline} class="mt-1.5 text-sm text-muted">
+          {@act.title || @act.tipo}
+        </p>
         <p class="mt-2 text-sm text-muted">
           {@act.emitter}
           <span :if={@act.published_at}>· {format_date(@act.published_at)}</span>
