@@ -84,31 +84,40 @@ Wiring steps:
 
 ## Two-host setup — public `arcada.naps.pt` + private `arcada.example.internal` (issue #37)
 
-The app is served on **two** hosts by the same Dokploy application (add both as
-domain rows on the app):
+The app is served privately on `arcada.example.internal` (VPN). `arcada.naps.pt` is the
+**future** public host — **not wired up yet** (see below).
 
 | Host | Audience | Edge middlewares | `/admin*` |
 |---|---|---|---|
-| `arcada.naps.pt` | public *(closed for now)* | `authelia` | **404** (host guard) |
 | `arcada.example.internal` | private (VPN) | `vpn-allowlist` | Authelia-gated, served |
+| `arcada.naps.pt` | public *(not exposed yet)* | — | **404** (host guard) |
 
-- **`arcada.naps.pt`** is the canonical public host (`PHX_HOST`). It is **not
-  open yet** — until go-public it sits behind the `authelia` forwardAuth
-  middleware so only authenticated users reach it. Drop the `authelia`
-  middleware from this row when ready to open to the world. It never serves
-  `/admin`: `ADMIN_HOST=arcada.example.internal` makes `RequireAdminHost` raise a 404
-  (identical to any unknown path — no 403, which would confirm the surface).
 - **`arcada.example.internal`** is the private VPN host carrying the
   `vpn-allowlist` IP-allowlist middleware (per the `*.example.internal`
-  model). It is the only host where `/admin*` exists; `/admin` additionally
-  routes through `authelia` + the in-app `RequireAdminGroup` check (see the
-  Admin section below).
+  model), and is `PHX_HOST`. It is the only host where `/admin*` exists;
+  `/admin` additionally routes through `authelia` + the in-app
+  `RequireAdminGroup` check (see the Admin section below).
+- **`arcada.naps.pt`** has **no Traefik row / Cloudflare route** for now — it is
+  intentionally closed by not being exposed. The app is still hardened for it:
+  `ADMIN_HOST=arcada.example.internal` makes `RequireAdminHost` raise a 404 for `/admin*`
+  on any other host, and `arcada.naps.pt` is pre-listed in `CHECK_ORIGIN_HOSTS`
+  so LiveView works the moment it's opened.
 
-Dokploy domain rows (per host, path `/`):
+  **Why not Authelia (as first tried):** the shared `authelia` middleware
+  forward-auths to Authelia at `192.0.2.20:9091`, which is configured only for
+  `*.example.internal` (→ `auth.example.internal`) and `*.example.internal`. For the bare `naps.pt`
+  cookie domain it returns **400**, so `authelia@file` cannot gate
+  `arcada.naps.pt`. Going public later needs, in order: (1) a Cloudflare
+  tunnel/origin route for `arcada.naps.pt` → the Traefik ingress; (2) a gate that
+  works for `naps.pt` — either add the `naps.pt` session domain + access rule to
+  Authelia, or just open it; (3) an `arcada.naps.pt` domain row on the app. Note
+  once traffic flows through Cloudflare the source IP becomes Cloudflare's, so an
+  IP-allowlist gate would block everyone — use an auth gate, not the VPN ACL.
+
+Dokploy domain rows (per host):
 
 | Host | Path | Middlewares |
 |---|---|---|
-| `arcada.naps.pt` | `/` | `authelia` |
 | `arcada.example.internal` | `/` | `vpn-allowlist` |
 | `arcada.example.internal` | `/admin` | `authelia`, `vpn-allowlist` |
 
