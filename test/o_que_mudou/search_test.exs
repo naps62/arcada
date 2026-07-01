@@ -101,4 +101,53 @@ defmodule OQueMudou.SearchTest do
 
     assert length(Search.search(unique_query(), limit: 2)) == 2
   end
+
+  test "ranked_ids returns every match ranked, uncapped, without loading acts" do
+    set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+
+    close = act_fixture()
+    far = act_fixture()
+    indexed_summary(close, [1.0, 0.0])
+    indexed_summary(far, [0.0, 1.0])
+
+    assert Search.ranked_ids(unique_query()) == [close.id, far.id]
+  end
+
+  test "ranked_ids dedupes an act to its best-scoring summary" do
+    set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+
+    act = act_fixture()
+    indexed_summary(act, [0.0, 1.0])
+    indexed_summary(act, [1.0, 0.0])
+
+    assert Search.ranked_ids(unique_query()) == [act.id]
+  end
+
+  test "ranked_ids degrades to [] on blank/disabled/failed embeds" do
+    assert Search.ranked_ids("") == []
+    assert Search.ranked_ids(nil) == []
+
+    set_embeddings([])
+    assert Search.ranked_ids(unique_query()) == []
+  end
+
+  test "load_page windows a ranked id list, preserving order" do
+    set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+
+    acts = for _ <- 1..5, do: act_fixture()
+    for a <- acts, do: indexed_summary(a, [1.0, 0.0])
+    ids = Search.ranked_ids(unique_query())
+
+    first = Search.load_page(ids, 0, 2)
+    second = Search.load_page(ids, 2, 2)
+
+    assert length(first) == 2
+    assert length(second) == 2
+    assert Enum.map(first, & &1.id) == Enum.take(ids, 2)
+    assert Enum.map(second, & &1.id) == Enum.slice(ids, 2, 2)
+    # Windows don't overlap and stay in rank order.
+    assert Enum.map(first ++ second, & &1.id) == Enum.take(ids, 4)
+    # Past the end is empty, never a crash.
+    assert Search.load_page(ids, 99, 2) == []
+  end
 end
