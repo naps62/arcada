@@ -300,6 +300,26 @@ defmodule OQueMudou.SummarizerTest do
     end
   end
 
+  describe "target_text_chars/1 (cost target, issue #41)" do
+    test "defaults to 120k, well under the safety cap" do
+      assert Summarizer.target_text_chars() == 120_000
+      assert Summarizer.target_text_chars() < Summarizer.max_text_chars()
+    end
+
+    test "honours the DB setting" do
+      {:ok, _} = Admin.update_settings(%{"target_text_chars" => "50000"})
+      assert Summarizer.target_text_chars() == 50_000
+    end
+
+    test "is clamped to the cap so it can never disable ranking" do
+      # A target left larger than the ceiling collapses to the ceiling.
+      {:ok, _} =
+        Admin.update_settings(%{"max_text_chars" => "40000", "target_text_chars" => "999999"})
+
+      assert Summarizer.target_text_chars() == 40_000
+    end
+  end
+
   describe "prepare_text/2" do
     test "returns text unchanged when it fits" do
       assert Summarizer.prepare_text("curto", 1_000) == "curto"
@@ -385,6 +405,58 @@ defmodule OQueMudou.SummarizerTest do
       {out, strategy} = Summarizer.prepare(text, 5_000, :rank)
       assert strategy == :rank
       assert String.length(out) <= 5_000
+    end
+  end
+
+  describe "prepare/4 cost target vs safety cap (issue #41)" do
+    test "ranks down to the target even when the act fits under the cap" do
+      set_embeddings(embed_fn: relevance_embed())
+      text = diploma(800)
+
+      # Fits the huge cap, but exceeds the small target → ranking still trims it.
+      {out, strategy} = Summarizer.prepare(text, 1_000_000, :auto, 400)
+      assert strategy == :rank
+      assert String.contains?(out, "Artigo 1.º")
+      refute String.contains?(out, "999999")
+
+      # Same cap, target ≥ length → sent whole (annex included).
+      assert {^text, :full} = Summarizer.prepare(text, 1_000_000, :auto, 1_000_000)
+    end
+
+    test "ranker off + fits the cap → sent whole, not head-truncated (issue #18 preserved)" do
+      set_embeddings([])
+      text = diploma(800)
+
+      assert {^text, :full} = Summarizer.prepare(text, 1_000_000, :auto, 400)
+      refute String.contains?(text, "truncado")
+    end
+
+    test "ranker off + exceeds the cap → head-truncated to the cap" do
+      set_embeddings([])
+      text = diploma(800)
+
+      {out, strategy} = Summarizer.prepare(text, 400, :auto, 200)
+      assert strategy == :truncate
+      assert out == Summarizer.cap_text(text, 400)
+    end
+
+    test "min_relevance_score drops low-score sections even when the budget has room" do
+      art1 = "Artigo 1.º\n" <> String.duplicate("A", 1_500)
+      art2 = "Artigo 2.º\n" <> String.duplicate("B", 1_500)
+      annex = "ANEXO I\n" <> String.duplicate("9", 300)
+      text = art1 <> "\n\n" <> art2 <> "\n\n" <> annex
+
+      # Budget fits Artigo 1.º (relevant) then has room for the small annex
+      # (irrelevant), but not the second big article.
+      set_embeddings(embed_fn: relevance_embed())
+      {without_floor, :rank} = Summarizer.prepare(text, 1_000_000, :auto, 1_948)
+      assert String.contains?(without_floor, "9999")
+
+      # With a floor the annex (cosine 0) is dropped despite the spare budget.
+      set_embeddings(embed_fn: relevance_embed(), min_relevance_score: 0.5)
+      {with_floor, :rank} = Summarizer.prepare(text, 1_000_000, :auto, 1_948)
+      refute String.contains?(with_floor, "9")
+      assert String.contains?(with_floor, "AAAA")
     end
   end
 
