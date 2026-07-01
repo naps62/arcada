@@ -11,14 +11,13 @@ config :o_que_mudou,
   ecto_repos: [OQueMudou.Repo],
   generators: [timestamp_type: :utc_datetime]
 
-# DRE scraper. apiVersion hashes rotate on each DRE deploy; these are the
-# last-known-good values from recon (docs/endpoints.md). The list action is
-# load-bearing; the detail action degrades gracefully when its hash drifts.
+# DRE scraper. apiVersion hashes rotate on each DRE deploy. These are just the
+# seed/fallback values from recon (docs/endpoints.md): the client self-heals at
+# runtime — on `hasApiVersionChanged: true` it re-derives the current hash over
+# HTTP (ApiVersionResolver) and retries — so they no longer need manual updates.
 config :o_que_mudou, OQueMudou.Scraper.Client,
   base_url: "https://diariodarepublica.pt",
   list_api_version: "1ZNbiINloOPj8IhEJxM3QA",
-  # Re-derived 2026-06-28 (rotated from CMMMWnKmYa2KRIcPVVt9uQ). See issue for
-  # self-healing re-derivation so this stops needing manual updates on DRE deploys.
   detail_api_version: "f6iEozloG7S5uAiM9ydqeQ"
 
 # Summarizer providers are configured at runtime in the DB (see issue #20 and
