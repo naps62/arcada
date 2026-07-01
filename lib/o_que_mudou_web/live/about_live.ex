@@ -44,13 +44,10 @@ defmodule OQueMudouWeb.AboutLive do
           diplomas densos e reescrevê-los, um a um, em português simples.
         </p>
         <p>
-          Mas não é só pedir a um modelo que resuma. Cada diploma passa por uma
-          série de passos. Partimos sempre do texto oficial; nos diplomas longos,
-          dividimo-lo em secções e medimos, por semelhança de significado, quais
-          introduzem mudanças concretas — são essas que entregamos ao modelo, sem o
-          enchimento à volta. Só então ele escreve o título e o resumo e arruma o
-          diploma por área da vida. No fim, indexamos tudo para poder ser
-          pesquisado por significado, e não apenas por palavras exatas.
+          Mas não é só pedir a um modelo que resuma. Por trás há um pipeline:
+          partimos do texto oficial, dividimo-lo em secções e escolhemos as
+          relevantes com embeddings; o modelo gera o título e o resumo e classifica
+          o diploma por área; no fim, indexamos tudo para pesquisa semântica.
         </p>
         <p>
           Os modelos também erram. Por isso o texto oficial fica sempre a um clique,
