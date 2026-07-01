@@ -95,6 +95,20 @@ defmodule OQueMudouWeb.AboutLive do
         </figcaption>
       </figure>
 
+      <h2 class="mt-11 font-display text-[1.375rem] font-semibold leading-tight text-ink">
+        Contacto
+      </h2>
+      <p class="mt-4 font-serif text-[1.0625rem] leading-relaxed text-ink">
+        Feito por Miguel Palhas (<a
+          href="https://naps.pt"
+          rel="noopener"
+          class="text-primary hover:underline"
+        >naps.pt</a>). Dúvidas, erros ou sugestões:
+        <a href="mailto:arcada@naps62.com" class="text-primary hover:underline">
+          arcada@naps62.com
+        </a>.
+      </p>
+
       <div class="mt-11 border-t border-border pt-6">
         <.link
           navigate="/"
