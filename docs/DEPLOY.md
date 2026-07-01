@@ -168,8 +168,11 @@ limit. So SSH stays at one concurrent session while API providers fan out, and
 switching or editing a provider re-tunes its limit live — no restart, no queue
 churn.
 
-**Long diplomas.** The `/admin` page also sets the prompt cap (`max_text_chars`,
-default 80k) and an optional embeddings server for section ranking: when an act
+**Long diplomas.** The `/admin` page also sets the prompt cap (`max_text_chars`);
+left empty it's derived adaptively from the active model's context window
+(`OQueMudou.Summarizer.ContextWindow` — ~2.8M chars on the ~1M-context Claude,
+~560k on the conservative default) and an optional embeddings server for section
+ranking: when an act
 exceeds the cap, instead of truncating its opening the summarizer keeps the most
 change-relevant sections (articles) and drops trailing annexes. Point it at any
 OpenAI-compatible `/v1/embeddings` server — llama.cpp `llama-server --embeddings`

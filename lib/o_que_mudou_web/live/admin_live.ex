@@ -8,8 +8,7 @@ defmodule OQueMudouWeb.AdminLive do
 
   alias OQueMudou.{Admin, Providers}
   alias OQueMudou.Providers.Provider
-
-  @default_cap 80_000
+  alias OQueMudou.Summarizer.ContextWindow
 
   @impl true
   def mount(_params, _session, socket) do
@@ -58,9 +57,10 @@ defmodule OQueMudouWeb.AdminLive do
   defp active_kind(%{active_provider: %{kind: k}}), do: k
   defp active_kind(_), do: nil
 
-  # {effective_cap, default?} — null in the DB falls back to the 80k default.
+  # {effective_cap, default?} — null in the DB falls back to the adaptive cap
+  # derived from the active model's context window (issue #18).
   defp effective_cap(%{max_text_chars: n}) when is_integer(n), do: {n, false}
-  defp effective_cap(_), do: {@default_cap, true}
+  defp effective_cap(settings), do: {ContextWindow.cap_for(settings.active_model), true}
 
   defp ranking_on?(%{embeddings_base_url: b}) when is_binary(b) and b != "", do: true
   defp ranking_on?(_), do: false
@@ -173,7 +173,7 @@ defmodule OQueMudouWeb.AdminLive do
           field={@form[:max_text_chars]}
           type="number"
           label="Character limit"
-          hint="Empty = 80,000 (default)."
+          hint={"Empty = #{fmt_int(ContextWindow.cap_for(@settings.active_model))} (auto, from the model's context window)."}
         />
 
         <.admin_field
