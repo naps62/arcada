@@ -114,9 +114,11 @@ defmodule OQueMudouWeb.Layouts do
   defp admin_section("/admin/db" <> _), do: :db
   defp admin_section(_), do: :settings
 
-  # Kaffy (external) pages aren't LiveViews, so live `navigate` can't reach them
-  # — leave the shell with a full page load. In-app sections use live navigation.
-  defp admin_nav_target(%{external: true, path: path}), do: [href: path]
+  # Kaffy (external) pages render their own full chrome, so open them in a new
+  # tab and keep the admin console tab put. In-app sections use live navigation.
+  defp admin_nav_target(%{external: true, path: path}),
+    do: [href: path, target: "_blank", rel: "noopener"]
+
   defp admin_nav_target(%{path: path}), do: [navigate: path]
 
   @doc """
