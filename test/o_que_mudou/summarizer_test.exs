@@ -8,7 +8,7 @@ defmodule OQueMudou.SummarizerTest do
   alias OQueMudou.Register.{Edition, Act, Summary}
   alias OQueMudou.Search.Index
   alias OQueMudou.Summarizer
-  alias OQueMudou.Summarizer.{Embeddings, SummarizeWorker}
+  alias OQueMudou.Summarizer.{ContextWindow, Embeddings, SummarizeWorker}
 
   setup do
     Index.clear()
@@ -285,12 +285,18 @@ defmodule OQueMudou.SummarizerTest do
     """
   end
 
-  describe "max_text_chars/0" do
-    test "defaults to 80k, honours the DB setting" do
-      assert Summarizer.max_text_chars() == 80_000
+  describe "max_text_chars/1" do
+    test "defaults to the adaptive per-model cap, honours the DB setting" do
+      # No DB override → derived from the model's context window (issue #18).
+      assert Summarizer.max_text_chars() == ContextWindow.cap_for(nil)
+      assert Summarizer.max_text_chars("claude-cli") == ContextWindow.cap_for("claude-cli")
+      # A big-context model yields a larger cap than the conservative default.
+      assert Summarizer.max_text_chars("claude-cli") > Summarizer.max_text_chars()
 
+      # An explicit DB cap wins over the adaptive default, for any model.
       {:ok, _} = Admin.update_settings(%{"max_text_chars" => "120000"})
       assert Summarizer.max_text_chars() == 120_000
+      assert Summarizer.max_text_chars("claude-cli") == 120_000
     end
   end
 

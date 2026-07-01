@@ -34,11 +34,17 @@ defmodule OQueMudou.Admin do
   @doc "The active model string (or nil)."
   def active_model, do: get_settings().active_model
 
-  @doc "Effective cap (chars) on act text fed to the summarizer: DB ?? config ?? 80k."
-  def max_text_chars do
+  @doc """
+  Effective cap (chars) on act text fed to the summarizer for `model`:
+  DB setting ?? app config ?? adaptive per-model cap derived from the model's
+  context window (`OQueMudou.Summarizer.ContextWindow`, issue #18). The first two
+  are explicit operator overrides; only the fallback is adaptive. `model` is `nil`
+  when unknown, which yields the conservative default window.
+  """
+  def max_text_chars(model \\ nil) do
     get_settings().max_text_chars ||
       Application.get_env(:o_que_mudou, OQueMudou.Summarizer, [])[:max_text_chars] ||
-      80_000
+      OQueMudou.Summarizer.ContextWindow.cap_for(model)
   end
 
   @doc """

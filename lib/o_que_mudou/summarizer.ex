@@ -58,8 +58,12 @@ defmodule OQueMudou.Summarizer do
   @doc "Shared system prompt (writing + classification rules) for the LLM adapters."
   def base_system_prompt, do: @base_system
 
-  @doc "Effective cap (chars) on act text fed to the summarizer prompt."
-  def max_text_chars, do: Admin.max_text_chars()
+  @doc """
+  Effective cap (chars) on act text fed to the summarizer prompt. Pass the target
+  `model` for the adaptive per-model default (larger context → larger cap); omit
+  it for the conservative default window.
+  """
+  def max_text_chars(model \\ nil), do: Admin.max_text_chars(model)
 
   @doc """
   Prepare act text for the summarizer prompt, capped at `max_chars` (the
@@ -252,7 +256,7 @@ defmodule OQueMudou.Summarizer do
   def summarize(%Act{} = act, %Provider{} = provider, model, opts \\ []) do
     model = model || List.first(provider.models)
     requested = opts |> Keyword.get(:text_strategy, :auto) |> normalize_strategy()
-    {text, strategy} = prepare(act.full_text || act.title, max_text_chars(), requested)
+    {text, strategy} = prepare(act.full_text || act.title, max_text_chars(model), requested)
     # Only ranking actually uses the embedder; record which one preprocessed it.
     ranker_model = if strategy == :rank, do: Embeddings.model(Admin.embeddings_config())
 

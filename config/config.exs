@@ -44,6 +44,18 @@ config :o_que_mudou, OQueMudou.Summarizer.Adapters.Ssh,
     "UserKnownHostsFile=/dev/null"
   ]
 
+# Adaptive text cap for the summarizer prompt (see `OQueMudou.Summarizer.ContextWindow`,
+# issue #18). The cap on how much act text is fed to the model is derived from the
+# target model's context window instead of a fixed char count — leaving the module
+# defaults active covers this deployment (Claude ~1M, everything else 200k). Override
+# any knob here (or the DB `max_text_chars`) if the model line-up changes:
+#
+#   config :o_que_mudou, OQueMudou.Summarizer.ContextWindow,
+#     default_window: 200_000,
+#     windows: %{"claude-sonnet-4" => 1_000_000, "claude-opus-4" => 1_000_000, "claude-cli" => 1_000_000},
+#     reserve_fraction: 0.2,
+#     chars_per_token: 3.5
+
 # Embeddings ranking for oversized diplomas (see `OQueMudou.Summarizer.Embeddings`).
 # `base_url` is left unset here → ranking is off and oversized acts fall back to
 # head-truncation. Set it (admin page or EMBEDDINGS_BASE_URL) to an OpenAI-compatible
