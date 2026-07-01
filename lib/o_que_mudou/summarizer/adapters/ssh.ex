@@ -23,13 +23,13 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
   alias OQueMudou.Register.Act
   alias OQueMudou.Providers.Provider
 
-  @prompt_version "2026-06-28.ssh.2"
+  @prompt_version "2026-07-01.ssh.1"
   @default_model "claude-cli"
   @default_claude_cmd "claude -p --output-format json"
 
   @json_format """
   Responde APENAS com um objeto JSON válido, sem texto antes ou depois, no formato:
-  {"plain_text": "<resumo>", "domains": ["<dominio>", ...]}
+  {"plain_text": "<resumo>", "headline": "<título>", "domains": ["<dominio>", ...]}
   Os domínios válidos são EXATAMENTE: #{Enum.join(OQueMudou.Register.life_domains(), ", ")}.
   """
 
@@ -135,6 +135,7 @@ defmodule OQueMudou.Summarizer.Adapters.Ssh do
       {:ok,
        %{
          plain_text: text,
+         headline: obj["headline"],
          domains: valid_domains(obj["domains"]),
          model: model,
          prompt_version: @prompt_version

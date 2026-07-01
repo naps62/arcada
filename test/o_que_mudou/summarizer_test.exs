@@ -50,11 +50,16 @@ defmodule OQueMudou.SummarizerTest do
 
   describe "summarize/3 (explicit provider+model)" do
     test "persists the result linked to the provider" do
-      stub_ssh_runner(fn _ -> {:ok, claude_envelope("Muda o IRS.", ["fiscal", "trabalho"])} end)
+      stub_ssh_runner(fn _ ->
+        {:ok,
+         claude_envelope("Muda o IRS.", ["fiscal", "trabalho"], %{}, "IRS muda para autónomos")}
+      end)
+
       provider = ssh_provider()
 
       assert {:ok, summary} = Summarizer.summarize(act_fixture(), provider, "claude-cli")
       assert summary.plain_text == "Muda o IRS."
+      assert summary.headline == "IRS muda para autónomos"
       assert summary.domains == [:fiscal, :trabalho]
       assert summary.model == "claude-cli"
       assert summary.provider_id == provider.id
