@@ -22,14 +22,15 @@ defmodule OQueMudouWeb.AboutLive do
       <div class="mt-6 space-y-5 font-serif text-[1.0625rem] leading-relaxed text-ink">
         <p>
           A Arcada pega no <em>Diário da República, Série I</em>
-          e reconta-o em linguagem simples: o que muda, para quem, e quando. É um
-          sinal de confiança pública — nunca uma autoridade, nunca aconselhamento
-          jurídico. A fonte oficial fica sempre a um toque de distância.
+          e reconta-o em linguagem simples: o que muda, para quem, e quando.
         </p>
         <p>
-          Começamos pelo Diário da República. Com o tempo, queremos trazer a mesma
-          clareza a câmaras municipais, juntas de freguesia e outras entidades
-          públicas — a lei de todos, em português de toda a gente.
+          Isto é só um resumo. Não substitui o Diário original, que fica sempre a
+          um clique, nem serve de aconselhamento jurídico.
+        </p>
+        <p>
+          Começamos pelo Diário da República. A ideia é, com o tempo, fazer o mesmo
+          às câmaras municipais, juntas de freguesia e a outras entidades públicas.
         </p>
       </div>
 
@@ -46,8 +47,8 @@ defmodule OQueMudouWeb.AboutLive do
           e é assim que partilha o nome com o Diário que aqui resumimos.
         </p>
         <p>
-          Escolhemo-lo pelo que uma arcada sempre foi: uma praça pública, aberta a
-          todos, onde as coisas de todos se dizem em voz clara.
+          Escolhemos o nome por isso mesmo: uma arcada é uma praça, um sítio onde
+          as pessoas se juntam e se fala claro.
         </p>
       </div>
 
