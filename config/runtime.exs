@@ -86,6 +86,25 @@ summarize_concurrency =
 # Deep-merges into the Oban queues list from config.exs (keeps default/scrape).
 config :o_que_mudou, Oban, queues: [summarize: summarize_concurrency]
 
+# Public-user email via Resend (verification + password reset). Set RESEND_API_KEY
+# to send for real; without it the mailer stays on the compile-time adapter and
+# delivery no-ops (safe default). MAILER_FROM_EMAIL must be on a Resend-verified
+# domain. Read at runtime so it works for releases; guarded so dev/test keep the
+# Local/Test adapters from config/*.exs.
+if config_env() == :prod do
+  if resend_key = System.get_env("RESEND_API_KEY") do
+    config :o_que_mudou, OQueMudou.Mailer,
+      adapter: Swoosh.Adapters.Resend,
+      api_key: resend_key
+  end
+
+  if from_email = System.get_env("MAILER_FROM_EMAIL") do
+    config :o_que_mudou,
+           :mailer_from,
+           {System.get_env("MAILER_FROM_NAME") || "O que mudou", from_email}
+  end
+end
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||

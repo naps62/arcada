@@ -59,6 +59,31 @@
       >
         Sobre
       </.link>
+      <%= if assigns[:current_user] do %>
+        <span aria-hidden="true" class="text-border">·</span>
+        <.link
+          navigate={~p"/users/settings"}
+          class="transition-colors duration-150 ease-out-quart hover:text-primary"
+        >
+          Conta
+        </.link>
+        <span aria-hidden="true" class="text-border">·</span>
+        <.link
+          href={~p"/users/log_out"}
+          method="delete"
+          class="transition-colors duration-150 ease-out-quart hover:text-primary"
+        >
+          Sair
+        </.link>
+      <% else %>
+        <span aria-hidden="true" class="text-border">·</span>
+        <.link
+          navigate={~p"/users/log_in"}
+          class="transition-colors duration-150 ease-out-quart hover:text-primary"
+        >
+          Entrar
+        </.link>
+      <% end %>
     </nav>
   </div>
 </header>
