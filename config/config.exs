@@ -86,7 +86,9 @@ config :kaffy,
   ecto_repo: OQueMudou.Repo,
   router: OQueMudouWeb.Router,
   admin_title: "o-que-mudou DB",
-  hide_dashboard: false
+  hide_dashboard: false,
+  # Restyle Kaffy to our palette + a denser layout (see OQueMudouWeb.KaffyTheme).
+  extensions: [OQueMudouWeb.KaffyTheme]
 
 # Configures the endpoint
 config :o_que_mudou, OQueMudouWeb.Endpoint,
