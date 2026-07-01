@@ -27,25 +27,25 @@ defmodule OQueMudouWeb.AboutLive do
           um clique, nem serve de aconselhamento jurídico.
         </p>
         <p>
-          Começamos pelo Diário da República. A ideia é, com o tempo, fazer o mesmo
-          às câmaras municipais, juntas de freguesia e a outras entidades públicas.
+          O ponto de partida é o Diário da República. A ideia é, com o tempo, fazer
+          o mesmo às câmaras municipais, juntas de freguesia e a outras entidades públicas.
         </p>
       </div>
 
       <h2 class="mt-11 font-display text-[1.375rem] font-semibold leading-tight text-ink">
-        Como usamos inteligência artificial
+        Como é usada a inteligência artificial
       </h2>
       <div class="mt-4 space-y-5 font-serif text-[1.0625rem] leading-relaxed text-ink">
         <p>
-          Sim, usamos modelos de linguagem para escrever os resumos. É o tipo de
+          Sim, a Arcada usa modelos de linguagem para escrever os resumos. É o tipo de
           trabalho que faz sentido entregar a uma máquina: pegar todos os dias em
           diplomas densos e reescrevê-los, um a um, em português simples.
         </p>
         <p>
           Mas não é só pedir a um modelo que resuma. Por trás há um pipeline:
-          partimos do texto oficial, dividimo-lo em secções e escolhemos as
+          parte-se do texto oficial, divide-se em secções e escolhem-se as
           relevantes com embeddings; o modelo gera o título e o resumo e classifica
-          o diploma por área; no fim, indexamos tudo para pesquisa semântica.
+          o diploma por área; no fim, indexa-se tudo para pesquisa semântica.
         </p>
         <p>
           Os modelos também erram. Por isso o texto oficial fica sempre a um clique,
@@ -63,10 +63,10 @@ defmodule OQueMudouWeb.AboutLive do
           desde o século XVI, se fazia o mercado e se juntava a cidade. A arcada
           que lhe dá o nome é setecentista. Em 1910, com a implantação da
           República, a praça passou a chamar-se <strong>Praça da República</strong> —
-          e é assim que partilha o nome com o Diário que aqui resumimos.
+          e é assim que partilha o nome com o Diário que aqui se resume.
         </p>
         <p>
-          Escolhemos o nome por isso mesmo: uma arcada é uma praça, um sítio onde
+          O nome foi escolhido por isso mesmo: uma arcada é uma praça, um sítio onde
           as pessoas se juntam e se fala claro.
         </p>
       </div>

@@ -27,8 +27,8 @@ defmodule OQueMudouWeb.FaqLive do
       <div class="mt-11 border-t border-border">
         <.faq_item id="faq-o-que" question="O que é a Arcada?">
           <p>
-            Pegamos no <em>Diário da República, Série I</em>
-            e reescrevemo-lo em linguagem simples: o que muda, para quem, e a
+            A Arcada pega no <em>Diário da República, Série I</em>
+            e reescreve-o em linguagem simples: o que muda, para quem, e a
             partir de quando. Em vez de ler o texto legal por inteiro, lê um
             resumo curto e honesto — com ligação ao original a um clique.
           </p>
@@ -37,7 +37,7 @@ defmodule OQueMudouWeb.FaqLive do
         <.faq_item id="faq-juridico" question="Isto substitui aconselhamento jurídico?">
           <p>
             A Arcada ajuda-o a estar a par da lei, numa linguagem que todos
-            entendemos, sem ter de folhear páginas e páginas de burocracia.
+            entendem, sem ter de folhear páginas e páginas de burocracia.
           </p>
           <p>
             Não é um parecer jurídico e não deve ser usada como tal. É um ponto de
@@ -58,31 +58,31 @@ defmodule OQueMudouWeb.FaqLive do
         <.faq_item id="faq-erros" question="Os resumos podem estar errados?">
           <p>
             Podem. São resumos gerados de forma automática e, como qualquer
-            tradução, podem escorregar num detalhe. É por isso que mostramos sempre
-            a ligação para o Diário original: perante qualquer dúvida, o texto
+            tradução, podem escorregar num detalhe. É por isso que a ligação para
+            o Diário original está sempre à vista: perante qualquer dúvida, o texto
             oficial é que manda.
           </p>
         </.faq_item>
 
-        <.faq_item id="faq-ia" question="Usam inteligência artificial?">
+        <.faq_item id="faq-ia" question="Isto usa inteligência artificial?">
           <p>
-            Sim. Usamos modelos de linguagem para reescrever cada diploma em
+            Sim. A Arcada usa modelos de linguagem para reescrever cada diploma em
             português simples — é o tipo de trabalho denso e repetitivo que faz
             sentido entregar a uma máquina.
           </p>
           <p>
             Não é só pedir um resumo: há um pipeline que parte do texto oficial,
             escolhe as secções relevantes e gera o título, o resumo e a
-            classificação por área. Contamos como funciona em detalhe na página
+            classificação por área. Está explicado em detalhe na página
             <.link navigate="/sobre" class="font-medium text-primary hover:underline">
               Sobre
             </.link>.
           </p>
         </.faq_item>
 
-        <.faq_item id="faq-fontes" question="Que fontes cobrem?">
+        <.faq_item id="faq-fontes" question="Que fontes estão cobertas?">
           <p>
-            Começamos pelo <em>Diário da República, Série I</em>. A ideia é, com o
+            O ponto de partida é o <em>Diário da República, Série I</em>. A ideia é, com o
             tempo, fazer o mesmo às câmaras municipais, juntas de freguesia e a
             outras entidades públicas — trazer o mesmo trabalho de tradução para
             linguagem simples a mais fontes oficiais.
@@ -95,7 +95,7 @@ defmodule OQueMudouWeb.FaqLive do
             pôr a lei ao alcance de toda a gente, sem barreira à entrada.
           </p>
           <p>
-            Consoante o projeto evoluir, poderemos vir a introduzir algumas
+            Consoante o projeto evoluir, poderão surgir algumas
             funcionalidades de uso mais limitado, apenas para ajudar a cobrir os
             custos dos servidores. O essencial — ler e pesquisar os resumos —
             continuará gratuito.
