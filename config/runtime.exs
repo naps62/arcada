@@ -20,6 +20,15 @@ if System.get_env("PHX_SERVER") do
   config :o_que_mudou, OQueMudouWeb.Endpoint, server: true
 end
 
+# Host on which the /admin area is served. On a two-host deploy the public host
+# (arcada.naps.pt) must NOT expose /admin at all — only the private VPN host
+# (arcada.example.internal) does. RequireAdminHost 404s admin paths on any other host.
+# Unset (dev/test/single-host) → admin reachable on every host. Deep-merges into
+# the :admin keyword list from config.exs (keeps group/bypass).
+if admin_host = System.get_env("ADMIN_HOST") do
+  config :o_que_mudou, :admin, host: admin_host
+end
+
 # Umami analytics (privacy-preserving, cookieless). Both vars must be set for
 # the tracking tag to render (see OQueMudouWeb.Layouts.umami/0). Read in every
 # env so it works for releases; left unset in dev and the VPN deployment.
