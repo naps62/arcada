@@ -47,6 +47,28 @@ defmodule OQueMudouWeb.RegisterLiveSearchTest do
     act
   end
 
+  # A distinctly-titled indexed act, so a page's contents are identifiable in the
+  # rendered HTML. All share the same vector → all match, ranked by insertion.
+  defp seed_titled_act(title, n) do
+    ed =
+      %Edition{}
+      |> Edition.changeset(%{serie: "I", number: "p-#{n}/2026", date: ~D[2026-06-24]})
+      |> Repo.insert!()
+
+    act =
+      %Act{}
+      |> Act.changeset(%{edition_id: ed.id, dre_id: "page-#{n}", title: title})
+      |> Repo.insert!()
+
+    summary =
+      %Summary{}
+      |> Summary.changeset(%{act_id: act.id, plain_text: title, embedding: [1.0, 0.0]})
+      |> Repo.insert!()
+
+    Index.put(summary.id, act.id, [1.0, 0.0])
+    act
+  end
+
   test "renders the search box above the filters", %{conn: conn} do
     {:ok, _lv, html} = live(conn, ~p"/")
     assert html =~ "search-form"
@@ -105,6 +127,59 @@ defmodule OQueMudouWeb.RegisterLiveSearchTest do
   defp token(html) do
     [_, tok] = Regex.run(~r/id="search-results"[^>]*data-token="(\d+)"/, html)
     tok
+  end
+
+  test "caps the first page at 20 results and offers more via infinite scroll", %{conn: conn} do
+    set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+    for n <- 1..25, do: seed_titled_act("Diploma número #{n}", n)
+
+    # Unique query: the Index query→embedding cache is a process-wide singleton
+    # that outlives the test, so reusing a query across tests hits a stale entry.
+    {:ok, lv, _html} = live(conn, ~p"/?#{[q: "scroll-infinito-primeira-pagina"]}")
+    html = render(lv)
+
+    assert results_count(html) == 20
+    # More to come → the list carries the viewport binding that fires load-more.
+    assert html =~ ~s(phx-viewport-bottom="load-more")
+  end
+
+  test "load-more appends the next window without re-embedding or re-flashing", %{conn: conn} do
+    parent = self()
+
+    set_embeddings(
+      embed_fn: fn texts ->
+        send(parent, :embedded)
+        {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)}
+      end
+    )
+
+    for n <- 1..25, do: seed_titled_act("Diploma número #{n}", n)
+
+    # Unique query (see note above): a reused query would be served from the
+    # Index cache, so `embed_fn` — and the :embedded probe — would never fire.
+    {:ok, lv, _html} = live(conn, ~p"/?#{[q: "scroll-infinito-carrega-mais"]}")
+    first = render(lv)
+    assert_received :embedded
+
+    html = render_hook(lv, "load-more", %{})
+
+    # All 25 now loaded; the binding is dropped so scrolling stops firing.
+    assert results_count(html) == 25
+    refute html =~ ~s(phx-viewport-bottom="load-more")
+    # Paging must reuse the cached ranking — no second embed call.
+    refute_received :embedded
+    # Appending a page must not re-flash the whole container (token unchanged).
+    assert token(first) == token(html)
+  end
+
+  test "load-more is a no-op in browse mode (no cached ranking)", %{conn: conn} do
+    {:ok, lv, _html} = live(conn, ~p"/")
+    # Should not crash even though there's no search in progress.
+    assert render_hook(lv, "load-more", %{}) =~ "search-form"
+  end
+
+  defp results_count(html) do
+    Regex.scan(~r/id="search-result-\d+"/, html) |> length()
   end
 
   test "an unmatched query shows the empty state", %{conn: conn} do

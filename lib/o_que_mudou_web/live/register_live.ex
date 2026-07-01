@@ -17,6 +17,8 @@ defmodule OQueMudouWeb.RegisterLive do
        periods: Register.periods(),
        query: "",
        search_results: nil,
+       search_ids: nil,
+       search_more?: false,
        # Bumped on every completed search so the results container patches (and
        # the FlashOnResult hook fires) even when the results are identical —
        # e.g. deleting a character re-runs the search but returns the same acts.
@@ -35,6 +37,21 @@ defmodule OQueMudouWeb.RegisterLive do
     end
   end
 
+  # Append the next window of ranked results as the reader scrolls to the bottom.
+  # No-op once every ranked id is loaded (the viewport binding is also dropped in
+  # the template at that point) or in browse mode. The search token is left
+  # untouched so appends don't re-flash the whole results container.
+  def handle_event("load-more", _params, %{assigns: %{search_ids: ids, search_results: loaded}} = socket)
+      when is_list(ids) do
+    page = Search.load_page(ids, length(loaded), Search.page_size())
+    results = loaded ++ page
+
+    {:noreply,
+     assign(socket, search_results: results, search_more?: length(ids) > length(results))}
+  end
+
+  def handle_event("load-more", _params, socket), do: {:noreply, socket}
+
   # The URL is the source of truth: `?q=…` is search mode (deep-linkable),
   # anything else is the filtered browse listing.
   @impl true
@@ -45,10 +62,18 @@ defmodule OQueMudouWeb.RegisterLive do
     end
   end
 
+  # Search is paginated (infinite scroll): embed the query once and cache the
+  # full ranked id list, then load only the first window. The "load-more"
+  # handler pages through the cached ids — no re-embedding per page.
   defp assign_search(socket, query) do
+    ids = Search.ranked_ids(query)
+    page = Search.load_page(ids, 0, Search.page_size())
+
     assign(socket,
       query: query,
-      search_results: Search.search(query),
+      search_ids: ids,
+      search_results: page,
+      search_more?: length(ids) > length(page),
       search_token: socket.assigns.search_token + 1,
       page_title: "Pesquisa: #{query}"
     )
@@ -62,6 +87,8 @@ defmodule OQueMudouWeb.RegisterLive do
     assign(socket,
       query: "",
       search_results: nil,
+      search_ids: nil,
+      search_more?: false,
       active_domain: domain,
       active_period: period,
       # Each axis's badges reflect the *other* axis's selection.
@@ -153,8 +180,14 @@ defmodule OQueMudouWeb.RegisterLive do
           Nada encontrado para "{@query}".
         </span>
       </p>
-      <ul :if={@search_results != []} class="mt-2 divide-y divide-border">
-        <li :for={act <- @search_results}>
+      <ul
+        :if={@search_results != []}
+        id="search-results-list"
+        phx-viewport-bottom={@search_more? && "load-more"}
+        phx-throttle="300"
+        class={["mt-2 divide-y divide-border", @search_more? && "pb-32"]}
+      >
+        <li :for={act <- @search_results} id={"search-result-#{act.id}"}>
           <.act_entry
             act={act}
             summary={Register.published_summary(act)}
