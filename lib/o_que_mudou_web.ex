@@ -72,6 +72,8 @@ defmodule OQueMudouWeb do
       use Phoenix.LiveView,
         layout: {OQueMudouWeb.Layouts, :admin}
 
+      on_mount OQueMudouWeb.AdminNav
+
       unquote(html_helpers())
     end
   end

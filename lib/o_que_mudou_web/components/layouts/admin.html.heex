@@ -1,6 +1,8 @@
 <%!-- Back-of-house chrome: the composing room, not the front page. Same paper
-     stock and ink as the public broadsheet, but a slim tool top bar in the
-     surface tone instead of the grand centered nameplate. --%>
+     stock and ink as the public broadsheet, but its own tool shell — a slim top
+     bar plus a left sidebar for switching between admin sections. Every admin
+     LiveView inherits this via the `:admin` layout; sections live in
+     `Layouts.admin_sidebar/1`. See issue #29. --%>
 <a
   href="#admin-content"
   class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-ink focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-bg"
@@ -8,64 +10,80 @@
   Skip to content
 </a>
 
-<header class="sticky top-0 z-30 border-b border-border bg-surface/95 backdrop-blur">
-  <div class="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-    <.link
-      navigate={~p"/admin"}
-      class="group inline-flex items-baseline gap-2"
-      aria-label="Admin console — home"
-    >
-      <span class="font-display text-[1.0625rem] font-black leading-none tracking-[-0.02em] text-ink transition-colors duration-150 ease-out-quart group-hover:text-primary">
-        O que mudou
-      </span>
-      <span class="rounded-[3px] border border-border px-1.5 py-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-muted">
-        Admin
-      </span>
-    </.link>
+<header class="sticky top-0 z-40 h-14 border-b border-border bg-surface/95 backdrop-blur">
+  <div class="flex h-full items-center justify-between gap-4 px-4 sm:px-6">
+    <div class="flex items-center gap-2">
+      <button
+        type="button"
+        class="inline-flex size-9 items-center justify-center rounded-md text-muted transition-colors hover:bg-bg hover:text-ink lg:hidden"
+        phx-click={show_admin_sidebar()}
+        aria-label="Open navigation"
+        aria-controls="admin-sidebar"
+      >
+        <.icon name="hero-bars-3" class="size-5" />
+      </button>
+
+      <.link
+        navigate={~p"/admin"}
+        class="group inline-flex items-baseline gap-2"
+        aria-label="Admin console — home"
+      >
+        <span class="font-display text-[1.0625rem] font-black leading-none tracking-[-0.02em] text-ink transition-colors duration-150 ease-out-quart group-hover:text-primary">
+          O que mudou
+        </span>
+        <span class="rounded-[3px] border border-border px-1.5 py-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-muted">
+          Admin
+        </span>
+      </.link>
+    </div>
 
     <a
       href={~p"/"}
       class="inline-flex items-center gap-1 text-[0.8125rem] font-medium text-muted transition-colors duration-150 ease-out-quart hover:text-primary"
     >
-      View site
-      <.icon name="hero-arrow-top-right-on-square-micro" class="size-3.5" />
+      View site <.icon name="hero-arrow-top-right-on-square-micro" class="size-3.5" />
     </a>
   </div>
 </header>
 
-<main
-  id="admin-content"
-  tabindex="-1"
-  class="mx-auto max-w-3xl px-4 pb-24 pt-8 outline-none sm:px-6"
->
-  <%!-- Admin-local flash group: English titles, so the console reads in one
-       language even though the public site (and shared flash_group) is in PT. --%>
-  <div id="flash-group">
-    <.flash kind={:info} title="Done" flash={@flash} />
-    <.flash kind={:error} title="Error" flash={@flash} />
-    <.flash
-      id="client-error"
-      kind={:error}
-      title="No connection"
-      phx-disconnected={show(".phx-client-error #client-error")}
-      phx-connected={hide("#client-error")}
-      hidden
-    >
-      Trying to reconnect
-      <.icon name="hero-arrow-path" class="ml-1 size-3 animate-spin" />
-    </.flash>
-    <.flash
-      id="server-error"
-      kind={:error}
-      title="Something went wrong"
-      phx-disconnected={show(".phx-server-error #server-error")}
-      phx-connected={hide("#server-error")}
-      hidden
-    >
-      Restoring the service — please wait
-      <.icon name="hero-arrow-path" class="ml-1 size-3 animate-spin" />
-    </.flash>
-  </div>
+<div class="mx-auto flex w-full max-w-[90rem]">
+  <.admin_sidebar current_path={@current_path} />
 
-  {@inner_content}
-</main>
+  <main
+    id="admin-content"
+    tabindex="-1"
+    class="min-w-0 flex-1 px-4 pb-24 pt-8 outline-none sm:px-6 lg:px-10"
+  >
+    <div class="mx-auto max-w-3xl">
+      <%!-- Admin-local flash group: English titles, so the console reads in one
+           language even though the public site (and shared flash_group) is in PT. --%>
+      <div id="flash-group">
+        <.flash kind={:info} title="Done" flash={@flash} />
+        <.flash kind={:error} title="Error" flash={@flash} />
+        <.flash
+          id="client-error"
+          kind={:error}
+          title="No connection"
+          phx-disconnected={show(".phx-client-error #client-error")}
+          phx-connected={hide("#client-error")}
+          hidden
+        >
+          Trying to reconnect <.icon name="hero-arrow-path" class="ml-1 size-3 animate-spin" />
+        </.flash>
+        <.flash
+          id="server-error"
+          kind={:error}
+          title="Something went wrong"
+          phx-disconnected={show(".phx-server-error #server-error")}
+          phx-connected={hide("#server-error")}
+          hidden
+        >
+          Restoring the service — please wait
+          <.icon name="hero-arrow-path" class="ml-1 size-3 animate-spin" />
+        </.flash>
+      </div>
+
+      {@inner_content}
+    </div>
+  </main>
+</div>
