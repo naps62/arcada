@@ -59,11 +59,20 @@ defmodule OQueMudou.Summarizer do
   def base_system_prompt, do: @base_system
 
   @doc """
-  Effective cap (chars) on act text fed to the summarizer prompt. Pass the target
-  `model` for the adaptive per-model default (larger context → larger cap); omit
-  it for the conservative default window.
+  Effective **safety cap** (chars) on act text fed to the summarizer prompt — the
+  overflow ceiling. Pass the target `model` for the adaptive per-model default
+  (larger context → larger cap); omit it for the conservative default window.
   """
   def max_text_chars(model \\ nil), do: Admin.max_text_chars(model)
+
+  @doc """
+  Effective **cost target** (chars): the budget the embeddings ranker trims an act
+  down to (operative sections in, annexes out), even when the act fits under the
+  safety cap. Much smaller than `max_text_chars/1` — the cap is the ceiling, this
+  is the target (issue #41). Falls back to the cap when unset, so callers without
+  ranking behave exactly as before.
+  """
+  def target_text_chars(model \\ nil), do: Admin.target_text_chars(model)
 
   @doc """
   Prepare act text for the summarizer prompt, capped at `max_chars` (the
@@ -84,41 +93,53 @@ defmodule OQueMudou.Summarizer do
   Like `prepare_text/2` but returns `{prepared_text, effective_strategy}` where
   the strategy is what *actually* happened:
 
-    * `:full`     — fit under the cap, sent whole
-    * `:rank`     — oversized; most change-relevant sections kept (embeddings)
-    * `:truncate` — oversized; opening kept (head-truncation)
+    * `:full`     — fit under the cost target, sent whole
+    * `:rank`     — over target; most change-relevant sections kept (embeddings)
+    * `:truncate` — over target with no ranker; opening kept (head-truncation)
+
+  Two budgets (issue #41): `target` is the cost budget the ranker trims down to;
+  `cap` is the safety ceiling. When ranking is unavailable and the act still fits
+  under `cap`, it's sent **whole** (`:full`) rather than head-truncated — only
+  genuine giants past the ceiling truncate. `target` defaults to `cap`, so a
+  single-budget call behaves exactly as before.
 
   `requested` (`:auto | :rank | :truncate`) is the caller's preference. `:auto`
-  and `:rank` both attempt ranking and fall back to truncation when it isn't
-  available (ranker off, unstructured text, embed failure, nothing fits);
-  `:truncate` forces head-truncation even when ranking is available — used by the
-  per-act comparison to A/B the two strategies on the same model.
+  and `:rank` both attempt ranking and fall back as above; `:truncate` forces
+  head-truncation to `target` even when ranking is available — used by the per-act
+  comparison to A/B the two strategies on the same model + budget.
   """
-  def prepare(text, max_chars \\ nil, requested \\ :auto)
+  def prepare(text, cap \\ nil, requested \\ :auto, target \\ nil)
 
-  def prepare(text, max_chars, requested) when is_binary(text) do
-    max_chars = max_chars || max_text_chars()
+  def prepare(text, cap, requested, target) when is_binary(text) do
+    cap = cap || max_text_chars()
+    target = target || cap
 
     cond do
-      String.length(text) <= max_chars -> {text, :full}
-      requested == :truncate -> {cap_text(text, max_chars), :truncate}
-      true -> ranked_or_truncated(text, max_chars)
+      String.length(text) <= target -> {text, :full}
+      requested == :truncate -> {cap_text(text, target), :truncate}
+      true -> ranked_or_truncated(text, target, cap)
     end
   end
 
-  def prepare(other, _max_chars, _requested), do: {other, :full}
+  def prepare(other, _cap, _requested, _target), do: {other, :full}
 
-  defp ranked_or_truncated(text, max_chars) do
-    case select_relevant(text, max_chars) do
-      nil -> {cap_text(text, max_chars), :truncate}
-      selected -> {selected, :rank}
+  # Ranking trims to `target`; if the ranker is unavailable keep the whole act
+  # when it still fits the safety ceiling (`cap`, issue #18) and only head-truncate
+  # the genuine giants that overflow it.
+  defp ranked_or_truncated(text, target, cap) do
+    case select_relevant(text, target) do
+      nil ->
+        if String.length(text) <= cap, do: {text, :full}, else: {cap_text(text, cap), :truncate}
+
+      selected ->
+        {selected, :rank}
     end
   end
 
-  # Returns assembled most-relevant sections, or nil to signal "fall back to
-  # head-truncation" (ranker disabled, unstructured text, embed failure, or
-  # nothing fit the budget).
-  defp select_relevant(text, max_chars) do
+  # Returns assembled most-relevant sections (within `budget`), or nil to signal
+  # "fall back" (ranker disabled, unstructured text, embed failure, or nothing fit
+  # the budget / cleared the relevance floor).
+  defp select_relevant(text, budget) do
     cfg = Admin.embeddings_config()
     sections = Sections.split(text)
 
@@ -128,7 +149,7 @@ defmodule OQueMudou.Summarizer do
          true <- length(section_vecs) == length(sections) do
       sections
       |> rank(section_vecs, query_vec)
-      |> pick_within_budget(max_chars)
+      |> pick_within_budget(budget, cfg[:min_relevance_score])
       |> assemble(length(sections))
     else
       _ -> nil
@@ -146,11 +167,15 @@ defmodule OQueMudou.Summarizer do
   end
 
   # Greedily take the highest-scoring sections that fit the char budget
-  # (reserving room for the marker). Returns `[{index, section}]`.
-  defp pick_within_budget(scored, max_chars) do
-    budget = max_chars - String.length(@truncation_marker)
+  # (reserving room for the marker). Sections below `floor` cosine similarity are
+  # dropped even when the budget has room — an optional relevance gate (nil = off)
+  # that trims obviously-irrelevant chunks for cost (issue #41). Returns
+  # `[{index, section}]`.
+  defp pick_within_budget(scored, budget, floor) do
+    budget = budget - String.length(@truncation_marker)
 
     scored
+    |> Enum.filter(fn {_i, _s, score} -> is_nil(floor) or score >= floor end)
     |> Enum.sort_by(fn {_i, _s, score} -> score end, :desc)
     |> Enum.reduce({[], 0}, fn {index, section, _score}, {picked, used} ->
       # +2 for the "\n\n" joiner between sections.
@@ -256,7 +281,15 @@ defmodule OQueMudou.Summarizer do
   def summarize(%Act{} = act, %Provider{} = provider, model, opts \\ []) do
     model = model || List.first(provider.models)
     requested = opts |> Keyword.get(:text_strategy, :auto) |> normalize_strategy()
-    {text, strategy} = prepare(act.full_text || act.title, max_text_chars(model), requested)
+
+    {text, strategy} =
+      prepare(
+        act.full_text || act.title,
+        max_text_chars(model),
+        requested,
+        target_text_chars(model)
+      )
+
     # Only ranking actually uses the embedder; record which one preprocessed it.
     ranker_model = if strategy == :rank, do: Embeddings.model(Admin.embeddings_config())
 

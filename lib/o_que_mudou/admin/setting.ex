@@ -4,9 +4,10 @@ defmodule OQueMudou.Admin.Setting do
 
     * the **active** provider + model used by the daily cron / auto-summarize
       (manual per-act runs pick their own and don't touch this);
-    * how oversized diplomas are handled — `max_text_chars` (the prompt cap) and
-      the embeddings server (`embeddings_base_url`/`embeddings_model`) that ranks
-      a long act's sections so the change-bearing ones are kept over annexes.
+    * how oversized diplomas are handled — `max_text_chars` (the safety cap),
+      `target_text_chars` (the cost target the ranker trims to) and the embeddings
+      server (`embeddings_base_url`/`embeddings_model`) that ranks a long act's
+      sections so the change-bearing ones are kept over annexes.
 
   Every field is nullable — a null falls back to the env/config default.
 
@@ -25,6 +26,7 @@ defmodule OQueMudou.Admin.Setting do
     belongs_to :active_provider, Provider
 
     field :max_text_chars, :integer
+    field :target_text_chars, :integer
     field :embeddings_base_url, :string
     field :embeddings_model, :string
 
@@ -35,11 +37,12 @@ defmodule OQueMudou.Admin.Setting do
     setting
     |> cast(
       blankify(attrs),
-      [:active_provider_id, :active_model, :max_text_chars] ++
+      [:active_provider_id, :active_model, :max_text_chars, :target_text_chars] ++
         [:embeddings_base_url, :embeddings_model]
     )
     |> blank_to_nil(@nilable_strings)
     |> validate_number(:max_text_chars, greater_than: 0)
+    |> validate_number(:target_text_chars, greater_than: 0)
     |> assoc_constraint(:active_provider)
   end
 

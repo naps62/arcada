@@ -56,6 +56,13 @@ config :o_que_mudou, OQueMudou.Summarizer.Adapters.Ssh,
 #     reserve_fraction: 0.2,
 #     chars_per_token: 3.5
 
+# Cost target the ranker trims act text down to, distinct from the safety cap
+# above (issue #41). Ranking fills this budget with the most change-relevant
+# sections even when the act fits under the cap, keeping token spend down. The DB
+# `target_text_chars` overrides it; default (120k chars) lives in `OQueMudou.Admin`.
+#
+#   config :o_que_mudou, OQueMudou.Summarizer, target_text_chars: 120_000
+
 # Embeddings ranking for oversized diplomas (see `OQueMudou.Summarizer.Embeddings`).
 # `base_url` is left unset here → ranking is off and oversized acts fall back to
 # head-truncation. Set it (admin page or EMBEDDINGS_BASE_URL) to an OpenAI-compatible
@@ -67,6 +74,10 @@ config :o_que_mudou, OQueMudou.Summarizer.Adapters.Ssh,
 # prefixes for good retrieval — if you point at nomic, also set:
 #   query_prefix: "search_query: ", document_prefix: "search_document: "
 # (left empty for bge-m3, which doesn't use them).
+#
+# `min_relevance_score` (optional, unset = off) drops sections below that cosine
+# similarity even when the budget has room — trims obviously-irrelevant chunks for
+# cost. Model-specific; tune against real scores before enabling (issue #41).
 config :o_que_mudou, OQueMudou.Summarizer.Embeddings,
   model: "bge-m3",
   timeout: 30_000
