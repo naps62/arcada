@@ -20,6 +20,15 @@ if System.get_env("PHX_SERVER") do
   config :o_que_mudou, OQueMudouWeb.Endpoint, server: true
 end
 
+# Host on which the /admin area is served. On a two-host deploy the public host
+# (arcada.naps.pt) must NOT expose /admin at all — only the private VPN host
+# (arcada.example.internal) does. RequireAdminHost 404s admin paths on any other host.
+# Unset (dev/test/single-host) → admin reachable on every host. Deep-merges into
+# the :admin keyword list from config.exs (keeps group/bypass).
+if admin_host = System.get_env("ADMIN_HOST") do
+  config :o_que_mudou, :admin, host: admin_host
+end
+
 # Umami analytics (privacy-preserving, cookieless). Both vars must be set for
 # the tracking tag to render (see OQueMudouWeb.Layouts.umami/0). Read in every
 # env so it works for releases; left unset in dev and the VPN deployment.
@@ -145,8 +154,22 @@ if config_env() == :prod do
 
   config :o_que_mudou, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
+  # The app is served on several hosts (public `arcada.naps.pt` + the private VPN
+  # host `arcada.example.internal`, issue #37). Phoenix defaults `check_origin: true`,
+  # which allows only PHX_HOST — so LiveView WebSocket upgrades would be rejected
+  # on every other host. Allow PHX_HOST, ADMIN_HOST, and any extra comma-separated
+  # hosts in CHECK_ORIGIN_HOSTS (both http/https).
+  check_origins =
+    [host, System.get_env("ADMIN_HOST")]
+    |> Enum.concat(String.split(System.get_env("CHECK_ORIGIN_HOSTS") || "", ",", trim: true))
+    |> Enum.map(&(&1 && String.trim(&1)))
+    |> Enum.reject(&(&1 in [nil, ""]))
+    |> Enum.flat_map(&["https://#{&1}", "http://#{&1}"])
+    |> Enum.uniq()
+
   config :o_que_mudou, OQueMudouWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
+    check_origin: check_origins,
     http: [
       # Enable IPv6 and bind on all interfaces.
       # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.
