@@ -130,15 +130,9 @@ defmodule ArcadaWeb.RegisterLive do
       search_degraded: degraded?,
       browse_cursor: nil,
       browse_more?: false,
-      search_token: socket.assigns.search_token + 1,
-      page_title: "Pesquisa: #{query}",
-      page_description: SEO.default_description(),
-      # Search-result pages carry a query string and thin, shifting content —
-      # keep them out of the index, canonicalise to the register root.
-      page_noindex: true,
-      canonical_url: SEO.url(~p"/"),
-      json_ld: nil
+      search_token: socket.assigns.search_token + 1
     )
+    |> assign(SEO.metadata_for({:search, query}))
   end
 
   # The rate-limit bucket key for this session (#32). A *verified* account earns
@@ -176,57 +170,9 @@ defmodule ArcadaWeb.RegisterLive do
       groups: groups,
       browse_cursor: oldest_day(groups),
       browse_more?: more?,
-      total: Map.get(period_counts, period || :tudo, 0),
-      page_title: page_title(domain, period),
-      page_description: browse_description(domain, period),
-      canonical_url: browse_canonical(domain, period),
-      page_noindex: false,
-      json_ld: home_json_ld(domain, period)
+      total: Map.get(period_counts, period || :tudo, 0)
     )
-  end
-
-  # The register root is the site's front door: describe the whole product and
-  # advertise the on-site search (WebSite + SearchAction) for rich results. On a
-  # filtered view we drop the SearchAction and just describe the slice.
-  defp home_json_ld(nil, nil) do
-    %{
-      "@context" => "https://schema.org",
-      "@type" => "WebSite",
-      "name" => "Arcada",
-      "url" => SEO.url(~p"/"),
-      "inLanguage" => "pt-PT",
-      "description" => SEO.default_description(),
-      "potentialAction" => %{
-        "@type" => "SearchAction",
-        "target" => %{
-          "@type" => "EntryPoint",
-          "urlTemplate" => SEO.url(~p"/") <> "?q={search_term_string}"
-        },
-        "query-input" => "required name=search_term_string"
-      }
-    }
-  end
-
-  defp home_json_ld(_domain, _period), do: nil
-
-  defp browse_description(nil, nil), do: SEO.default_description()
-
-  defp browse_description(domain, period) do
-    scope = page_title(domain, period)
-
-    "Atos do Diário da República, Série I — #{scope} — em linguagem simples, com a fonte oficial ao lado."
-  end
-
-  # Canonical for a filtered browse view preserves the active domain/period so
-  # each section page is its own canonical; the unfiltered root canonicalises to /.
-  defp browse_canonical(nil, nil), do: SEO.url(~p"/")
-
-  defp browse_canonical(domain, period) do
-    params =
-      [domain: domain, period: period && to_string(period)]
-      |> Enum.reject(fn {_k, v} -> is_nil(v) end)
-
-    SEO.url(~p"/?#{params}")
+    |> assign(SEO.metadata_for({:browse, domain, period}))
   end
 
   # The cursor for the next page: the oldest day loaded so far (groups run newest
@@ -360,7 +306,7 @@ defmodule ArcadaWeb.RegisterLive do
           </li>
           <li :for={p <- @periods}>
             <.section_link
-              label={period_label(p)}
+              label={Register.period_label(p)}
               count={@period_counts[p]}
               patch={filter_path(@active_domain, p)}
               active={@active_period == p}
@@ -397,7 +343,7 @@ defmodule ArcadaWeb.RegisterLive do
           <span class="font-semibold tabular-nums text-ink">{@total}</span>
           {if @total == 1, do: "diploma", else: "diplomas"}
           <span :if={@active_period}>
-            · {String.downcase(period_label(@active_period))}
+            · {String.downcase(Register.period_label(@active_period))}
           </span><span :if={@active_domain}>
             · {@active_domain}
           </span>
@@ -415,7 +361,7 @@ defmodule ArcadaWeb.RegisterLive do
         <p class="mt-3 font-display text-lg text-ink">
           Nada a mostrar<span :if={@active_domain}> em "{@active_domain}"</span><span :if={
             @active_period
-          }> {period_label(@active_period) |> String.downcase()}</span>.
+          }> {Register.period_label(@active_period) |> String.downcase()}</span>.
         </p>
         <p :if={@active_domain || @active_period} class="mt-1 text-sm text-muted">
           Experimenta alargar o período ou limpar os filtros.
@@ -525,10 +471,6 @@ defmodule ArcadaWeb.RegisterLive do
     """
   end
 
-  defp period_label(:semana), do: "Esta semana"
-  defp period_label(:mes), do: "Este mês"
-  defp period_label(:ano), do: "Este ano"
-
   # Build a register path preserving both filter axes; nil values are dropped so
   # the URL stays clean (e.g. "/", "/?domain=fiscal", "/?domain=fiscal&period=mes").
   defp filter_path(domain, period) do
@@ -542,9 +484,4 @@ defmodule ArcadaWeb.RegisterLive do
 
   defp put_param(params, _key, nil), do: params
   defp put_param(params, key, value), do: params ++ [{key, value}]
-
-  defp page_title(nil, nil), do: nil
-  defp page_title(domain, nil), do: to_string(domain)
-  defp page_title(nil, period), do: period_label(period)
-  defp page_title(domain, period), do: "#{domain} · #{period_label(period)}"
 end

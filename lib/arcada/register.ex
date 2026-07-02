@@ -22,6 +22,11 @@ defmodule Arcada.Register do
   @doc "Date-range filter options, each a window from some past point up to today."
   def periods, do: @periods
 
+  @doc "Human (Portuguese) label for a period — shared by the filter chips and SEO titles."
+  def period_label(:semana), do: "Esta semana"
+  def period_label(:mes), do: "Este mês"
+  def period_label(:ano), do: "Este ano"
+
   @doc "Validate a period string/atom against the fixed set. Returns the atom, or `nil` for all-time."
   def fetch_period(nil), do: nil
   def fetch_period(p) when is_atom(p), do: if(p in @periods, do: p, else: nil)
