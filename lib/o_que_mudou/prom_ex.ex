@@ -26,7 +26,9 @@ defmodule OQueMudou.PromEx do
       # Oban queue depth, job duration, success/failure
       Plugins.Oban,
       # LiveView mount/handle_event/handle_params timings
-      Plugins.PhoenixLiveView
+      Plugins.PhoenixLiveView,
+      # Search volume by tier + rate-limit degradation (issue #32)
+      OQueMudou.PromEx.SearchMetrics
     ]
   end
 
