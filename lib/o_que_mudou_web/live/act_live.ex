@@ -178,22 +178,24 @@ defmodule OQueMudouWeb.ActLive do
     """
   end
 
-  defp model_line(%{provider: %{name: name}, model: model} = s) when is_binary(model),
-    do: join_meta(["Gerado por #{name} · #{model}", strategy_meta(s)])
+  # The provider name (e.g. "claude-ssh") is an internal routing detail and must
+  # never be surfaced. Ranked summaries lead with the embeddings model that
+  # scored the sections, piped into the LLM: "bge-m3 embeddings > claude-sonnet-4-6".
+  defp model_line(%{text_strategy: "rank", ranker_model: r, model: model})
+       when is_binary(r) and is_binary(model),
+       do: "#{r} embeddings > #{model}"
 
-  defp model_line(%{model: model, prompt_version: pv} = s) when is_binary(model),
-    do: join_meta(["Gerado por #{model} · prompt #{pv}", strategy_meta(s)])
+  defp model_line(%{model: model} = s) when is_binary(model),
+    do: join_meta([model, strategy_meta(s)])
 
-  defp model_line(_), do: "Resumo manual"
+  # Legacy rows may have no model recorded — show nothing rather than a label.
+  defp model_line(_), do: nil
 
   defp join_meta(parts), do: parts |> Enum.reject(&is_nil/1) |> Enum.join(" · ")
 
   # Which slice of an oversized diploma fed the summary. nil when the whole act
-  # fit (`text_strategy` "full" or a legacy row) — nothing worth noting. Ranked
-  # rows also name the embeddings model that scored the sections.
-  defp strategy_meta(%{text_strategy: "rank", ranker_model: m}) when is_binary(m),
-    do: "secções relevantes · #{m}"
-
+  # fit (`text_strategy` "full" or a legacy row) — nothing worth noting. The
+  # ranked case names its embeddings model in `model_line/1` instead.
   defp strategy_meta(%{text_strategy: "rank"}), do: "secções relevantes"
   defp strategy_meta(%{text_strategy: "truncate"}), do: "início do texto"
   defp strategy_meta(_), do: nil
