@@ -1,12 +1,12 @@
 defmodule OQueMudouWeb.SEO do
   @moduledoc """
-  Small helpers for the SEO baseline: canonical URLs, the site-wide indexing
-  gate, and the `robots` meta value. See issue #36.
+  Small helpers for the SEO baseline: canonical URLs and the `robots` meta value.
+  See issue #36.
 
-  Indexing is **off by default**: until `:o_que_mudou, :seo, indexable: true`
-  (set via `SEO_INDEXABLE=true` on go-live), every page ships `noindex` and
-  `robots.txt` disallows the whole site. This keeps the pre-launch site out of
-  search results even if it's briefly reachable.
+  The site is always indexable at the app layer — reachability is gated at the
+  edge (Cloudflare firewall) until go-live, so there's no need for a second
+  in-app noindex switch. Individual pages can still opt out with
+  `robots_meta(page_noindex: true)` (e.g. search results).
   """
 
   alias OQueMudouWeb.Endpoint
@@ -16,22 +16,14 @@ defmodule OQueMudouWeb.SEO do
   @doc "The site's default meta description (Portuguese)."
   def default_description, do: @default_description
 
-  @doc "Whether the site may be indexed. Defaults to false until go-live."
-  def indexable?, do: Application.get_env(:o_que_mudou, :seo, [])[:indexable] == true
-
   @doc "Absolute URL for `path` (e.g. `/acts/12`), rooted at the endpoint host."
   def url(path), do: Endpoint.url() <> path
 
   @doc """
-  The `robots` meta content for a page. The site-wide gate wins: while the site
-  is not indexable everything is `noindex, nofollow`. Once live, a page may still
-  opt out (search results, etc.) by passing `page_noindex: true`.
+  The `robots` meta content for a page. Indexable by default; a page opts out of
+  indexing (but not link-following) by passing `page_noindex: true`.
   """
-  def robots_meta(page_noindex \\ false) do
-    cond do
-      not indexable?() -> "noindex, nofollow"
-      page_noindex -> "noindex, follow"
-      true -> "index, follow"
-    end
-  end
+  def robots_meta(page_noindex \\ false)
+  def robots_meta(true), do: "noindex, follow"
+  def robots_meta(_), do: "index, follow"
 end

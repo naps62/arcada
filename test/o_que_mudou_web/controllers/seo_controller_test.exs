@@ -24,31 +24,16 @@ defmodule OQueMudouWeb.SeoControllerTest do
     act
   end
 
-  # The indexing gate defaults to off; restore whatever it was after each test.
-  setup do
-    original = Application.get_env(:o_que_mudou, :seo)
-    on_exit(fn -> Application.put_env(:o_que_mudou, :seo, original) end)
-    :ok
-  end
-
   describe "robots.txt" do
-    test "disallows everything while not indexable", %{conn: conn} do
-      Application.put_env(:o_que_mudou, :seo, indexable: false)
-      body = conn |> get(~p"/robots.txt") |> response(200)
-
-      assert body =~ "User-agent: *"
-      assert body =~ "Disallow: /"
-      refute body =~ "Sitemap:"
-    end
-
-    test "allows crawling but guards /admin once indexable", %{conn: conn} do
-      Application.put_env(:o_que_mudou, :seo, indexable: true)
+    test "allows crawling but guards /admin, /users, /dev", %{conn: conn} do
       resp = get(conn, ~p"/robots.txt")
       body = response(resp, 200)
 
       assert response_content_type(resp, :txt) =~ "text/plain"
+      assert body =~ "User-agent: *"
       assert body =~ "Disallow: /admin"
       assert body =~ "Disallow: /users"
+      assert body =~ "Disallow: /dev"
       assert body =~ "Sitemap: http"
       assert body =~ "/sitemap.xml"
     end

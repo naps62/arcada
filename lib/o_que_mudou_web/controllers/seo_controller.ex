@@ -2,11 +2,9 @@ defmodule OQueMudouWeb.SeoController do
   @moduledoc """
   Dynamically-served `robots.txt` and `sitemap.xml`.
 
-  Both are dynamic (not static files) so they track the SEO indexing gate: while
-  the site is not indexable (`OQueMudouWeb.SEO.indexable?/0` — off until go-live)
-  `robots.txt` disallows the whole site. `/admin*` is always disallowed. The
-  sitemap lists the public section pages plus every act with a published summary.
-  See issue #36.
+  Crawling is allowed except for `/admin`, `/users`, and `/dev`. The sitemap
+  lists the public section pages plus every act with a published summary. Both
+  are dynamic (not static files) so URLs track the configured host. See #36.
   """
   use OQueMudouWeb, :controller
 
@@ -17,23 +15,14 @@ defmodule OQueMudouWeb.SeoController do
   @section_domains Register.life_domains()
 
   def robots(conn, _params) do
-    body =
-      if SEO.indexable?() do
-        """
-        User-agent: *
-        Disallow: /admin
-        Disallow: /users
-        Disallow: /dev
+    body = """
+    User-agent: *
+    Disallow: /admin
+    Disallow: /users
+    Disallow: /dev
 
-        Sitemap: #{SEO.url(~p"/sitemap.xml")}
-        """
-      else
-        # Pre-launch: keep the whole site out of crawlers.
-        """
-        User-agent: *
-        Disallow: /
-        """
-      end
+    Sitemap: #{SEO.url(~p"/sitemap.xml")}
+    """
 
     conn
     |> put_resp_content_type("text/plain")

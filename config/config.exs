@@ -123,11 +123,6 @@ config :o_que_mudou, OQueMudouWeb.Endpoint,
   pubsub_server: OQueMudou.PubSub,
   live_view: [signing_salt: "6KZMKO7g"]
 
-# SEO indexing gate. Off by default so the pre-launch site stays out of search
-# engines even if briefly reachable; flip to true (SEO_INDEXABLE=true in
-# runtime.exs) on go-live. See OQueMudouWeb.SEO and issue #36.
-config :o_que_mudou, :seo, indexable: false
-
 # Configure esbuild (the version is required)
 config :esbuild,
   version: "0.17.11",

@@ -41,8 +41,8 @@
       {assigns[:page_title]}
     </.live_title>
     <%!-- Meta description + canonical. `page_description`/`canonical_url` are set
-         per LiveView; both fall back to sensible site-wide defaults. `robots` is
-         gated site-wide until go-live (SEO_INDEXABLE) — see OQueMudouWeb.SEO. --%>
+         per LiveView; both fall back to sensible site-wide defaults. Pages are
+         indexable by default; `page_noindex` opts one out — see OQueMudouWeb.SEO. --%>
     <meta name="description" content={assigns[:page_description] || SEO.default_description()} />
     <meta name="robots" content={SEO.robots_meta(assigns[:page_noindex] || false)} />
     <link rel="canonical" href={assigns[:canonical_url] || SEO.url(~p"/")} />
