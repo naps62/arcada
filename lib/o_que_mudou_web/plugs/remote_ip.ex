@@ -26,6 +26,8 @@ defmodule OQueMudouWeb.Plugs.RemoteIp do
   (e.g. tests swapping proxies) transparently recompiles — no manual cache reset.
   """
 
+  require Logger
+
   @behaviour Plug
 
   @cache_key {__MODULE__, :compiled}
@@ -37,8 +39,24 @@ defmodule OQueMudouWeb.Plugs.RemoteIp do
   def call(conn, _opts) do
     case compiled_opts(Application.get_env(:o_que_mudou, :remote_ip)) do
       nil -> conn
-      opts -> RemoteIp.call(conn, opts)
+      opts -> conn |> RemoteIp.call(opts) |> debug_log(conn)
     end
+  end
+
+  # TEMP (issue #43 verification): log the resolved client IP alongside the raw
+  # peer + forwarded headers so we can confirm the XFF walk end-to-end via Loki.
+  # Remove once verified.
+  defp debug_log(new_conn, old_conn) do
+    fmt = fn ip -> ip |> :inet.ntoa() |> to_string() end
+
+    Logger.info(
+      "remote_ip debug: resolved=#{fmt.(new_conn.remote_ip)} peer=#{fmt.(old_conn.remote_ip)} " <>
+        "xff=#{inspect(Plug.Conn.get_req_header(old_conn, "x-forwarded-for"))} " <>
+        "cf=#{inspect(Plug.Conn.get_req_header(old_conn, "cf-connecting-ip"))} " <>
+        "host=#{old_conn.host} path=#{old_conn.request_path}"
+    )
+
+    new_conn
   end
 
   # nil config → plug disabled. Otherwise compile once per distinct config and
