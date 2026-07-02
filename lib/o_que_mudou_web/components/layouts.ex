@@ -31,6 +31,13 @@ defmodule OQueMudouWeb.Layouts do
       icon: "hero-newspaper"
     },
     %{
+      section: :jobs,
+      label: "Jobs",
+      path: "/admin/jobs",
+      icon: "hero-queue-list",
+      external: true
+    },
+    %{
       section: :db,
       label: "Database",
       path: "/admin/db",
@@ -118,6 +125,7 @@ defmodule OQueMudouWeb.Layouts do
   # Which sidebar section owns the current path. Everything under /admin/db is
   # Kaffy's territory; the rest of /admin is the custom console.
   defp admin_section("/admin/db" <> _), do: :db
+  defp admin_section("/admin/jobs" <> _), do: :jobs
   defp admin_section("/admin/acts" <> _), do: :acts
   defp admin_section(_), do: :settings
 

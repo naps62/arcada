@@ -64,6 +64,7 @@ defmodule OQueMudou.MixProject do
       {:dns_cluster, "~> 0.1.1"},
       {:bandit, "~> 1.5"},
       {:oban, "~> 2.18"},
+      {:oban_web, "~> 2.11"},
       {:req, "~> 0.5"},
       {:hammer, "~> 7.0"},
       {:remote_ip, "~> 1.2"},

@@ -2,6 +2,7 @@ defmodule OQueMudouWeb.Router do
   use OQueMudouWeb, :router
 
   import OQueMudouWeb.UserAuth
+  import Oban.Web.Router
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -56,6 +57,16 @@ defmodule OQueMudouWeb.Router do
     live "/providers/:id/edit", ProviderFormLive, :edit
     live "/acts", AdminActsLive, :index
     live "/acts/:id", AdminActLive, :show
+  end
+
+  # Oban Web: background-job dashboard (queues, states, retries, history) for the
+  # scrape/summarize workers. Mounted at /admin/jobs behind the same edge gate
+  # (Authelia + VPN) and in-app :admin check. `oban_dashboard` sets up its own
+  # live_session, so it lives in a dedicated scope rather than the admin scope above.
+  scope "/admin" do
+    pipe_through [:browser, :admin]
+
+    oban_dashboard "/jobs"
   end
 
   # Raw-DB admin (Kaffy): auto-generated CRUD over every Ecto schema, mounted at
