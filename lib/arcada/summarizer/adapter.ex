@@ -21,6 +21,7 @@ defmodule Arcada.Summarizer.Adapter do
   """
   @type result :: %{
           required(:plain_text) => String.t(),
+          required(:headline) => String.t(),
           required(:domains) => [atom()],
           required(:model) => String.t(),
           required(:prompt_version) => String.t(),

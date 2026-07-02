@@ -17,54 +17,9 @@ defmodule Arcada.Summarizer do
   # Provider kind → adapter module.
   @adapters %{anthropic: Api, openai: OpenAI, ssh: Ssh}
 
-  # Shared system prompt for every LLM adapter (api, ssh). The style rules — plain
-  # everyday Portuguese, short active sentences, no bureaucratic filler, no inline
-  # statute citations — are the single lever for how readable the summaries feel,
-  # so they live here once. Each adapter appends only its output-format wiring.
-  @base_system """
-  És um jornalista que explica diplomas do Diário da República a um amigo sem \
-  formação jurídica, em português do dia-a-dia.
-
-  Escreve um resumo curto (2 a 4 frases) que diga, por esta ordem: o que muda, em \
-  concreto; para quem (quem fica afetado); e a partir de quando, se o diploma o \
-  indicar. Classifica também o diploma em um ou mais domínios de vida.
-
-  Escreve também um título curto (6 a 10 palavras) que diga, em linguagem simples, \
-  o que muda — não a designação formal do diploma (não repitas "Decreto-Lei n.º \
-  .../2026" nem o nome do emissor). É o título que substitui a designação formal na \
-  interface; deve fazer sentido sozinho, sem ler o resumo.
-
-  Regras de escrita:
-  - Escreve para um adulto sem formação jurídica. Se uma frase só se percebe com \
-  conhecimento de Direito, reformula-a. A primeira frase deve dizer, sozinha, o que \
-  muda na prática.
-  - Começa pela própria mudança, não pela instituição que a emitiu. Não nomeies o \
-  emissor (ministério, tribunal, secretaria, etc.) a não ser que seja essencial \
-  para perceber o que mudou.
-  - Frases curtas e diretas, uma ideia de cada vez, voz ativa. Evita frases com mais \
-  de ~20 palavras.
-  - Linguagem comum. Evita jargão jurídico e fórmulas burocráticas como "ao abrigo \
-  de", "nos termos do", "sem prejuízo de" ou "no âmbito de". Prefere palavras \
-  simples: "recusa" ou "rejeição" em vez de "indeferimento"; "multa" em vez de \
-  "coima"; "da responsabilidade de" em vez de "imputável a"; "fixar uma regra igual \
-  para todos os tribunais" em vez de "uniformizar jurisprudência".
-  - Se um termo técnico for mesmo inevitável (porque é o próprio assunto e não \
-  existe palavra comum equivalente), mantém-no mas marca-o entre parênteses retos \
-  duplos, assim: [[reclamação graciosa]]. Marca apenas o termo, sem o explicares no \
-  texto — a definição é acrescentada mais tarde. Não marques palavras comuns. Usa a \
-  marca no máximo 1 a 2 vezes por resumo; se conseguires dizer a mesma coisa em \
-  linguagem comum, não marques nada.
-  - Não cites números de diplomas nem artigos no corpo do texto — a fonte oficial já \
-  os tem. Refere uma lei pelo nome apenas se for mesmo o assunto.
-  - Simplifica o vocabulário e a estrutura, nunca a substância. Mantém as condições, \
-  exceções e prazos que mudam quem é afetado ou quando (por exemplo, "de forma \
-  expressa ou tácita"). Entre mais simples e mais exato, escolhe exato.
-  - Vai direto ao que importa: corta enchimento, rodeios e repetições.
-  - Sê factual. Não dês opinião nem aconselhamento jurídico.
-  """
-
-  @doc "Shared system prompt (writing + classification rules) for the LLM adapters."
-  def base_system_prompt, do: @base_system
+  # The shared system prompt + output shape + reply parsing now live in
+  # `Arcada.Summarizer.Prompt` — adapters build on it directly. Text budgeting /
+  # section ranking lives in `Arcada.Summarizer.TextBudget`.
 
   @doc """
   Effective **safety cap** (chars) on act text fed to the summarizer prompt — the

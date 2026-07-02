@@ -2,16 +2,20 @@ defmodule Arcada.Summarizer.Adapters.Api do
   @moduledoc """
   Anthropic (Claude) Messages API adapter — `provider.kind == :anthropic`. One
   call produces the plain-language summary and the life-domain classification,
-  constrained to a JSON schema via structured outputs so the domains stay within
-  the fixed taxonomy. Uses `provider.api_key` (falls back to `ANTHROPIC_API_KEY`).
+  constrained to `Prompt.schema/0` via structured outputs so the domains stay
+  within the fixed taxonomy. Uses `provider.api_key` (falls back to
+  `ANTHROPIC_API_KEY`).
+
+  Pure transport: the prompt shape and reply parsing live in
+  `Arcada.Summarizer.Prompt`; this module only speaks the Claude HTTP protocol.
   """
   @behaviour Arcada.Summarizer.Adapter
 
   require Logger
 
-  alias Arcada.Register
   alias Arcada.Register.Act
   alias Arcada.Providers.Provider
+  alias Arcada.Summarizer.Prompt
 
   @endpoint "https://api.anthropic.com/v1/messages"
   @anthropic_version "2023-06-01"
@@ -37,15 +41,11 @@ defmodule Arcada.Summarizer.Adapters.Api do
     with {:ok, key} <- api_key(provider),
          body = request_body(act, model, text),
          {:ok, %{status: 200} = resp} <- post(key, body),
-         {:ok, parsed} <- parse(resp.body) do
+         {:ok, raw} <- text_block(resp.body),
+         {:ok, parsed} <- Prompt.parse(raw) do
       {:ok,
-       %{
-         plain_text: parsed["plain_text"],
-         headline: parsed["headline"],
-         domains: Enum.map(parsed["domains"] || [], &String.to_existing_atom/1),
-         model: model,
-         prompt_version: @prompt_version
-       }
+       parsed
+       |> Map.merge(%{model: model, prompt_version: @prompt_version})
        |> Map.merge(usage_attrs(resp.body, model, started))}
     else
       {:ok, %{status: status, body: body}} ->
@@ -61,36 +61,9 @@ defmodule Arcada.Summarizer.Adapters.Api do
     %{
       "model" => model,
       "max_tokens" => 1024,
-      "system" => Arcada.Summarizer.base_system_prompt(),
-      "messages" => [%{"role" => "user", "content" => act_prompt(act, text)}],
-      "output_config" => %{"format" => %{"type" => "json_schema", "schema" => schema()}}
-    }
-  end
-
-  defp act_prompt(act, text) do
-    """
-    Tipo: #{act.tipo}
-    Emissor: #{act.emitter}
-    Título: #{act.title}
-
-    Texto:
-    #{text}
-    """
-  end
-
-  defp schema do
-    %{
-      "type" => "object",
-      "additionalProperties" => false,
-      "required" => ["plain_text", "headline", "domains"],
-      "properties" => %{
-        "plain_text" => %{"type" => "string"},
-        "headline" => %{"type" => "string"},
-        "domains" => %{
-          "type" => "array",
-          "items" => %{"type" => "string", "enum" => Register.life_domains()}
-        }
-      }
+      "system" => Prompt.system(),
+      "messages" => [%{"role" => "user", "content" => Prompt.act_body(act, text)}],
+      "output_config" => %{"format" => %{"type" => "json_schema", "schema" => Prompt.schema()}}
     }
   end
 
@@ -102,15 +75,17 @@ defmodule Arcada.Summarizer.Adapters.Api do
     )
   end
 
-  # Structured outputs guarantee the first text block is valid JSON for our schema.
-  defp parse(%{"content" => content}) do
+  # Pull the first text content block out of the Messages response. Structured
+  # outputs guarantee it's valid JSON for `Prompt.schema/0`; `Prompt.parse/1`
+  # then decodes and validates it like every other adapter.
+  defp text_block(%{"content" => content}) do
     case Enum.find(content, &(&1["type"] == "text")) do
-      %{"text" => text} -> Jason.decode(text)
+      %{"text" => text} -> {:ok, text}
       _ -> {:error, :no_text_block}
     end
   end
 
-  defp parse(_), do: {:error, :unexpected_response}
+  defp text_block(_), do: {:error, :unexpected_response}
 
   # Pull exact token counts from the response `usage` block and price them.
   # cache_creation/cache_read tokens aren't billed at the base rate, so cost is

@@ -14,24 +14,22 @@ defmodule Arcada.Summarizer.Adapters.Ssh do
   `--model` flag (shell-quoted). The sentinel `#{"claude-cli"}` and a nil model
   mean "let the CLI use its own default" — nothing is passed. A `--model`/`-m`
   already pinned in `ssh_claude_cmd` is left untouched.
+
+  Pure transport: the prompt shape and reply parsing live in
+  `Arcada.Summarizer.Prompt`; this module only shells out over SSH and unwraps
+  the CLI's JSON envelope.
   """
   @behaviour Arcada.Summarizer.Adapter
 
   require Logger
 
-  alias Arcada.Register
   alias Arcada.Register.Act
   alias Arcada.Providers.Provider
+  alias Arcada.Summarizer.Prompt
 
   @prompt_version "2026-07-01.ssh.1"
   @default_model "claude-cli"
   @default_claude_cmd "claude -p --output-format json"
-
-  @json_format """
-  Responde APENAS com um objeto JSON válido, sem texto antes ou depois, no formato:
-  {"plain_text": "<resumo>", "headline": "<título>", "domains": ["<dominio>", ...]}
-  Os domínios válidos são EXATAMENTE: #{Enum.join(Arcada.Register.life_domains(), ", ")}.
-  """
 
   @default_ssh_extra [
     "-o",
@@ -52,15 +50,8 @@ defmodule Arcada.Summarizer.Adapters.Ssh do
 
   defp build_prompt(act, text) do
     """
-    #{Arcada.Summarizer.base_system_prompt()}
-    #{@json_format}
-    ---
-    Tipo: #{act.tipo}
-    Emissor: #{act.emitter}
-    Título: #{act.title}
-
-    Texto:
-    #{text}
+    #{Prompt.system()}
+    #{Prompt.instructed_prompt(act, text)}\
     """
   end
 
@@ -126,20 +117,17 @@ defmodule Arcada.Summarizer.Adapters.Ssh do
   defp shell_quote(s), do: "'" <> String.replace(s, "'", "'\\''") <> "'"
 
   # `claude -p --output-format json` wraps the response in an envelope whose
-  # `result` field is our JSON string. Tolerate code fences around either layer.
+  # `result` field is our JSON string. Unwrap the envelope (transport-specific),
+  # then hand the inner reply to `Prompt.parse/1` like every other adapter. The
+  # `result`-defaults-to-stdout fallback tolerates a CLI that emits the bare reply
+  # without the envelope. Code fences around either layer are stripped by `Prompt`.
   defp parse(stdout, model) do
-    with {:ok, envelope} <- decode_json(stdout),
+    with {:ok, envelope} <- Prompt.decode(stdout),
          result when is_binary(result) <- Map.get(envelope, "result", stdout),
-         {:ok, obj} <- decode_json(result),
-         text when is_binary(text) <- obj["plain_text"] do
+         {:ok, attrs} <- Prompt.parse(result) do
       {:ok,
-       %{
-         plain_text: text,
-         headline: obj["headline"],
-         domains: valid_domains(obj["domains"]),
-         model: model,
-         prompt_version: @prompt_version
-       }
+       attrs
+       |> Map.merge(%{model: model, prompt_version: @prompt_version})
        |> Map.merge(usage_attrs(envelope))}
     else
       _ ->
@@ -173,28 +161,4 @@ defmodule Arcada.Summarizer.Adapters.Ssh do
   defp to_decimal(n) when is_float(n), do: n |> Decimal.from_float() |> Decimal.round(6)
   defp to_decimal(n) when is_integer(n), do: Decimal.new(n)
   defp to_decimal(_), do: nil
-
-  defp decode_json(str) when is_binary(str), do: str |> strip_fences() |> Jason.decode()
-  defp decode_json(_), do: :error
-
-  defp strip_fences(str) do
-    str
-    |> String.trim()
-    |> String.replace(~r/^```(?:json)?\s*/i, "")
-    |> String.replace(~r/\s*```$/, "")
-    |> String.trim()
-  end
-
-  defp valid_domains(domains) when is_list(domains) do
-    domains
-    |> Enum.flat_map(fn d ->
-      case Register.fetch_domain(d) do
-        {:ok, atom} -> [atom]
-        :error -> []
-      end
-    end)
-    |> Enum.uniq()
-  end
-
-  defp valid_domains(_), do: []
 end

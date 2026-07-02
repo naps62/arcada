@@ -5,25 +5,21 @@ defmodule Arcada.Summarizer.Adapters.OpenAI do
   synthetic.new, …). Uses `provider.base_url` + `provider.api_key` (Bearer).
 
   JSON-schema support varies across these servers, so we take the robust path:
-  instruct strict JSON in the prompt and parse tolerantly (like the SSH adapter),
-  plus send `response_format: {type: "json_object"}` (widely supported, harmless
-  if ignored). Domains are validated against the fixed taxonomy after the fact.
+  instruct strict JSON in the prompt (`Prompt.instructed_prompt/2`) and let
+  `Prompt.parse/1` decode tolerantly, plus send
+  `response_format: {type: "json_object"}` (widely supported, harmless if
+  ignored). Pure transport — the prompt shape and reply parsing live in
+  `Arcada.Summarizer.Prompt`.
   """
   @behaviour Arcada.Summarizer.Adapter
 
   require Logger
 
-  alias Arcada.Register
   alias Arcada.Register.Act
   alias Arcada.Providers.Provider
+  alias Arcada.Summarizer.Prompt
 
   @prompt_version "2026-07-01.openai.1"
-
-  @json_format """
-  Responde APENAS com um objeto JSON válido, sem texto antes ou depois, no formato:
-  {"plain_text": "<resumo>", "headline": "<título>", "domains": ["<dominio>", ...]}
-  Os domínios válidos são EXATAMENTE: #{Enum.join(Arcada.Register.life_domains(), ", ")}.
-  """
 
   @impl true
   def summarize(%Act{} = act, %Provider{} = provider, model, text) do
@@ -32,15 +28,11 @@ defmodule Arcada.Summarizer.Adapters.OpenAI do
     with {:ok, url} <- endpoint(provider),
          body = request_body(act, model, text),
          {:ok, %{status: 200, body: resp}} <- post(url, provider.api_key, body),
-         {:ok, obj} <- parse(resp) do
+         {:ok, content} <- content(resp),
+         {:ok, parsed} <- Prompt.parse(content) do
       {:ok,
-       %{
-         plain_text: obj["plain_text"],
-         headline: obj["headline"],
-         domains: valid_domains(obj["domains"]),
-         model: model,
-         prompt_version: @prompt_version
-       }
+       parsed
+       |> Map.merge(%{model: model, prompt_version: @prompt_version})
        |> Map.merge(usage_attrs(resp, started))}
     else
       {:ok, %{status: status, body: body}} ->
@@ -56,25 +48,12 @@ defmodule Arcada.Summarizer.Adapters.OpenAI do
     %{
       "model" => model,
       "messages" => [
-        %{"role" => "system", "content" => Arcada.Summarizer.base_system_prompt()},
-        %{"role" => "user", "content" => act_prompt(act, text)}
+        %{"role" => "system", "content" => Prompt.system()},
+        %{"role" => "user", "content" => Prompt.instructed_prompt(act, text)}
       ],
       "response_format" => %{"type" => "json_object"},
       "temperature" => 0.2
     }
-  end
-
-  defp act_prompt(act, text) do
-    """
-    #{@json_format}
-    ---
-    Tipo: #{act.tipo}
-    Emissor: #{act.emitter}
-    Título: #{act.title}
-
-    Texto:
-    #{text}
-    """
   end
 
   defp post(url, api_key, body) do
@@ -85,13 +64,13 @@ defmodule Arcada.Summarizer.Adapters.OpenAI do
     Req.post(url, json: body, headers: headers, retry: :transient, receive_timeout: 120_000)
   end
 
-  # choices[0].message.content is the (possibly fenced) JSON string we asked for.
-  defp parse(%{"choices" => [%{"message" => %{"content" => content}} | _]})
-       when is_binary(content) do
-    content |> strip_fences() |> Jason.decode()
-  end
+  # choices[0].message.content is the (possibly fenced) JSON string we asked for;
+  # `Prompt.parse/1` decodes and validates it.
+  defp content(%{"choices" => [%{"message" => %{"content" => content}} | _]})
+       when is_binary(content),
+       do: {:ok, content}
 
-  defp parse(_), do: {:error, :unexpected_response}
+  defp content(_), do: {:error, :unexpected_response}
 
   # Record token counts when the server reports them (OpenAI `usage` shape).
   # These are typically self-hosted / variably-priced backends, so we don't
@@ -111,25 +90,4 @@ defmodule Arcada.Summarizer.Adapters.OpenAI do
   end
 
   defp endpoint(_), do: {:error, :missing_base_url}
-
-  defp strip_fences(str) do
-    str
-    |> String.trim()
-    |> String.replace(~r/^```(?:json)?\s*/i, "")
-    |> String.replace(~r/\s*```$/, "")
-    |> String.trim()
-  end
-
-  defp valid_domains(domains) when is_list(domains) do
-    domains
-    |> Enum.flat_map(fn d ->
-      case Register.fetch_domain(d) do
-        {:ok, atom} -> [atom]
-        :error -> []
-      end
-    end)
-    |> Enum.uniq()
-  end
-
-  defp valid_domains(_), do: []
 end
