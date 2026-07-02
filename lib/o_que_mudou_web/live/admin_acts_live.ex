@@ -55,90 +55,92 @@ defmodule OQueMudouWeb.AdminActsLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <header class="border-b-2 border-rule-strong pb-4">
-      <h1 class="font-display text-[1.75rem] font-semibold leading-tight text-ink">Acts</h1>
-      <p class="mt-2 max-w-prose text-sm leading-relaxed text-muted">
-        Browse every act, newest first. Open one to compare its summaries side-by-side and pick the
-        canonical one.
-      </p>
-    </header>
+    <div class="max-w-3xl">
+      <header class="border-b-2 border-rule-strong pb-4">
+        <h1 class="font-display text-[1.75rem] font-semibold leading-tight text-ink">Acts</h1>
+        <p class="mt-2 max-w-prose text-sm leading-relaxed text-muted">
+          Browse every act, newest first. Open one to compare its summaries side-by-side and pick the
+          canonical one.
+        </p>
+      </header>
 
-    <form id="acts-filter" phx-change="filter" class="mt-6 flex flex-wrap items-end gap-3">
-      <div>
-        <label class="block text-xs text-muted">Life domain</label>
-        <select
-          name="domain"
-          class="mt-1 rounded-md border border-border bg-bg px-2 py-1.5 text-sm text-ink focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-        >
-          <option value="">All domains</option>
-          <option :for={d <- @domains} value={d} selected={@active_domain == d}>{d}</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs text-muted">Period</label>
-        <select
-          name="period"
-          class="mt-1 rounded-md border border-border bg-bg px-2 py-1.5 text-sm text-ink focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-        >
-          <option value="">All time</option>
-          <option
-            :for={p <- @periods}
-            value={p}
-            selected={@active_period == p}
+      <form id="acts-filter" phx-change="filter" class="mt-6 flex flex-wrap items-end gap-3">
+        <div>
+          <label class="block text-xs text-muted">Life domain</label>
+          <select
+            name="domain"
+            class="mt-1 rounded-md border border-border bg-bg px-2 py-1.5 text-sm text-ink focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           >
-            {period_label(p)}
-          </option>
-        </select>
-      </div>
-      <.link
-        :if={@active_domain || @active_period}
-        patch={~p"/admin/acts"}
-        class="pb-1.5 text-sm font-medium text-muted hover:text-primary hover:underline"
-      >
-        Clear
-      </.link>
-    </form>
-
-    <section class="mt-6">
-      <h2 class="flex items-baseline justify-between border-b-2 border-rule-strong pb-2 text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-muted">
-        <span>
-          Acts <span :if={@acts != []} class="ml-1 font-normal tabular-nums">{length(@acts)}</span>
-        </span>
-        <span :if={length(@acts) >= @limit} class="font-normal normal-case tracking-normal">
-          showing first {@limit}
-        </span>
-      </h2>
-
-      <p :if={@acts == []} class="mt-4 text-sm text-muted">No acts match these filters.</p>
-
-      <ul :if={@acts != []} class="mt-1 divide-y divide-border">
-        <li :for={act <- @acts} class="py-3.5">
-          <.link
-            navigate={~p"/admin/acts/#{act.id}"}
-            class="group flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
+            <option value="">All domains</option>
+            <option :for={d <- @domains} value={d} selected={@active_domain == d}>{d}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-muted">Period</label>
+          <select
+            name="period"
+            class="mt-1 rounded-md border border-border bg-bg px-2 py-1.5 text-sm text-ink focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           >
-            <div class="min-w-0 flex-1">
-              <p class="truncate font-display text-base text-ink group-hover:text-primary group-hover:underline">
-                {act.title || act.tipo || "—"}
-              </p>
-              <p class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted">
-                <span :if={act.tipo}>{act.tipo}</span>
-                <span :if={act.published_at} class="tabular-nums">
-                  · {Date.to_iso8601(act.published_at)}
+            <option value="">All time</option>
+            <option
+              :for={p <- @periods}
+              value={p}
+              selected={@active_period == p}
+            >
+              {period_label(p)}
+            </option>
+          </select>
+        </div>
+        <.link
+          :if={@active_domain || @active_period}
+          patch={~p"/admin/acts"}
+          class="pb-1.5 text-sm font-medium text-muted hover:text-primary hover:underline"
+        >
+          Clear
+        </.link>
+      </form>
+
+      <section class="mt-6">
+        <h2 class="flex items-baseline justify-between border-b-2 border-rule-strong pb-2 text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-muted">
+          <span>
+            Acts <span :if={@acts != []} class="ml-1 font-normal tabular-nums">{length(@acts)}</span>
+          </span>
+          <span :if={length(@acts) >= @limit} class="font-normal normal-case tracking-normal">
+            showing first {@limit}
+          </span>
+        </h2>
+
+        <p :if={@acts == []} class="mt-4 text-sm text-muted">No acts match these filters.</p>
+
+        <ul :if={@acts != []} class="mt-1 divide-y divide-border">
+          <li :for={act <- @acts} class="py-3.5">
+            <.link
+              navigate={~p"/admin/acts/#{act.id}"}
+              class="group flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
+            >
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-display text-base text-ink group-hover:text-primary group-hover:underline">
+                  {act.title || act.tipo || "—"}
+                </p>
+                <p class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted">
+                  <span :if={act.tipo}>{act.tipo}</span>
+                  <span :if={act.published_at} class="tabular-nums">
+                    · {Date.to_iso8601(act.published_at)}
+                  </span>
+                  <span>· {canonical_label(act)}</span>
+                </p>
+              </div>
+              <div class="flex shrink-0 items-center gap-2">
+                <.status_badge act={act} />
+                <span class="tabular-nums text-xs text-muted">
+                  {summary_count(act)} {if summary_count(act) == 1, do: "summary", else: "summaries"}
                 </span>
-                <span>· {canonical_label(act)}</span>
-              </p>
-            </div>
-            <div class="flex shrink-0 items-center gap-2">
-              <.status_badge act={act} />
-              <span class="tabular-nums text-xs text-muted">
-                {summary_count(act)} {if summary_count(act) == 1, do: "summary", else: "summaries"}
-              </span>
-            </div>
-          </.link>
-        </li>
-      </ul>
-    </section>
+              </div>
+            </.link>
+          </li>
+        </ul>
+      </section>
+    </div>
     """
   end
 

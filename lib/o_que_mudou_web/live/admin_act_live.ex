@@ -81,96 +81,97 @@ defmodule OQueMudouWeb.AdminActLive do
     assigns = assign(assigns, :tp, trigger_provider(assigns.providers, assigns.trigger_id))
 
     ~H"""
-    <nav aria-label="Breadcrumb" class="flex items-center justify-between gap-4 text-[0.8125rem]">
-      <div class="min-w-0 text-muted">
-        <.link navigate={~p"/admin"} class="hover:text-primary hover:underline">Admin</.link>
-        <span aria-hidden="true" class="mx-1.5 text-border">/</span>
-        <span class="text-ink">Act</span>
-      </div>
-      <a
-        href={~p"/acts/#{@act.id}"}
-        class="inline-flex shrink-0 items-center gap-1 font-medium text-muted hover:text-primary hover:underline"
-      >
-        View public page <.icon name="hero-arrow-top-right-on-square-micro" class="size-3.5" />
-      </a>
-    </nav>
-
-    <h1 class="mt-4 border-b-2 border-rule-strong pb-3 font-display text-xl font-semibold leading-snug text-ink">
-      {@act.title || @act.tipo}
-    </h1>
-
-    <section class="mt-6 rounded-md border border-border bg-surface p-4">
-      <h2 class="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-muted">
-        Run a summary
-      </h2>
-      <form
-        id="run-summary"
-        phx-change="pick_provider"
-        phx-submit="trigger"
-        class="mt-3 flex flex-wrap items-end gap-3"
-      >
-        <div>
-          <label class="block text-xs text-muted">Provider</label>
-          <select
-            name="provider_id"
-            class="mt-1 rounded-md border border-border bg-bg px-2 py-1.5 text-sm text-ink focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-          >
-            <option value="">—</option>
-            <option :for={p <- @providers} value={p.id} selected={@trigger_id == p.id}>
-              {p.name} ({p.kind})
-            </option>
-          </select>
+    <div class="max-w-3xl">
+      <nav aria-label="Breadcrumb" class="flex items-center justify-between gap-4 text-[0.8125rem]">
+        <div class="min-w-0 text-muted">
+          <.link navigate={~p"/admin"} class="hover:text-primary hover:underline">Admin</.link>
+          <span aria-hidden="true" class="mx-1.5 text-border">/</span>
+          <span class="text-ink">Act</span>
         </div>
-        <div>
-          <label class="block text-xs text-muted">Model</label>
-          <select
-            name="model"
-            class="mt-1 rounded-md border border-border bg-bg px-2 py-1.5 text-sm text-ink focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-          >
-            <option value="">(default)</option>
-            <option :for={m <- (@tp && @tp.models) || []} value={m}>{m}</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs text-muted">Text (long acts)</label>
-          <select
-            name="text_strategy"
-            class="mt-1 rounded-md border border-border bg-bg px-2 py-1.5 text-sm text-ink focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-          >
-            <option value="auto">Automatic</option>
-            <option value="rank">Relevant sections</option>
-            <option value="truncate">Start (truncate)</option>
-          </select>
-        </div>
-        <button
-          type="submit"
-          class="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-fg transition-colors duration-150 ease-out-quart hover:bg-primary-hover"
+        <a
+          href={~p"/acts/#{@act.id}"}
+          class="inline-flex shrink-0 items-center gap-1 font-medium text-muted hover:text-primary hover:underline"
         >
-          Run
-        </button>
-      </form>
-    </section>
+          View public page <.icon name="hero-arrow-top-right-on-square-micro" class="size-3.5" />
+        </a>
+      </nav>
+
+      <h1 class="mt-4 border-b-2 border-rule-strong pb-3 font-display text-xl font-semibold leading-snug text-ink">
+        {@act.title || @act.tipo}
+      </h1>
+
+      <section class="mt-6 rounded-md border border-border bg-surface p-4">
+        <h2 class="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-muted">
+          Run a summary
+        </h2>
+        <form
+          id="run-summary"
+          phx-change="pick_provider"
+          phx-submit="trigger"
+          class="mt-3 flex flex-wrap items-end gap-3"
+        >
+          <div>
+            <label class="block text-xs text-muted">Provider</label>
+            <select
+              name="provider_id"
+              class="mt-1 rounded-md border border-border bg-bg px-2 py-1.5 text-sm text-ink focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">—</option>
+              <option :for={p <- @providers} value={p.id} selected={@trigger_id == p.id}>
+                {p.name} ({p.kind})
+              </option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-muted">Model</label>
+            <select
+              name="model"
+              class="mt-1 rounded-md border border-border bg-bg px-2 py-1.5 text-sm text-ink focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">(default)</option>
+              <option :for={m <- (@tp && @tp.models) || []} value={m}>{m}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-muted">Text (long acts)</label>
+            <select
+              name="text_strategy"
+              class="mt-1 rounded-md border border-border bg-bg px-2 py-1.5 text-sm text-ink focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="auto">Automatic</option>
+              <option value="rank">Relevant sections</option>
+              <option value="truncate">Start (truncate)</option>
+            </select>
+          </div>
+          <button
+            type="submit"
+            class="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-fg transition-colors duration-150 ease-out-quart hover:bg-primary-hover"
+          >
+            Run
+          </button>
+        </form>
+      </section>
+    </div>
 
     <section class="mt-8">
-      <h2 class="border-b-2 border-rule-strong pb-2 text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-muted">
+      <h2 class="max-w-3xl border-b-2 border-rule-strong pb-2 text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-muted">
         Summaries
         <span :if={@summaries != []} class="ml-1 font-normal tabular-nums">{length(@summaries)}</span>
       </h2>
-      <p :if={@summaries == []} class="mt-4 text-sm text-muted">No summaries yet.</p>
+      <p :if={@summaries == []} class="mt-4 max-w-3xl text-sm text-muted">No summaries yet.</p>
 
       <%!-- Two or more: lay them out as side-by-side columns so the prose can be
-           read against each other; scroll horizontally when they overflow. --%>
+           read against each other. The strip spans the full console width (not the
+           max-w-3xl reading column) so it uses the space to its right before it
+           ever scrolls — three columns fit on a laptop without a scrollbar. --%>
       <div :if={length(@summaries) >= 2} class="mt-4 flex gap-4 overflow-x-auto pb-3">
         <.summary_column :for={s <- @summaries} summary={s} published_id={@published_id} />
       </div>
 
-      <%!-- One (or zero): a single full-width card reads better than a lone column. --%>
-      <.summary_card
-        :for={s <- @summaries}
-        :if={length(@summaries) < 2}
-        summary={s}
-        published_id={@published_id}
-      />
+      <%!-- One (or zero): a single card at reading width beats a lone column. --%>
+      <div :if={length(@summaries) < 2} class="max-w-3xl">
+        <.summary_card :for={s <- @summaries} summary={s} published_id={@published_id} />
+      </div>
     </section>
     """
   end

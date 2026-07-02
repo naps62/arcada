@@ -54,36 +54,37 @@
     tabindex="-1"
     class="min-w-0 flex-1 px-4 pb-24 pt-8 outline-none sm:px-6 lg:px-10"
   >
-    <div class="max-w-3xl">
-      <%!-- Admin-local flash group: English titles, so the console reads in one
-           language even though the public site (and shared flash_group) is in PT. --%>
-      <div id="flash-group">
-        <.flash kind={:info} title="Done" flash={@flash} />
-        <.flash kind={:error} title="Error" flash={@flash} />
-        <.flash
-          id="client-error"
-          kind={:error}
-          title="No connection"
-          phx-disconnected={show(".phx-client-error #client-error")}
-          phx-connected={hide("#client-error")}
-          hidden
-        >
-          Trying to reconnect <.icon name="hero-arrow-path" class="ml-1 size-3 animate-spin" />
-        </.flash>
-        <.flash
-          id="server-error"
-          kind={:error}
-          title="Something went wrong"
-          phx-disconnected={show(".phx-server-error #server-error")}
-          phx-connected={hide("#server-error")}
-          hidden
-        >
-          Restoring the service — please wait
-          <.icon name="hero-arrow-path" class="ml-1 size-3 animate-spin" />
-        </.flash>
-      </div>
-
-      {@inner_content}
+    <%!-- Chrome doesn't dictate content measure: each admin view sets its own
+         width (reading/forms cap at max-w-3xl; the act comparison breaks wider).
+         Only the flash group is capped here so toasts stay readable. --%>
+    <%!-- Admin-local flash group: English titles, so the console reads in one
+         language even though the public site (and shared flash_group) is in PT. --%>
+    <div id="flash-group" class="max-w-3xl">
+      <.flash kind={:info} title="Done" flash={@flash} />
+      <.flash kind={:error} title="Error" flash={@flash} />
+      <.flash
+        id="client-error"
+        kind={:error}
+        title="No connection"
+        phx-disconnected={show(".phx-client-error #client-error")}
+        phx-connected={hide("#client-error")}
+        hidden
+      >
+        Trying to reconnect <.icon name="hero-arrow-path" class="ml-1 size-3 animate-spin" />
+      </.flash>
+      <.flash
+        id="server-error"
+        kind={:error}
+        title="Something went wrong"
+        phx-disconnected={show(".phx-server-error #server-error")}
+        phx-connected={hide("#server-error")}
+        hidden
+      >
+        Restoring the service — please wait
+        <.icon name="hero-arrow-path" class="ml-1 size-3 animate-spin" />
+      </.flash>
     </div>
+
+    {@inner_content}
   </main>
 </div>
