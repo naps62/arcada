@@ -168,13 +168,24 @@ limit. So SSH stays at one concurrent session while API providers fan out, and
 switching or editing a provider re-tunes its limit live — no restart, no queue
 churn.
 
-**Long diplomas.** The `/admin` page also sets the prompt cap (`max_text_chars`);
-left empty it's derived adaptively from the active model's context window
-(`OQueMudou.Summarizer.ContextWindow` — ~2.8M chars on the ~1M-context Claude,
-~560k on the conservative default) and an optional embeddings server for section
-ranking: when an act
-exceeds the cap, instead of truncating its opening the summarizer keeps the most
-change-relevant sections (articles) and drops trailing annexes. Point it at any
+**Long diplomas.** Two `/admin` knobs, distinct on purpose (issue #41):
+
+- **Safety cap** (`max_text_chars`) — the overflow ceiling. Left empty it's
+  derived adaptively from the active model's context window
+  (`OQueMudou.Summarizer.ContextWindow` — ~2.8M chars on the ~1M-context Claude,
+  ~560k on the conservative default).
+- **Cost target** (`target_text_chars`, default 120k) — how much text each act is
+  actually trimmed to. With an embeddings server, ranking fills this budget with
+  the most change-relevant sections even when the act fits under the cap, so token
+  spend stays down. It's clamped to never exceed the cap.
+
+With an embeddings server for section
+ranking, when an act
+exceeds the **target**, instead of truncating its opening the summarizer keeps the most
+change-relevant sections (articles) and drops trailing annexes; an optional
+`min_relevance_score` also drops sections below a cosine threshold. Without a
+ranker, an act that still fits under the **cap** is sent whole (only genuine
+giants past the ceiling head-truncate). Point it at any
 OpenAI-compatible `/v1/embeddings` server — llama.cpp `llama-server --embeddings`
 or Ollama on a GPU box — via the admin field or `EMBEDDINGS_BASE_URL`
 (+ `EMBEDDINGS_MODEL`, default `bge-m3`: multilingual, right for Portuguese). The

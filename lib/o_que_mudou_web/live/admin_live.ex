@@ -62,6 +62,12 @@ defmodule OQueMudouWeb.AdminLive do
   defp effective_cap(%{max_text_chars: n}) when is_integer(n), do: {n, false}
   defp effective_cap(settings), do: {ContextWindow.cap_for(settings.active_model), true}
 
+  # {effective_target, default?} — the cost budget ranking trims to (issue #41).
+  defp effective_target(%{target_text_chars: n} = s) when is_integer(n),
+    do: {Admin.target_text_chars(s.active_model), false}
+
+  defp effective_target(s), do: {Admin.target_text_chars(s.active_model), true}
+
   defp ranking_on?(%{embeddings_base_url: b}) when is_binary(b) and b != "", do: true
   defp ranking_on?(_), do: false
 
@@ -91,7 +97,7 @@ defmodule OQueMudouWeb.AdminLive do
       </h2>
 
       <%= if @configured? do %>
-        <dl class="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-md border border-border bg-border sm:grid-cols-4">
+        <dl class="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-md border border-border bg-border sm:grid-cols-3 lg:grid-cols-5">
           <.readout label="Provider">
             <span class="font-medium text-ink">{active_name(@settings)}</span>
             <span :if={active_kind(@settings)} class="ml-1 text-xs text-muted">
@@ -110,6 +116,11 @@ defmodule OQueMudouWeb.AdminLive do
             <% {cap, default?} = effective_cap(@settings) %>
             <span class="font-medium tabular-nums text-ink">{fmt_int(cap)}</span>
             <span class="text-xs text-muted">chars{if default?, do: " · default"}</span>
+          </.readout>
+          <.readout label="Cost target">
+            <% {target, target_default?} = effective_target(@settings) %>
+            <span class="font-medium tabular-nums text-ink">{fmt_int(target)}</span>
+            <span class="text-xs text-muted">chars{if target_default?, do: " · default"}</span>
           </.readout>
           <.readout label="Section ranking">
             <span class="font-medium text-ink">
@@ -166,17 +177,25 @@ defmodule OQueMudouWeb.AdminLive do
         <div class="border-t border-border pt-5">
           <h3 class="text-sm font-semibold text-ink">Long diplomas</h3>
           <p class="mt-1 max-w-prose text-xs leading-relaxed text-muted">
-            Large acts (huge annexes) are cut to the limit below. With an embeddings server, instead
-            of cutting from the start the most relevant sections (what actually changes) are kept and
-            the trailing tables discarded.
+            The <span class="font-medium text-ink">cost target</span> is how much text each act is
+            trimmed to. With an embeddings server the most relevant sections (what actually changes)
+            are kept and trailing annex tables discarded; without one, the opening is kept up to the
+            safety <span class="font-medium text-ink">cap</span> and only genuine giants are cut.
           </p>
         </div>
 
         <.admin_field
+          field={@form[:target_text_chars]}
+          type="number"
+          label="Cost target (chars)"
+          hint={"Empty = #{fmt_int(elem(effective_target(@settings), 0))} (default). What ranking trims each act to."}
+        />
+
+        <.admin_field
           field={@form[:max_text_chars]}
           type="number"
-          label="Character limit"
-          hint={"Empty = #{fmt_int(ContextWindow.cap_for(@settings.active_model))} (auto, from the model's context window)."}
+          label="Safety cap (chars)"
+          hint={"Empty = #{fmt_int(ContextWindow.cap_for(@settings.active_model))} (auto, from the model's context window). Overflow ceiling."}
         />
 
         <.admin_field

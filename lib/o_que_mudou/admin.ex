@@ -48,6 +48,23 @@ defmodule OQueMudou.Admin do
   end
 
   @doc """
+  Effective **cost target** (chars) the embeddings ranker trims act text down to:
+  DB setting ?? app config ?? `@default_target_text_chars`. Much smaller than
+  `max_text_chars/1` (the safety ceiling) — it's what ranking fills even when the
+  act fits under the cap (issue #41). Clamped to never exceed the cap for `model`,
+  so a target left larger than the ceiling can't disable ranking.
+  """
+  @default_target_text_chars 120_000
+  def target_text_chars(model \\ nil) do
+    target =
+      get_settings().target_text_chars ||
+        Application.get_env(:o_que_mudou, OQueMudou.Summarizer, [])[:target_text_chars] ||
+        @default_target_text_chars
+
+    min(target, max_text_chars(model))
+  end
+
+  @doc """
   Effective embeddings config (for oversized-diploma section ranking): the
   `OQueMudou.Summarizer.Embeddings` app config overlaid with DB overrides
   (`base_url`, `model`). Ranking is active iff a `base_url` ends up set (or a

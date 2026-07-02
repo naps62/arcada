@@ -65,6 +65,7 @@ defmodule OQueMudou.MixProject do
       {:bandit, "~> 1.5"},
       {:oban, "~> 2.18"},
       {:req, "~> 0.5"},
+      {:remote_ip, "~> 1.2"},
       {:logger_json, "~> 7.0"},
       {:prom_ex, "~> 1.12"}
     ]
