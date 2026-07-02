@@ -29,6 +29,48 @@ if admin_host = System.get_env("ADMIN_HOST") do
   config :o_que_mudou, :admin, host: admin_host
 end
 
+# Real client IP behind Cloudflare → Traefik (issue #43). Makes conn.remote_ip
+# the actual visitor instead of the Traefik container peer. Enabled by setting
+# REMOTE_IP=true (or any of the tuning vars below); unset → the plug is a no-op,
+# so dev/test/single-host keep the socket peer. Read in every env so a release
+# can flip it without a rebuild.
+#
+# Two strategies, chosen by REMOTE_IP_HEADERS:
+#
+#   x-forwarded-for (default) — walk X-Forwarded-For, trusting the proxy CIDRs in
+#     :proxies (Cloudflare ranges + the Docker/Traefik overlay, via
+#     OQueMudouWeb.RemoteIpProxies.default/0). Safe even if the origin is NOT yet
+#     firewalled to Cloudflare: a direct-to-origin request has an untrusted peer,
+#     so remote_ip stays put and cannot be spoofed to an arbitrary value.
+#
+#   cf-connecting-ip — trust Cloudflare's single CF-Connecting-IP header. Simpler,
+#     but SPOOFABLE unless the origin is locked to Cloudflare IP ranges (the
+#     CF-lock in the arcada-public-golive plan). Prefer this only post go-live:
+#       REMOTE_IP_HEADERS=cf-connecting-ip
+#
+# Overrides: REMOTE_IP_HEADERS / REMOTE_IP_PROXIES / REMOTE_IP_CLIENTS are
+# comma-separated lists; REMOTE_IP_PROXIES replaces the built-in default proxy set.
+remote_ip_enabled? =
+  System.get_env("REMOTE_IP") == "true" ||
+    Enum.any?(
+      ~w(REMOTE_IP_HEADERS REMOTE_IP_PROXIES REMOTE_IP_CLIENTS),
+      &System.get_env/1
+    )
+
+if remote_ip_enabled? do
+  csv = fn var, default ->
+    case System.get_env(var) do
+      nil -> default
+      v -> String.split(v, ",", trim: true) |> Enum.map(&String.trim/1)
+    end
+  end
+
+  config :o_que_mudou, :remote_ip,
+    headers: csv.("REMOTE_IP_HEADERS", ["x-forwarded-for"]),
+    proxies: csv.("REMOTE_IP_PROXIES", OQueMudouWeb.RemoteIpProxies.default()),
+    clients: csv.("REMOTE_IP_CLIENTS", [])
+end
+
 # Umami analytics (privacy-preserving, cookieless). Both vars must be set for
 # the tracking tag to render (see OQueMudouWeb.Layouts.umami/0). Read in every
 # env so it works for releases; left unset in dev and the VPN deployment.

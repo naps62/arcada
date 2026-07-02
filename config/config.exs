@@ -123,6 +123,13 @@ config :o_que_mudou, OQueMudouWeb.Endpoint,
   pubsub_server: OQueMudou.PubSub,
   live_view: [signing_salt: "6KZMKO7g"]
 
+# Real client IP behind the Cloudflare → Traefik proxy chain (issue #43). Off by
+# default (nil → the OQueMudouWeb.Plugs.RemoteIp plug is a no-op, so dev/test and
+# any no-proxy setup keep the socket peer as conn.remote_ip). Prod sets it from
+# env in config/runtime.exs. The value maps straight to RemoteIp plug options
+# (:headers, :proxies, :clients).
+config :o_que_mudou, :remote_ip, nil
+
 # Configure esbuild (the version is required)
 config :esbuild,
   version: "0.17.11",
