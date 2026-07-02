@@ -102,12 +102,11 @@ defmodule Arcada.Scraper.ParserTest do
       assert attrs.pdf_url =~ "files.diariodarepublica.pt"
     end
 
-    test "signals api_version_changed (rotated hash)" do
+    test "a rotated (empty-data) body reads as :empty — rotation is Client/Session's concern" do
       assert Parser.parse_detail(%{
                "versionInfo" => %{"hasApiVersionChanged" => true},
                "data" => %{}
-             }) ==
-               {:error, :api_version_changed}
+             }) == {:error, :empty}
     end
 
     test "treats empty data as :empty" do
