@@ -49,6 +49,9 @@ defmodule OQueMudouWeb.Endpoint do
 
   # Expose Prometheus metrics at /metrics. Placed before RequestId/Telemetry
   # so scrapes don't generate request logs or skew request metrics.
+  # RequireMetricsHost 404s /metrics on any host but the private VPN one, since
+  # PromEx.Plug has no router pipeline to gate it (issue #11).
+  plug OQueMudouWeb.Plugs.RequireMetricsHost
   plug PromEx.Plug, prom_ex_module: OQueMudou.PromEx
 
   plug Plug.RequestId

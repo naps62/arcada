@@ -27,6 +27,10 @@ end
 # the :admin keyword list from config.exs (keeps group/bypass).
 if admin_host = System.get_env("ADMIN_HOST") do
   config :o_que_mudou, :admin, host: admin_host
+  # /metrics lives on the same private VPN host as /admin. Reuse ADMIN_HOST so
+  # RequireMetricsHost 404s it on the public host (issue #11); METRICS_HOST
+  # overrides if they ever need to diverge.
+  config :o_que_mudou, :metrics, host: System.get_env("METRICS_HOST") || admin_host
 end
 
 # SEO indexing gate. Off by default (see config.exs); set SEO_INDEXABLE=true on

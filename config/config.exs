@@ -90,6 +90,11 @@ config :o_que_mudou, Oban,
 # `bypass: true` (dev) skips the in-app group check. See issue #19.
 config :o_que_mudou, :admin, group: "oqm-admin", bypass: false
 
+# Prometheus /metrics: served by PromEx.Plug in the endpoint (no router
+# pipeline), so RequireMetricsHost host-guards it. `host: nil` (dev/test) leaves
+# it reachable on any host; prod sets it from ADMIN_HOST in runtime.exs. See #11.
+config :o_que_mudou, :metrics, host: nil
+
 # Kaffy raw-DB admin (mounted at /admin/db, behind the same Authelia/VPN gate).
 # Schemas are auto-discovered from the Repo; see OQueMudouWeb.Router.
 config :kaffy,
