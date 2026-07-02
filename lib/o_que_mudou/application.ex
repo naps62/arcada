@@ -21,6 +21,9 @@ defmodule OQueMudou.Application do
       OQueMudou.Repo,
       {DNSCluster, query: Application.get_env(:o_que_mudou, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: OQueMudou.PubSub},
+      # ETS-backed rate limiter (issue #32); caps semantic-search embedding per
+      # caller. Expired buckets are swept every 10 min.
+      {OQueMudou.RateLimit, [clean_period: :timer.minutes(10)]},
       {Oban, Application.fetch_env!(:o_que_mudou, Oban)},
       # Semantic-search index (issue #27): loads summary embeddings into ETS.
       OQueMudou.Search.Index,
