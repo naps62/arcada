@@ -64,4 +64,15 @@ defmodule OQueMudou.Register.Summary do
     |> validate_required(@required)
     |> assoc_constraint(:act)
   end
+
+  # The summarizer wraps unavoidable technical terms in `[[…]]` so a glossary /
+  # tooltip can be attached later (see the base system prompt). The markers are
+  # kept verbatim in `plain_text`/`headline` for that future use, but stripped
+  # everywhere they'd otherwise leak: public display, meta/SEO, search and the
+  # embedding input. The admin compare view deliberately shows the raw markers.
+  @term_marker ~r/\[\[(.+?)\]\]/
+
+  @doc "Strip `[[term]]` tooltip markers to plain text for display/search/embedding."
+  def strip_terms(nil), do: nil
+  def strip_terms(text) when is_binary(text), do: Regex.replace(@term_marker, text, "\\1")
 end

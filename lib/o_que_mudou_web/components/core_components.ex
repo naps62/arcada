@@ -742,7 +742,7 @@ defmodule OQueMudouWeb.CoreComponents do
           </p>
           <h3 class="mt-1.5 text-pretty font-display text-xl font-semibold leading-snug text-ink sm:text-[1.375rem]">
             <.link navigate={~p"/acts/#{@act.id}"} class="rounded-sm hover:text-primary">
-              {@summary.headline || @act.title || @act.tipo}
+              {OQueMudou.Register.Summary.strip_terms(@summary.headline) || @act.title || @act.tipo}
             </.link>
           </h3>
           <p :if={@summary.headline} class="mt-1 text-xs text-muted">
@@ -752,7 +752,7 @@ defmodule OQueMudouWeb.CoreComponents do
       </div>
 
       <p class="mt-2.5 max-w-reading text-pretty font-serif text-[1.0625rem] leading-relaxed text-ink">
-        {@summary.plain_text}
+        {OQueMudou.Register.Summary.strip_terms(@summary.plain_text)}
       </p>
 
       <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">

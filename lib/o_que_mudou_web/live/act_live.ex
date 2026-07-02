@@ -7,6 +7,7 @@ defmodule OQueMudouWeb.ActLive do
   use OQueMudouWeb, :live_view
 
   alias OQueMudou.Register
+  alias OQueMudou.Register.Summary
   alias OQueMudouWeb.SEO
 
   @impl true
@@ -23,7 +24,7 @@ defmodule OQueMudouWeb.ActLive do
   # Per-act SEO: the headline is the page title, the plain-language summary the
   # description, and the page ships an schema.org Article with a canonical URL.
   defp seo(act, summary) do
-    title = (summary && summary.headline) || act.title || act.tipo || "Ato"
+    title = (summary && Summary.strip_terms(summary.headline)) || act.title || act.tipo || "Ato"
     description = act_description(act, summary)
     canonical = SEO.url(~p"/acts/#{act.id}")
 
@@ -39,7 +40,7 @@ defmodule OQueMudouWeb.ActLive do
   # Meta description: the summary in plain language, trimmed to a sane length;
   # falls back to the act's formal title when there's no summary yet.
   defp act_description(_act, %{plain_text: text}) when is_binary(text),
-    do: truncate(text, 300)
+    do: truncate(Summary.strip_terms(text), 300)
 
   defp act_description(%{title: title}, _summary) when is_binary(title), do: truncate(title, 300)
   defp act_description(_act, _summary), do: SEO.default_description()
@@ -92,7 +93,7 @@ defmodule OQueMudouWeb.ActLive do
           {@act.tipo}
         </p>
         <h1 class="mt-1.5 text-pretty font-display text-[1.75rem] font-semibold leading-tight text-ink sm:text-[2.25rem]">
-          {(@summary && @summary.headline) || @act.title || @act.tipo}
+          {(@summary && Summary.strip_terms(@summary.headline)) || @act.title || @act.tipo}
         </h1>
         <p :if={@summary && @summary.headline} class="mt-1.5 text-sm text-muted">
           {@act.title || @act.tipo}
@@ -114,7 +115,7 @@ defmodule OQueMudouWeb.ActLive do
           :if={@summary}
           class="mt-4 max-w-reading text-pretty font-serif text-[1.25rem] leading-relaxed text-ink"
         >
-          {@summary.plain_text}
+          {Summary.strip_terms(@summary.plain_text)}
         </p>
         <p :if={is_nil(@summary)} class="mt-4 font-serif text-lg italic text-muted">
           Ainda sem resumo em linguagem simples.
