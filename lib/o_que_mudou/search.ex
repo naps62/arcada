@@ -57,23 +57,33 @@ defmodule OQueMudou.Search do
   when *both* halves are empty (blank query, or the embeddings server is down
   *and* nothing matches the text) — a down embeddings server degrades to
   FTS-only, a no-text-match query to semantic-only, neither crashes.
-  """
-  def ranked_ids(query) when not is_binary(query), do: []
 
-  def ranked_ids(query) do
+  `opts[:semantic?]` (default `true`) gates the expensive embedding leg. Pass
+  `false` to run FTS-only — this is how a rate-limited caller (#32) still gets
+  results without spending the GPU. FTS-only is the same graceful degradation the
+  fusion already does when the embeddings server is down.
+  """
+  def ranked_ids(query, opts \\ [])
+  def ranked_ids(query, _opts) when not is_binary(query), do: []
+
+  def ranked_ids(query, opts) do
     query = String.trim(query)
 
     if query == "" do
       []
     else
-      # Semantic is the slow leg (embed the query over the network); run it in a
-      # task while FTS hits Postgres in this process. The task only touches the
-      # in-memory index + embeddings client — no Repo — so it's sandbox-safe.
-      cfg = Admin.embeddings_config()
-      semantic = Task.async(fn -> semantic_ids(query, cfg) end)
-      fts = FTS.ranked_ids(query)
+      if Keyword.get(opts, :semantic?, true) do
+        # Semantic is the slow leg (embed the query over the network); run it in a
+        # task while FTS hits Postgres in this process. The task only touches the
+        # in-memory index + embeddings client — no Repo — so it's sandbox-safe.
+        cfg = Admin.embeddings_config()
+        semantic = Task.async(fn -> semantic_ids(query, cfg) end)
+        fts = FTS.ranked_ids(query)
 
-      rrf([Task.await(semantic, 35_000), fts])
+        rrf([Task.await(semantic, 35_000), fts])
+      else
+        FTS.ranked_ids(query)
+      end
     end
   end
 

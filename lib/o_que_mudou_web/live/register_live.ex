@@ -7,10 +7,11 @@ defmodule OQueMudouWeb.RegisterLive do
   use OQueMudouWeb, :live_view
 
   alias OQueMudou.{Register, Search}
+  alias OQueMudou.RateLimit
   alias OQueMudouWeb.SEO
 
   @impl true
-  def mount(_params, _session, socket) do
+  def mount(_params, session, socket) do
     {:ok,
      assign(socket,
        front_page: true,
@@ -20,6 +21,14 @@ defmodule OQueMudouWeb.RegisterLive do
        search_results: nil,
        search_ids: nil,
        search_more?: false,
+       # Rate-limit identity for the semantic-search leg (#32): a verified
+       # account gets the generous `:user` tier; everyone else (anonymous, or
+       # signed-in-but-unverified per #31) shares the loose `:anon` tier keyed
+       # by the session's visitor id. Computed once at mount, not per keystroke.
+       search_identity: search_identity(socket, session),
+       # True when the last search was forced to FTS-only by the rate limit, so
+       # the template can show the "sign in for smarter search" nudge.
+       search_degraded: false,
        browse_cursor: nil,
        browse_more?: false,
        # Bumped on every completed search so the results container patches (and
@@ -93,14 +102,32 @@ defmodule OQueMudouWeb.RegisterLive do
   # full ranked id list, then load only the first window. The "load-more"
   # handler pages through the cached ids — no re-embedding per page.
   defp assign_search(socket, query) do
-    ids = Search.ranked_ids(query)
+    # Charge the semantic leg against this caller's budget (#32). Over budget →
+    # FTS-only (still useful, no GPU spend) plus the signup nudge. FTS itself is
+    # never limited, so a rate-limited caller still gets live text results.
+    {tier, _} = identity = socket.assigns.search_identity
+
+    degraded? =
+      case RateLimit.search_semantic(identity) do
+        :ok -> false
+        {:deny, _retry_ms} -> true
+      end
+
+    ids = Search.ranked_ids(query, semantic?: not degraded?)
     page = Search.load_page(ids, 0, Search.page_size())
+
+    :telemetry.execute(
+      [:o_que_mudou, :search, :query],
+      %{count: 1},
+      %{tier: tier, degraded: degraded?}
+    )
 
     assign(socket,
       query: query,
       search_ids: ids,
       search_results: page,
       search_more?: length(ids) > length(page),
+      search_degraded: degraded?,
       browse_cursor: nil,
       browse_more?: false,
       search_token: socket.assigns.search_token + 1,
@@ -112,6 +139,17 @@ defmodule OQueMudouWeb.RegisterLive do
       canonical_url: SEO.url(~p"/"),
       json_ld: nil
     )
+  end
+
+  # The rate-limit bucket key for this session (#32). A *verified* account earns
+  # the generous `:user` tier; anonymous visitors and signed-in-but-unverified
+  # accounts (only verified may enjoy full search, per #31) share the loose
+  # `:anon` tier keyed by the session visitor id minted in `Plugs.VisitorId`.
+  defp search_identity(socket, session) do
+    case socket.assigns[:current_user] do
+      %{id: id, confirmed_at: %DateTime{}} -> {:user, id}
+      _ -> {:anon, session["visitor_id"]}
+    end
   end
 
   # Browse mode is paginated by day (infinite scroll): load the newest page of
@@ -129,6 +167,7 @@ defmodule OQueMudouWeb.RegisterLive do
       search_results: nil,
       search_ids: nil,
       search_more?: false,
+      search_degraded: false,
       active_domain: domain,
       active_period: period,
       # Each axis's badges reflect the *other* axis's selection.
@@ -262,6 +301,30 @@ defmodule OQueMudouWeb.RegisterLive do
       phx-hook="FlashOnResult"
       data-token={@search_token}
     >
+      <%!-- Rate-limited (#32): the semantic leg was skipped, so these are
+           text-match results only. Nudge anonymous visitors toward an account
+           (higher limits + semantic search); just reassure signed-in users. --%>
+      <div
+        :if={@search_degraded}
+        class="flex items-start gap-2 border-b border-border bg-surface-inset px-3 py-3 text-sm text-muted"
+      >
+        <.icon name="hero-bolt-slash-micro" class="mt-0.5 size-4 shrink-0 text-primary" />
+        <p :if={is_nil(@current_user)}>
+          A mostrar resultados por texto — atingiste o limite de pesquisa inteligente.
+          <.link navigate={~p"/users/log_in"} class="font-semibold text-primary hover:underline">
+            Entra
+          </.link>
+          ou
+          <.link navigate={~p"/users/register"} class="font-semibold text-primary hover:underline">
+            cria conta
+          </.link>
+          para pesquisa por significado e mais pesquisas.
+        </p>
+        <p :if={@current_user}>
+          A pesquisar depressa demais — a mostrar resultados por texto por agora.
+          Dá uns segundos e a pesquisa inteligente volta.
+        </p>
+      </div>
       <p :if={@search_results == []} class="border-b border-border py-16 text-center">
         <.icon name="hero-document-magnifying-glass" class="mx-auto size-8 text-muted" />
         <span class="mt-3 block font-display text-lg text-ink">
