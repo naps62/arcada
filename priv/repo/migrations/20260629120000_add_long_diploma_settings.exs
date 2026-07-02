@@ -1,4 +1,4 @@
-defmodule OQueMudou.Repo.Migrations.AddLongDiplomaSettings do
+defmodule Arcada.Repo.Migrations.AddLongDiplomaSettings do
   use Ecto.Migration
 
   def change do

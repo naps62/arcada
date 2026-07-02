@@ -1,7 +1,7 @@
-defmodule OQueMudou.AccountsFixtures do
+defmodule Arcada.AccountsFixtures do
   @moduledoc """
   This module defines test helpers for creating
-  entities via the `OQueMudou.Accounts` context.
+  entities via the `Arcada.Accounts` context.
   """
 
   def unique_user_email, do: "user#{System.unique_integer()}@example.com"
@@ -18,7 +18,7 @@ defmodule OQueMudou.AccountsFixtures do
     {:ok, user} =
       attrs
       |> valid_user_attributes()
-      |> OQueMudou.Accounts.register_user()
+      |> Arcada.Accounts.register_user()
 
     user
   end

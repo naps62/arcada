@@ -7,15 +7,15 @@
 # General application configuration
 import Config
 
-config :o_que_mudou,
-  ecto_repos: [OQueMudou.Repo],
+config :arcada,
+  ecto_repos: [Arcada.Repo],
   generators: [timestamp_type: :utc_datetime]
 
 # DRE scraper. apiVersion hashes rotate on each DRE deploy. These are just the
 # seed/fallback values from recon (docs/endpoints.md): the client self-heals at
 # runtime — on `hasApiVersionChanged: true` it re-derives the current hash over
 # HTTP (ApiVersionResolver) and retries — so they no longer need manual updates.
-config :o_que_mudou, OQueMudou.Scraper.Client,
+config :arcada, Arcada.Scraper.Client,
   base_url: "https://diariodarepublica.pt",
   list_api_version: "1ZNbiINloOPj8IhEJxM3QA",
   detail_api_version: "f6iEozloG7S5uAiM9ydqeQ"
@@ -27,7 +27,7 @@ config :o_que_mudou, OQueMudou.Scraper.Client,
 # SSH adapter — runs `claude -p` on a remote host that has the CLI logged in
 # (no ANTHROPIC_API_KEY needed in the app). host/identity come from env at
 # runtime (runtime.exs); these are the static defaults.
-config :o_que_mudou, OQueMudou.Summarizer.Adapters.Ssh,
+config :arcada, Arcada.Summarizer.Adapters.Ssh,
   user: "claude",
   claude_cmd: "claude -p --output-format json",
   model: "claude-cli",
@@ -44,13 +44,13 @@ config :o_que_mudou, OQueMudou.Summarizer.Adapters.Ssh,
     "UserKnownHostsFile=/dev/null"
   ]
 
-# Adaptive text cap for the summarizer prompt (see `OQueMudou.Summarizer.ContextWindow`,
+# Adaptive text cap for the summarizer prompt (see `Arcada.Summarizer.ContextWindow`,
 # issue #18). The cap on how much act text is fed to the model is derived from the
 # target model's context window instead of a fixed char count — leaving the module
 # defaults active covers this deployment (Claude ~1M, everything else 200k). Override
 # any knob here (or the DB `max_text_chars`) if the model line-up changes:
 #
-#   config :o_que_mudou, OQueMudou.Summarizer.ContextWindow,
+#   config :arcada, Arcada.Summarizer.ContextWindow,
 #     default_window: 200_000,
 #     windows: %{"claude-sonnet-4" => 1_000_000, "claude-opus-4" => 1_000_000, "claude-cli" => 1_000_000},
 #     reserve_fraction: 0.2,
@@ -59,11 +59,11 @@ config :o_que_mudou, OQueMudou.Summarizer.Adapters.Ssh,
 # Cost target the ranker trims act text down to, distinct from the safety cap
 # above (issue #41). Ranking fills this budget with the most change-relevant
 # sections even when the act fits under the cap, keeping token spend down. The DB
-# `target_text_chars` overrides it; default (120k chars) lives in `OQueMudou.Admin`.
+# `target_text_chars` overrides it; default (120k chars) lives in `Arcada.Admin`.
 #
-#   config :o_que_mudou, OQueMudou.Summarizer, target_text_chars: 120_000
+#   config :arcada, Arcada.Summarizer, target_text_chars: 120_000
 
-# Embeddings ranking for oversized diplomas (see `OQueMudou.Summarizer.Embeddings`).
+# Embeddings ranking for oversized diplomas (see `Arcada.Summarizer.Embeddings`).
 # `base_url` is left unset here → ranking is off and oversized acts fall back to
 # head-truncation. Set it (admin page or EMBEDDINGS_BASE_URL) to an OpenAI-compatible
 # embeddings server — llama.cpp `llama-server --embeddings`, Ollama, etc. — to keep
@@ -78,14 +78,14 @@ config :o_que_mudou, OQueMudou.Summarizer.Adapters.Ssh,
 # `min_relevance_score` (optional, unset = off) drops sections below that cosine
 # similarity even when the budget has room — trims obviously-irrelevant chunks for
 # cost. Model-specific; tune against real scores before enabling (issue #41).
-config :o_que_mudou, OQueMudou.Summarizer.Embeddings,
+config :arcada, Arcada.Summarizer.Embeddings,
   model: "bge-m3",
   timeout: 30_000
 
 # Configures Oban (background jobs + daily cron).
 # The DRE scraper runs on a daily cron; see docs/PLAN.md.
-config :o_que_mudou, Oban,
-  repo: OQueMudou.Repo,
+config :arcada, Oban,
+  repo: Arcada.Repo,
   queues: [default: 10, scrape: 1, summarize: 5],
   plugins: [
     {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
@@ -94,53 +94,53 @@ config :o_que_mudou, Oban,
     # working day so supplements/late editions are picked up the same day.
     # 07:00–19:00 UTC (~08:00–20:00 Lisbon in summer); UTC avoids a tzdata dep.
     # IngestWorker defaults to today's date and is idempotent, so re-runs are free.
-    {Oban.Plugins.Cron, crontab: [{"0 7-19/2 * * 1-5", OQueMudou.Scraper.IngestWorker}]}
+    {Oban.Plugins.Cron, crontab: [{"0 7-19/2 * * 1-5", Arcada.Scraper.IngestWorker}]}
   ]
 
 # Admin area (/admin): served only on the private VPN host. `host` (set from
 # ADMIN_HOST in runtime.exs) makes RequireAdminHost 404 /admin on the public
 # host; `host: nil` (dev/test) leaves it reachable on any host. The VPN is the
 # access boundary — no in-app auth. See issues #19, #37.
-config :o_que_mudou, :admin, host: nil
+config :arcada, :admin, host: nil
 
 # Prometheus /metrics: served by PromEx.Plug in the endpoint (no router
 # pipeline), so RequireMetricsHost host-guards it. `host: nil` (dev/test) leaves
 # it reachable on any host; prod sets it from ADMIN_HOST in runtime.exs. See #11.
-config :o_que_mudou, :metrics, host: nil
+config :arcada, :metrics, host: nil
 
 # Kaffy raw-DB admin (mounted at /admin/db, behind the same Authelia/VPN gate).
-# Schemas are auto-discovered from the Repo; see OQueMudouWeb.Router.
+# Schemas are auto-discovered from the Repo; see ArcadaWeb.Router.
 config :kaffy,
-  otp_app: :o_que_mudou,
-  ecto_repo: OQueMudou.Repo,
-  router: OQueMudouWeb.Router,
-  admin_title: "o-que-mudou DB",
+  otp_app: :arcada,
+  ecto_repo: Arcada.Repo,
+  router: ArcadaWeb.Router,
+  admin_title: "arcada DB",
   hide_dashboard: false,
-  # Restyle Kaffy to our palette + a denser layout (see OQueMudouWeb.KaffyTheme).
-  extensions: [OQueMudouWeb.KaffyTheme]
+  # Restyle Kaffy to our palette + a denser layout (see ArcadaWeb.KaffyTheme).
+  extensions: [ArcadaWeb.KaffyTheme]
 
 # Configures the endpoint
-config :o_que_mudou, OQueMudouWeb.Endpoint,
+config :arcada, ArcadaWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
   render_errors: [
-    formats: [html: OQueMudouWeb.ErrorHTML, json: OQueMudouWeb.ErrorJSON],
+    formats: [html: ArcadaWeb.ErrorHTML, json: ArcadaWeb.ErrorJSON],
     layout: false
   ],
-  pubsub_server: OQueMudou.PubSub,
+  pubsub_server: Arcada.PubSub,
   live_view: [signing_salt: "6KZMKO7g"]
 
 # Real client IP behind the Cloudflare → Traefik proxy chain (issue #43). Off by
-# default (nil → the OQueMudouWeb.Plugs.RemoteIp plug is a no-op, so dev/test and
+# default (nil → the ArcadaWeb.Plugs.RemoteIp plug is a no-op, so dev/test and
 # any no-proxy setup keep the socket peer as conn.remote_ip). Prod sets it from
 # env in config/runtime.exs. The value maps straight to RemoteIp plug options
 # (:headers, :proxies, :clients).
-config :o_que_mudou, :remote_ip, nil
+config :arcada, :remote_ip, nil
 
 # Configure esbuild (the version is required)
 config :esbuild,
   version: "0.17.11",
-  o_que_mudou: [
+  arcada: [
     args:
       ~w(js/app.js --bundle --target=es2017 --outdir=../priv/static/assets --external:/fonts/* --external:/images/*),
     cd: Path.expand("../assets", __DIR__),
@@ -150,7 +150,7 @@ config :esbuild,
 # Configure tailwind (the version is required)
 config :tailwind,
   version: "3.4.3",
-  o_que_mudou: [
+  arcada: [
     args: ~w(
       --config=tailwind.config.js
       --input=css/app.css
@@ -169,7 +169,7 @@ config :logger, :console,
 # Prometheus metrics (PromEx). Dashboards are not auto-uploaded; metrics are
 # exposed at /metrics via PromEx.Plug and scraped by Prometheus over the
 # dokploy-network.
-config :o_que_mudou, OQueMudou.PromEx,
+config :arcada, Arcada.PromEx,
   manual_metrics_start_delay: :no_delay,
   drop_metrics_groups: [],
   grafana: :disabled,
@@ -180,7 +180,7 @@ config :o_que_mudou, OQueMudou.PromEx,
 # wall — real IP keying awaits #43); `:user` rewards a verified account with far
 # more headroom. Over budget, search degrades to FTS-only, never fails. Tune here
 # without a code change.
-config :o_que_mudou, OQueMudou.RateLimit,
+config :arcada, Arcada.RateLimit,
   anon: [per_minute: 20, per_day: 200],
   user: [per_minute: 120, per_day: 2_000]
 
@@ -188,7 +188,7 @@ config :o_que_mudou, OQueMudou.RateLimit,
 config :phoenix, :json_library, Jason
 
 # Public-user email (account verification + password reset), sent via the
-# OQueMudou.Mailer / Swoosh. Swoosh's HTTP calls go through Req (already a dep)
+# Arcada.Mailer / Swoosh. Swoosh's HTTP calls go through Req (already a dep)
 # rather than pulling in hackney/Finch. The per-environment adapter is set in
 # dev/test/prod: Local mailbox preview in dev, Test collector in test, Resend
 # in prod (API key via env — see config/runtime.exs).
@@ -197,17 +197,17 @@ config :swoosh, api_client: Swoosh.ApiClient.Req
 # From address for account emails. Overridden at runtime in prod
 # (MAILER_FROM_EMAIL / MAILER_FROM_NAME) — the Resend sender must be on a
 # verified domain. The dev/test default is only ever seen in the mailbox preview.
-config :o_que_mudou, :mailer_from, {"Arcada", "nao-responder@arcada.local"}
+config :arcada, :mailer_from, {"Arcada", "nao-responder@arcada.local"}
 
 # Global cap on new signups per UTC day. Protects the Resend free quota
 # (100 emails/day) since every registration sends a confirmation email.
 # Kept below 100 to leave headroom for password-reset / re-confirm mails.
-config :o_que_mudou, :daily_signup_cap, 80
+config :arcada, :daily_signup_cap, 80
 
 # Cloudflare Turnstile bot check on the signup form. Disabled by default
 # (no keys) — dev/test skip the widget and verification. Prod keys come from
 # env at runtime (see config/runtime.exs).
-config :o_que_mudou, OQueMudouWeb.Turnstile, site_key: nil, secret_key: nil
+config :arcada, ArcadaWeb.Turnstile, site_key: nil, secret_key: nil
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

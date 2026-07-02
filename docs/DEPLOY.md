@@ -1,4 +1,4 @@
-# Deploy — o-que-mudou on `example.internal` (VPN-gated)
+# Deploy — arcada on `example.internal` (VPN-gated)
 
 Private, VPN-only deployment via **Dokploy** on `example.internal`, per `docs/PLAN.md`
 (audience: private only; no app-level auth — network gating only).
@@ -7,20 +7,20 @@ Private, VPN-only deployment via **Dokploy** on `example.internal`, per `docs/PL
 
 - **`Dockerfile`** — multi-stage Elixir release (`hexpm/elixir:1.17.3-erlang-25.3.2.8`
   builder → `debian:bullseye-slim` runtime). Runs `mix assets.deploy` + `mix release`.
-- **`rel/overlays/bin/{server,migrate}`**, **`lib/o_que_mudou/release.ex`** — release entrypoints.
+- **`rel/overlays/bin/{server,migrate}`**, **`lib/arcada/release.ex`** — release entrypoints.
 - **`config/runtime.exs`** — reads `DATABASE_URL`, `SECRET_KEY_BASE`, `PHX_HOST`,
   `PORT`, `ANTHROPIC_API_KEY`, `SUMMARIZER_ADAPTER` at boot.
 
 The image is verified end-to-end locally: builds, `bin/migrate` applies all
 migrations, the server boots and serves the register, and Oban runs the daily
-cron `{"0 9 * * 1-5", OQueMudou.Scraper.IngestWorker}` with queues
+cron `{"0 9 * * 1-5", Arcada.Scraper.IngestWorker}` with queues
 `[default, scrape, summarize]`.
 
 ## Required env vars (set in Dokploy → app → Environment)
 
 | Var | Value |
 |---|---|
-| `DATABASE_URL` | `ecto://<user>:<pass>@<pg-host>/o_que_mudou_prod` (Dokploy-managed Postgres) |
+| `DATABASE_URL` | `ecto://<user>:<pass>@<pg-host>/arcada_prod` (Dokploy-managed Postgres) |
 | `SECRET_KEY_BASE` | `mix phx.gen.secret` (64+ bytes) |
 | `PHX_HOST` | canonical public hostname for generated URLs (e.g. `arcada.naps.pt`) |
 | `ADMIN_HOST` | host on which `/admin*` is served (e.g. `arcada.example.internal`). On any other host admin paths 404. Unset → admin reachable on every host (single-host / dev). |
@@ -74,13 +74,13 @@ Wiring steps:
 ## Dokploy setup
 
 1. **Project + Postgres**: create a Dokploy project; add a Postgres service;
-   create database `o_que_mudou_prod`. Copy its connection string into `DATABASE_URL`.
-2. **Application**: source = this Gitea repo (`yolo/o-que-mudou`), build type =
+   create database `arcada_prod`. Copy its connection string into `DATABASE_URL`.
+2. **Application**: source = this Gitea repo (`yolo/arcada`), build type =
    **Dockerfile**. Set the env vars above (mark `ANTHROPIC_API_KEY` / `SECRET_KEY_BASE` as secrets).
 3. **Migrations on deploy**: set the pre-deploy/start command to run
    `/app/bin/migrate` before `/app/bin/server` (or run `bin/migrate` once via a
    Dokploy command). The container's default `CMD` is `/app/bin/server`.
-4. **Deploy** and watch logs for `Running OQueMudouWeb.Endpoint`.
+4. **Deploy** and watch logs for `Running ArcadaWeb.Endpoint`.
 
 ## Two-host setup — public `arcada.naps.pt` + private `arcada.example.internal` (issue #37)
 
@@ -140,11 +140,11 @@ public Traefik domain / Let's Encrypt cert. Options:
 
 - **Manual scrape / backfill** (Dokploy app shell):
   ```
-  /app/bin/o_que_mudou rpc 'OQueMudou.Scraper.IngestWorker.new(%{date: "2026-06-24"}) |> Oban.insert()'
-  /app/bin/o_que_mudou rpc 'OQueMudou.Scraper.backfill(~D[2026-06-01], ~D[2026-06-27])'
+  /app/bin/arcada rpc 'Arcada.Scraper.IngestWorker.new(%{date: "2026-06-24"}) |> Oban.insert()'
+  /app/bin/arcada rpc 'Arcada.Scraper.backfill(~D[2026-06-01], ~D[2026-06-27])'
   ```
 - **Manual summary backfill** (manual adapter): use
-  `OQueMudou.Summarizer.create_summary/2` from `bin/o_que_mudou remote`.
+  `Arcada.Summarizer.create_summary/2` from `bin/arcada remote`.
 - The ingest cron runs automatically every 2 hours, 07:00–19:00 UTC on weekdays
   (`0 7-19/2 * * 1-5`), once the release is up. Idempotent, so re-runs are free.
 
@@ -172,7 +172,7 @@ churn.
 
 - **Safety cap** (`max_text_chars`) — the overflow ceiling. Left empty it's
   derived adaptively from the active model's context window
-  (`OQueMudou.Summarizer.ContextWindow` — ~2.8M chars on the ~1M-context Claude,
+  (`Arcada.Summarizer.ContextWindow` — ~2.8M chars on the ~1M-context Claude,
   ~560k on the conservative default).
 - **Cost target** (`target_text_chars`, default 120k) — how much text each act is
   actually trimmed to. With an embeddings server, ranking fills this budget with
@@ -194,8 +194,8 @@ head-truncate as before. (nomic-embed is English-centric and needs `query_prefix
 `document_prefix` task prefixes — see the config comment; bge-m3 needs neither.)
 
 Seeding (first deploy): create at least one provider and set it active, e.g.
-via `bin/o_que_mudou rpc` —
-`OQueMudou.Providers.create_provider/1` then `OQueMudou.Admin.update_settings/1`
+via `bin/arcada rpc` —
+`Arcada.Providers.create_provider/1` then `Arcada.Admin.update_settings/1`
 with `active_provider_id`/`active_model`.
 
 Admin lives **only** on the private host `arcada.example.internal` (see the two-host
@@ -226,10 +226,10 @@ lifecycle is logged via `Oban.Telemetry.attach_default_logger/1`. `LOG_LEVEL`
 {service="arcada-app"} | json | severity="error"
 ```
 
-**Metrics (Prometheus).** PromEx (`OQueMudou.PromEx`) exposes
+**Metrics (Prometheus).** PromEx (`Arcada.PromEx`) exposes
 `GET /metrics` via `PromEx.Plug` (mounted before `Plug.Telemetry`, so scrapes
 aren't logged). Plugins: Application, Beam, Phoenix, Ecto, Oban,
-PhoenixLiveView (~60 metric families, all prefixed `o_que_mudou_prom_ex_*`).
+PhoenixLiveView (~60 metric families, all prefixed `arcada_prom_ex_*`).
 
 Scraping is **opt-in via container labels**, not a static target. Grafana
 Alloy (`infra/alloy` → `config.alloy`) discovers Docker containers and only
@@ -244,7 +244,7 @@ LABEL prometheus.port="4000"
 
 This mirrors how other scraped services (e.g. `example-service`) opt in, so no edits to
 the shared Alloy config are needed when this app is redeployed. Metrics land in
-Prometheus prefixed `o_que_mudou_prom_ex_*` within ~15s of a deploy.
+Prometheus prefixed `arcada_prom_ex_*` within ~15s of a deploy.
 
 `/metrics` is *also* reachable at `https://oqm.example.internal/metrics`, but it
 inherits the host's `vpn-allowlist@file` ipAllowList (the router

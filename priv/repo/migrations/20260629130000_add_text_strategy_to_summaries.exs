@@ -1,4 +1,4 @@
-defmodule OQueMudou.Repo.Migrations.AddTextStrategyToSummaries do
+defmodule Arcada.Repo.Migrations.AddTextStrategyToSummaries do
   use Ecto.Migration
 
   def change do

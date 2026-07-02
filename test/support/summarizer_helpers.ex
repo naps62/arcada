@@ -1,8 +1,8 @@
-defmodule OQueMudou.SummarizerHelpers do
+defmodule Arcada.SummarizerHelpers do
   @moduledoc "Test helpers: create providers and stub the SSH adapter offline."
 
-  alias OQueMudou.Providers
-  alias OQueMudou.Summarizer.Adapters.Ssh
+  alias Arcada.Providers
+  alias Arcada.Summarizer.Adapters.Ssh
 
   @doc """
   The `claude -p --output-format json` envelope wrapping our inner JSON. `extra`
@@ -34,8 +34,8 @@ defmodule OQueMudou.SummarizerHelpers do
 
   @doc "Inject the SSH runner so the adapter returns `fun.(prompt)` instead of SSHing."
   def stub_ssh_runner(fun) do
-    prev = Application.get_env(:o_que_mudou, Ssh, [])
-    Application.put_env(:o_que_mudou, Ssh, Keyword.put(prev, :runner, fun))
-    ExUnit.Callbacks.on_exit(fn -> Application.put_env(:o_que_mudou, Ssh, prev) end)
+    prev = Application.get_env(:arcada, Ssh, [])
+    Application.put_env(:arcada, Ssh, Keyword.put(prev, :runner, fun))
+    ExUnit.Callbacks.on_exit(fn -> Application.put_env(:arcada, Ssh, prev) end)
   end
 end

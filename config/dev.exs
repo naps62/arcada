@@ -1,11 +1,11 @@
 import Config
 
 # Configure your database
-config :o_que_mudou, OQueMudou.Repo,
+config :arcada, Arcada.Repo,
   username: "postgres",
   password: "postgres",
   hostname: "localhost",
-  database: "o_que_mudou_dev",
+  database: "arcada_dev",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
@@ -16,7 +16,7 @@ config :o_que_mudou, OQueMudou.Repo,
 # The watchers configuration can be used to run external
 # watchers to your application. For example, we can use it
 # to bundle .js and .css sources.
-config :o_que_mudou, OQueMudouWeb.Endpoint,
+config :arcada, ArcadaWeb.Endpoint,
   # Binding to loopback ipv4 address prevents access from other machines.
   # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
   http: [ip: {0, 0, 0, 0}, port: 4000],
@@ -25,8 +25,8 @@ config :o_que_mudou, OQueMudouWeb.Endpoint,
   debug_errors: true,
   secret_key_base: "O7a9xaY+NRrYtaHy3XlYo+8PWq0np3cup6CjNpJmT4+UePPRrNpN73f/3fQO6byk",
   watchers: [
-    esbuild: {Esbuild, :install_and_run, [:o_que_mudou, ~w(--sourcemap=inline --watch)]},
-    tailwind: {Tailwind, :install_and_run, [:o_que_mudou, ~w(--watch)]}
+    esbuild: {Esbuild, :install_and_run, [:arcada, ~w(--sourcemap=inline --watch)]},
+    tailwind: {Tailwind, :install_and_run, [:arcada, ~w(--watch)]}
   ]
 
 # ## SSL Support
@@ -53,21 +53,21 @@ config :o_que_mudou, OQueMudouWeb.Endpoint,
 # different ports.
 
 # Watch static and templates for browser reloading.
-config :o_que_mudou, OQueMudouWeb.Endpoint,
+config :arcada, ArcadaWeb.Endpoint,
   live_reload: [
     patterns: [
       ~r"priv/static/(?!uploads/).*(js|css|png|jpeg|jpg|gif|svg)$",
       ~r"priv/gettext/.*(po)$",
-      ~r"lib/o_que_mudou_web/(controllers|live|components)/.*(ex|heex)$"
+      ~r"lib/arcada_web/(controllers|live|components)/.*(ex|heex)$"
     ]
   ]
 
 # Enable dev routes for dashboard and mailbox
-config :o_que_mudou, dev_routes: true
+config :arcada, dev_routes: true
 
 # Public-user email in dev: capture into the Swoosh mailbox preview
 # (visit /dev/mailbox); nothing is sent and no API client is needed.
-config :o_que_mudou, OQueMudou.Mailer, adapter: Swoosh.Adapters.Local
+config :arcada, Arcada.Mailer, adapter: Swoosh.Adapters.Local
 config :swoosh, :api_client, false
 
 # Do not include metadata nor timestamps in development logs

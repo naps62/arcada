@@ -1,4 +1,4 @@
-defmodule OQueMudou.Repo.Migrations.AddSettingsTargetTextChars do
+defmodule Arcada.Repo.Migrations.AddSettingsTargetTextChars do
   use Ecto.Migration
 
   def change do

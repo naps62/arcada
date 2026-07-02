@@ -1,4 +1,4 @@
-defmodule OQueMudou.Repo.Migrations.CreateProviders do
+defmodule Arcada.Repo.Migrations.CreateProviders do
   use Ecto.Migration
 
   def change do

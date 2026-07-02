@@ -1,4 +1,4 @@
-defmodule OQueMudou.Repo.Migrations.AddHeadlineToSummaries do
+defmodule Arcada.Repo.Migrations.AddHeadlineToSummaries do
   use Ecto.Migration
 
   def change do

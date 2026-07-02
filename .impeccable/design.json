@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedAt": "2026-06-28T00:00:00.000Z",
-  "title": "Design System: O que mudou",
+  "title": "Design System: Arcada",
   "extensions": {
     "colorMeta": {
       "primary": {
@@ -67,7 +67,7 @@
       "kind": "nav",
       "refersTo": "nameplate",
       "description": "The masthead wordmark, centered Fraunces 900 with a heavy rule below.",
-      "html": "<div class=\"ds-masthead\"><div class=\"ds-masthead__kicker\"><span>Diário da República · Série I</span><span>Novo a cada dia útil</span></div><a class=\"ds-masthead__name\" href=\"/\">O que mudou</a><div class=\"ds-masthead__rule\"></div></div>",
+      "html": "<div class=\"ds-masthead\"><div class=\"ds-masthead__kicker\"><span>Diário da República · Série I</span><span>Novo a cada dia útil</span></div><a class=\"ds-masthead__name\" href=\"/\">Arcada</a><div class=\"ds-masthead__rule\"></div></div>",
       "css": ".ds-masthead { font-family: Inter, system-ui, sans-serif; } .ds-masthead__kicker { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid oklch(0.84 0.012 80); font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: oklch(0.45 0.014 65); } .ds-masthead__name { display: block; padding: 20px 0; text-align: center; font-family: Fraunces, Georgia, serif; font-weight: 900; font-size: 3.25rem; line-height: 1; letter-spacing: -0.02em; color: oklch(0.23 0.012 60); text-decoration: none; } .ds-masthead__rule { border-top: 2px solid oklch(0.23 0.012 60); }"
     },
     {

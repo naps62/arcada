@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt" class="[scrollbar-gutter:stable]">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+    <meta name="theme-color" content="#f5f1e9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#16140f" media="(prefers-color-scheme: dark)" />
+    <%!-- No-flash theme: apply the stored auto/light/dark choice before first paint.
+         Runs inline in <head> so <html data-theme> is set before the CSS resolves.
+         Also collapses the two theme-color metas to the active colour so an explicit
+         choice is honoured; with JS disabled the media-based metas already do this. --%>
+    <script>
+      (function () {
+        function apply(theme) {
+          var root = document.documentElement;
+          root.setAttribute("data-theme", theme);
+          var dark = theme === "dark" ||
+            (theme !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          var color = dark ? "#16140f" : "#f5f1e9";
+          var metas = document.querySelectorAll('meta[name="theme-color"]');
+          for (var i = 0; i < metas.length; i++) {
+            if (i === 0) {
+              metas[i].removeAttribute("media");
+              metas[i].setAttribute("content", color);
+            } else {
+              metas[i].parentNode.removeChild(metas[i]);
+            }
+          }
+        }
+        window.__applyTheme = apply;
+        var theme = "auto";
+        try { theme = localStorage.getItem("theme") || "auto"; } catch (e) {}
+        apply(theme);
+      })();
+    </script>
+    <.live_title
+      default="Arcada — o Diário da República em linguagem simples"
+      suffix=" · Arcada"
+    >
+      {assigns[:page_title]}
+    </.live_title>
+    <%!-- Meta description + canonical. `page_description`/`canonical_url` are set
+         per LiveView; both fall back to sensible site-wide defaults. Pages are
+         indexable by default; `page_noindex` opts one out — see ArcadaWeb.SEO. --%>
+    <meta name="description" content={assigns[:page_description] || SEO.default_description()} />
+    <meta name="robots" content={SEO.robots_meta(assigns[:page_noindex] || false)} />
+    <link rel="canonical" href={assigns[:canonical_url] || SEO.url(~p"/")} />
+    <link rel="icon" href={~p"/favicon.svg"} type="image/svg+xml" />
+    <link rel="icon" href={~p"/favicon.ico"} sizes="any" />
+    <%!-- Social cards. Title/description/url track the page; type is "website"
+         except on act pages, which pass "article". --%>
+    <meta property="og:site_name" content="Arcada" />
+    <meta property="og:type" content={assigns[:og_type] || "website"} />
+    <meta property="og:locale" content="pt_PT" />
+    <meta property="og:url" content={assigns[:canonical_url] || SEO.url(~p"/")} />
+    <meta
+      property="og:title"
+      content={(assigns[:page_title] && "#{assigns[:page_title]} · Arcada") || "Arcada"}
+    />
+    <meta
+      property="og:description"
+      content={assigns[:page_description] || SEO.default_description()}
+    />
+    <meta name="twitter:card" content="summary" />
+    <meta
+      name="twitter:title"
+      content={(assigns[:page_title] && "#{assigns[:page_title]} · Arcada") || "Arcada"}
+    />
+    <meta
+      name="twitter:description"
+      content={assigns[:page_description] || SEO.default_description()}
+    />
+    <script
+      :if={assigns[:json_ld]}
+      type="application/ld+json"
+    >
+      <%= raw(Jason.encode!(@json_ld)) %>
+    </script>
+    <link
+      rel="preload"
+      href={~p"/fonts/fraunces-latin-wght-normal.woff2"}
+      as="font"
+      type="font/woff2"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="preload"
+      href={~p"/fonts/inter-latin-wght-normal.woff2"}
+      as="font"
+      type="font/woff2"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="preload"
+      href={~p"/fonts/newsreader-latin-wght-normal.woff2"}
+      as="font"
+      type="font/woff2"
+      crossorigin="anonymous"
+    />
+    <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
+    <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
+    </script>
+    <script :if={umami = umami()} defer src={umami.script_url} data-website-id={umami.website_id}>
+    </script>
+    <script
+      :if={ArcadaWeb.Turnstile.enabled?()}
+      src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+      async
+      defer
+    >
+    </script>
+  </head>
+  <body class="bg-bg text-ink antialiased">
+    {@inner_content}
+  </body>
+</html>

@@ -1,0 +1,400 @@
+defmodule Arcada.Summarizer do
+  @moduledoc """
+  Produces 🤖 summaries for acts. Dispatches to an adapter by the
+  `Provider` kind (`:anthropic | :openai | :ssh`) and writes via an **async path**
+  (an Oban job, never inline with the scrape). The active provider+model
+  (`Arcada.Admin`) drives auto-summarize; manual runs pass an explicit one.
+  """
+
+  alias Arcada.Repo
+  alias Arcada.Admin
+  alias Arcada.Providers.Provider
+  alias Arcada.Register.{Act, Summary}
+  alias Arcada.Search.Index
+  alias Arcada.Summarizer.{Embeddings, Sections, SummarizeWorker}
+  alias Arcada.Summarizer.Adapters.{Api, OpenAI, Ssh}
+
+  # Provider kind → adapter module.
+  @adapters %{anthropic: Api, openai: OpenAI, ssh: Ssh}
+
+  # Appended whenever some act content was dropped from the prompt.
+  @truncation_marker "\n\n[...texto truncado para efeitos de resumo...]"
+
+  # What the section ranker treats as "relevant": sections whose meaning is
+  # closest to this query are kept first. Overridable via the Embeddings config.
+  @relevance_query "Que mudanças concretas este diploma introduz: novas regras, " <>
+                     "obrigações, alterações, revogações, prazos e quem fica afetado."
+
+  # Shared system prompt for every LLM adapter (api, ssh). The style rules — plain
+  # everyday Portuguese, short active sentences, no bureaucratic filler, no inline
+  # statute citations — are the single lever for how readable the summaries feel,
+  # so they live here once. Each adapter appends only its output-format wiring.
+  @base_system """
+  És um jornalista que explica diplomas do Diário da República a um amigo sem \
+  formação jurídica, em português do dia-a-dia.
+
+  Escreve um resumo curto (2 a 4 frases) que diga, por esta ordem: o que muda, em \
+  concreto; para quem (quem fica afetado); e a partir de quando, se o diploma o \
+  indicar. Classifica também o diploma em um ou mais domínios de vida.
+
+  Escreve também um título curto (6 a 10 palavras) que diga, em linguagem simples, \
+  o que muda — não a designação formal do diploma (não repitas "Decreto-Lei n.º \
+  .../2026" nem o nome do emissor). É o título que substitui a designação formal na \
+  interface; deve fazer sentido sozinho, sem ler o resumo.
+
+  Regras de escrita:
+  - Escreve para um adulto sem formação jurídica. Se uma frase só se percebe com \
+  conhecimento de Direito, reformula-a. A primeira frase deve dizer, sozinha, o que \
+  muda na prática.
+  - Começa pela própria mudança, não pela instituição que a emitiu. Não nomeies o \
+  emissor (ministério, tribunal, secretaria, etc.) a não ser que seja essencial \
+  para perceber o que mudou.
+  - Frases curtas e diretas, uma ideia de cada vez, voz ativa. Evita frases com mais \
+  de ~20 palavras.
+  - Linguagem comum. Evita jargão jurídico e fórmulas burocráticas como "ao abrigo \
+  de", "nos termos do", "sem prejuízo de" ou "no âmbito de". Prefere palavras \
+  simples: "recusa" ou "rejeição" em vez de "indeferimento"; "multa" em vez de \
+  "coima"; "da responsabilidade de" em vez de "imputável a"; "fixar uma regra igual \
+  para todos os tribunais" em vez de "uniformizar jurisprudência".
+  - Se um termo técnico for mesmo inevitável (porque é o próprio assunto e não \
+  existe palavra comum equivalente), mantém-no mas marca-o entre parênteses retos \
+  duplos, assim: [[reclamação graciosa]]. Marca apenas o termo, sem o explicares no \
+  texto — a definição é acrescentada mais tarde. Não marques palavras comuns. Usa a \
+  marca no máximo 1 a 2 vezes por resumo; se conseguires dizer a mesma coisa em \
+  linguagem comum, não marques nada.
+  - Não cites números de diplomas nem artigos no corpo do texto — a fonte oficial já \
+  os tem. Refere uma lei pelo nome apenas se for mesmo o assunto.
+  - Simplifica o vocabulário e a estrutura, nunca a substância. Mantém as condições, \
+  exceções e prazos que mudam quem é afetado ou quando (por exemplo, "de forma \
+  expressa ou tácita"). Entre mais simples e mais exato, escolhe exato.
+  - Vai direto ao que importa: corta enchimento, rodeios e repetições.
+  - Sê factual. Não dês opinião nem aconselhamento jurídico.
+  """
+
+  @doc "Shared system prompt (writing + classification rules) for the LLM adapters."
+  def base_system_prompt, do: @base_system
+
+  @doc """
+  Effective **safety cap** (chars) on act text fed to the summarizer prompt — the
+  overflow ceiling. Pass the target `model` for the adaptive per-model default
+  (larger context → larger cap); omit it for the conservative default window.
+  """
+  def max_text_chars(model \\ nil), do: Admin.max_text_chars(model)
+
+  @doc """
+  Effective **cost target** (chars): the budget the embeddings ranker trims an act
+  down to (operative sections in, annexes out), even when the act fits under the
+  safety cap. Much smaller than `max_text_chars/1` — the cap is the ceiling, this
+  is the target (issue #41). Falls back to the cap when unset, so callers without
+  ranking behave exactly as before.
+  """
+  def target_text_chars(model \\ nil), do: Admin.target_text_chars(model)
+
+  @doc """
+  Prepare act text for the summarizer prompt, capped at `max_chars` (the
+  configured cap by default).
+
+  When the text fits, it's returned untouched. When it's oversized and the
+  embeddings ranker is configured, the diploma is split into sections and only
+  the most change-relevant ones (in document order) are kept — so the operative
+  articles aren't crowded out by trailing annex tables. Otherwise it falls back
+  to head-truncation (`cap_text/2`). Either way a marker flags dropped content.
+
+  May perform a network call to the embeddings server; intended for the async
+  summarize job, not request paths.
+  """
+  def prepare_text(text, max_chars \\ nil), do: prepare(text, max_chars) |> elem(0)
+
+  @doc """
+  Like `prepare_text/2` but returns `{prepared_text, effective_strategy}` where
+  the strategy is what *actually* happened:
+
+    * `:full`     — fit under the cost target, sent whole
+    * `:rank`     — over target; most change-relevant sections kept (embeddings)
+    * `:truncate` — over target with no ranker; opening kept (head-truncation)
+
+  Two budgets (issue #41): `target` is the cost budget the ranker trims down to;
+  `cap` is the safety ceiling. When ranking is unavailable and the act still fits
+  under `cap`, it's sent **whole** (`:full`) rather than head-truncated — only
+  genuine giants past the ceiling truncate. `target` defaults to `cap`, so a
+  single-budget call behaves exactly as before.
+
+  `requested` (`:auto | :rank | :truncate`) is the caller's preference. `:auto`
+  and `:rank` both attempt ranking and fall back as above; `:truncate` forces
+  head-truncation to `target` even when ranking is available — used by the per-act
+  comparison to A/B the two strategies on the same model + budget.
+  """
+  def prepare(text, cap \\ nil, requested \\ :auto, target \\ nil)
+
+  def prepare(text, cap, requested, target) when is_binary(text) do
+    cap = cap || max_text_chars()
+    target = target || cap
+
+    cond do
+      String.length(text) <= target -> {text, :full}
+      requested == :truncate -> {cap_text(text, target), :truncate}
+      true -> ranked_or_truncated(text, target, cap)
+    end
+  end
+
+  def prepare(other, _cap, _requested, _target), do: {other, :full}
+
+  # Ranking trims to `target`; if the ranker is unavailable keep the whole act
+  # when it still fits the safety ceiling (`cap`, issue #18) and only head-truncate
+  # the genuine giants that overflow it.
+  defp ranked_or_truncated(text, target, cap) do
+    case select_relevant(text, target) do
+      nil ->
+        if String.length(text) <= cap, do: {text, :full}, else: {cap_text(text, cap), :truncate}
+
+      selected ->
+        {selected, :rank}
+    end
+  end
+
+  # Returns assembled most-relevant sections (within `budget`), or nil to signal
+  # "fall back" (ranker disabled, unstructured text, embed failure, or nothing fit
+  # the budget / cleared the relevance floor).
+  defp select_relevant(text, budget) do
+    cfg = Admin.embeddings_config()
+    sections = Sections.split(text)
+
+    with true <- Embeddings.enabled?(cfg),
+         true <- length(sections) > 1,
+         {:ok, [query_vec | section_vecs]} <- Embeddings.embed(embed_inputs(sections, cfg), cfg),
+         true <- length(section_vecs) == length(sections) do
+      sections
+      |> rank(section_vecs, query_vec)
+      |> pick_within_budget(budget, cfg[:min_relevance_score])
+      |> assemble(length(sections))
+    else
+      _ -> nil
+    end
+  end
+
+  # Pair each section (with its document position) to its relevance score.
+  defp rank(sections, section_vecs, query_vec) do
+    sections
+    |> Enum.zip(section_vecs)
+    |> Enum.with_index()
+    |> Enum.map(fn {{section, vec}, index} ->
+      {index, section, Embeddings.cosine(query_vec, vec)}
+    end)
+  end
+
+  # Greedily take the highest-scoring sections that fit the char budget
+  # (reserving room for the marker). Sections below `floor` cosine similarity are
+  # dropped even when the budget has room — an optional relevance gate (nil = off)
+  # that trims obviously-irrelevant chunks for cost (issue #41). Returns
+  # `[{index, section}]`.
+  defp pick_within_budget(scored, budget, floor) do
+    budget = budget - String.length(@truncation_marker)
+
+    scored
+    |> Enum.filter(fn {_i, _s, score} -> is_nil(floor) or score >= floor end)
+    |> Enum.sort_by(fn {_i, _s, score} -> score end, :desc)
+    |> Enum.reduce({[], 0}, fn {index, section, _score}, {picked, used} ->
+      # +2 for the "\n\n" joiner between sections.
+      len = String.length(section.text) + 2
+
+      if used + len <= budget,
+        do: {[{index, section} | picked], used + len},
+        else: {picked, used}
+    end)
+    |> elem(0)
+  end
+
+  defp assemble([], _total), do: nil
+
+  defp assemble(picked, total) do
+    body =
+      picked
+      |> Enum.sort_by(fn {index, _section} -> index end)
+      |> Enum.map_join("\n\n", fn {_index, section} -> section.text end)
+
+    if length(picked) < total, do: body <> @truncation_marker, else: body
+  end
+
+  # nomic-embed and similar models want task prefixes (search_query: / search_document:)
+  # for good retrieval; bge-m3 and plain setups leave them empty. Applied only to the
+  # text scored by the model — never to the sections assembled into the prompt.
+  defp embed_inputs(sections, cfg) do
+    query_prefix = cfg[:query_prefix] || ""
+    doc_prefix = cfg[:document_prefix] || ""
+    [query_prefix <> relevance_query(cfg) | Enum.map(sections, &(doc_prefix <> &1.text))]
+  end
+
+  defp relevance_query(cfg), do: cfg[:query] || @relevance_query
+
+  @doc """
+  Cap act text for the summarizer prompt so oversized diplomas (huge annexes)
+  don't exceed the model's context limit. Appends a truncation marker.
+  """
+  def cap_text(text, max_chars) when is_binary(text) do
+    if String.length(text) > max_chars do
+      String.slice(text, 0, max_chars) <> @truncation_marker
+    else
+      text
+    end
+  end
+
+  def cap_text(other, _max_chars), do: other
+
+  @doc """
+  Whether `cap_text/2` would truncate this text — i.e. the act text exceeds the
+  cap and the resulting summary only reflects the opening of the diploma.
+  Recorded per summary (`truncated`) so the UI can flag partial summaries.
+  """
+  def truncated?(text, max_chars) when is_binary(text), do: String.length(text) > max_chars
+  def truncated?(_other, _max_chars), do: false
+
+  @doc "The adapter module for a provider kind (`:anthropic | :openai | :ssh`)."
+  def adapter_for(kind) when is_atom(kind), do: Map.fetch!(@adapters, kind)
+
+  @doc """
+  Enqueue an async summarization job. With no opts it uses the active
+  provider+model; pass `provider_id:`/`model:` for a manual run on a specific one,
+  and `text_strategy:` (`:rank | :truncate | :auto`) to force how an oversized
+  act's text is prepared (for the per-act ranking comparison).
+  """
+  def enqueue(act, opts \\ [])
+  def enqueue(%Act{id: id}, opts), do: enqueue(id, opts)
+
+  def enqueue(act_id, opts) when is_integer(act_id) do
+    %{act_id: act_id}
+    |> put_opt(opts, :provider_id)
+    |> put_opt(opts, :model)
+    |> put_opt(opts, :text_strategy)
+    |> SummarizeWorker.new()
+    |> Oban.insert()
+  end
+
+  defp put_opt(args, opts, key) do
+    case Keyword.get(opts, key) do
+      nil -> args
+      v -> Map.put(args, to_string(key), v)
+    end
+  end
+
+  @doc """
+  Summarize `act` with the **active** provider+model and persist the result.
+  `{:async, :no_active_provider}` if none is configured (acts wait for a manual
+  run or a configured active provider).
+  """
+  def summarize(%Act{} = act) do
+    case Admin.active_provider() do
+      %Provider{} = provider -> summarize(act, provider, Admin.active_model())
+      nil -> {:async, :no_active_provider}
+    end
+  end
+
+  @doc """
+  Summarize `act` with a specific provider + model; persist linked to the
+  provider. `opts[:text_strategy]` (`:auto` default) forces how an oversized act
+  is prepared. The text is prepared here (once) and handed to the adapter, which
+  only talks to its backend — the cap/ranking decision lives in one place.
+  """
+  def summarize(%Act{} = act, %Provider{} = provider, model, opts \\ []) do
+    model = model || List.first(provider.models)
+    requested = opts |> Keyword.get(:text_strategy, :auto) |> normalize_strategy()
+
+    {text, strategy} =
+      prepare(
+        act.full_text || act.title,
+        max_text_chars(model),
+        requested,
+        target_text_chars(model)
+      )
+
+    # Only ranking actually uses the embedder; record which one preprocessed it.
+    ranker_model = if strategy == :rank, do: Embeddings.model(Admin.embeddings_config())
+
+    case adapter_for(provider.kind).summarize(act, provider, model, text) do
+      {:ok, attrs} ->
+        create_summary(
+          act,
+          attrs
+          |> Map.new()
+          |> Map.merge(%{
+            provider_id: provider.id,
+            truncated: strategy != :full,
+            text_strategy: to_string(strategy),
+            ranker_model: ranker_model
+          })
+        )
+
+      {:async, ref} ->
+        {:async, ref}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Insert a summary for an act. Used both by the async write path and by the
+  manual backfill (console/SSH). Stamps `generated_at`. Embeds `plain_text`
+  for semantic search (issue #27) right
+  after insert; a disabled/unreachable embeddings server never blocks the
+  summary itself — the row is simply left without an embedding.
+  """
+  def create_summary(%Act{id: act_id}, attrs) do
+    attrs =
+      attrs
+      |> Map.new()
+      |> Map.put_new(:act_id, act_id)
+      |> Map.put_new(:generated_at, now())
+
+    case %Summary{} |> Summary.changeset(attrs) |> Repo.insert() do
+      {:ok, summary} ->
+        case embed_summary(summary) do
+          {:ok, embedded} -> {:ok, embedded}
+          {:error, _reason} -> {:ok, summary}
+        end
+
+      error ->
+        error
+    end
+  end
+
+  @doc """
+  (Re)compute and persist a summary's `embedding` from its `plain_text`,
+  refreshing the search index (`Arcada.Search.Index`). `{:error, reason}`
+  when the embeddings server is disabled or unreachable — used by
+  `create_summary/2` (which tolerates it) and by the admin "Generate
+  embedding" action (which surfaces it).
+  """
+  def embed_summary(%Summary{} = summary) do
+    cfg = Admin.embeddings_config()
+
+    with true <- Embeddings.enabled?(cfg),
+         {:ok, [vector]} <- Embeddings.embed([embed_text(summary, cfg)], cfg) do
+      persist_embedding(summary, vector)
+    else
+      false -> {:error, :embeddings_disabled}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp embed_text(summary, cfg),
+    do: (cfg[:document_prefix] || "") <> Summary.strip_terms(summary.plain_text)
+
+  defp persist_embedding(summary, vector) do
+    case summary |> Summary.changeset(%{embedding: vector}) |> Repo.update() do
+      {:ok, updated} ->
+        Index.put(updated.id, updated.act_id, vector)
+        {:ok, updated}
+
+      error ->
+        error
+    end
+  end
+
+  # Accept the strategy as an atom (direct calls) or string (decoded job args).
+  defp normalize_strategy(s) when s in [:auto, :rank, :truncate], do: s
+  defp normalize_strategy("rank"), do: :rank
+  defp normalize_strategy("truncate"), do: :truncate
+  defp normalize_strategy(_), do: :auto
+
+  defp now, do: DateTime.utc_now() |> DateTime.truncate(:second)
+end

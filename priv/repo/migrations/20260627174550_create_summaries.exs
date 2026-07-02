@@ -1,4 +1,4 @@
-defmodule OQueMudou.Repo.Migrations.CreateSummaries do
+defmodule Arcada.Repo.Migrations.CreateSummaries do
   use Ecto.Migration
 
   def change do

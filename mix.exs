@@ -1,9 +1,9 @@
-defmodule OQueMudou.MixProject do
+defmodule Arcada.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :o_que_mudou,
+      app: :arcada,
       version: "0.1.0",
       elixir: "~> 1.14",
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -18,7 +18,7 @@ defmodule OQueMudou.MixProject do
   # Type `mix help compile.app` for more information.
   def application do
     [
-      mod: {OQueMudou.Application, []},
+      mod: {Arcada.Application, []},
       extra_applications: [:logger, :runtime_tools]
     ]
   end
@@ -86,10 +86,10 @@ defmodule OQueMudou.MixProject do
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
-      "assets.build": ["tailwind o_que_mudou", "esbuild o_que_mudou"],
+      "assets.build": ["tailwind arcada", "esbuild arcada"],
       "assets.deploy": [
-        "tailwind o_que_mudou --minify",
-        "esbuild o_que_mudou --minify",
+        "tailwind arcada --minify",
+        "esbuild arcada --minify",
         "phx.digest"
       ]
     ]

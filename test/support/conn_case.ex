@@ -1,4 +1,4 @@
-defmodule OQueMudouWeb.ConnCase do
+defmodule ArcadaWeb.ConnCase do
   @moduledoc """
   This module defines the test case to be used by
   tests that require setting up a connection.
@@ -11,7 +11,7 @@ defmodule OQueMudouWeb.ConnCase do
   we enable the SQL sandbox, so changes done to the database
   are reverted at the end of every test. If you are using
   PostgreSQL, you can even run database tests asynchronously
-  by setting `use OQueMudouWeb.ConnCase, async: true`, although
+  by setting `use ArcadaWeb.ConnCase, async: true`, although
   this option is not recommended for other databases.
   """
 
@@ -20,19 +20,19 @@ defmodule OQueMudouWeb.ConnCase do
   using do
     quote do
       # The default endpoint for testing
-      @endpoint OQueMudouWeb.Endpoint
+      @endpoint ArcadaWeb.Endpoint
 
-      use OQueMudouWeb, :verified_routes
+      use ArcadaWeb, :verified_routes
 
       # Import conveniences for testing with connections
       import Plug.Conn
       import Phoenix.ConnTest
-      import OQueMudouWeb.ConnCase
+      import ArcadaWeb.ConnCase
     end
   end
 
   setup tags do
-    OQueMudou.DataCase.setup_sandbox(tags)
+    Arcada.DataCase.setup_sandbox(tags)
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
 
@@ -45,7 +45,7 @@ defmodule OQueMudouWeb.ConnCase do
   test context.
   """
   def register_and_log_in_user(%{conn: conn}) do
-    user = OQueMudou.AccountsFixtures.user_fixture()
+    user = Arcada.AccountsFixtures.user_fixture()
     %{conn: log_in_user(conn, user), user: user}
   end
 
@@ -55,7 +55,7 @@ defmodule OQueMudouWeb.ConnCase do
   It returns an updated `conn`.
   """
   def log_in_user(conn, user) do
-    token = OQueMudou.Accounts.generate_user_session_token(user)
+    token = Arcada.Accounts.generate_user_session_token(user)
 
     conn
     |> Phoenix.ConnTest.init_test_session(%{})

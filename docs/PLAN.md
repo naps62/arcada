@@ -1,4 +1,4 @@
-# o-que-mudou — MVP plan
+# arcada — MVP plan
 
 > Living planning doc. Decisions captured from the initial scoping session.
 

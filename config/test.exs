@@ -5,35 +5,35 @@ config :bcrypt_elixir, :log_rounds, 1
 
 # Public-user email in tests: collect into the process mailbox so specs can
 # assert with Swoosh.TestAssertions. No real delivery, no API client.
-config :o_que_mudou, OQueMudou.Mailer, adapter: Swoosh.Adapters.Test
+config :arcada, Arcada.Mailer, adapter: Swoosh.Adapters.Test
 config :swoosh, :api_client, false
 
 # Disable the signup timing gate — tests submit the form instantly.
-config :o_que_mudou, :signup_min_fill_ms, 0
+config :arcada, :signup_min_fill_ms, 0
 
 # Configure your database
 #
 # The MIX_TEST_PARTITION environment variable can be used
 # to provide built-in test partitioning in CI environment.
 # Run `mix help test` for more information.
-config :o_que_mudou, OQueMudou.Repo,
+config :arcada, Arcada.Repo,
   username: System.get_env("DATABASE_USER", "postgres"),
   password: System.get_env("DATABASE_PASS", "postgres"),
   hostname: System.get_env("DATABASE_HOST", "localhost"),
   port: String.to_integer(System.get_env("DATABASE_PORT", "5432")),
-  database: "o_que_mudou_test#{System.get_env("MIX_TEST_PARTITION")}",
+  database: "arcada_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2
 
 # We don't run a server during test. If one is required,
 # you can enable the server option below.
-config :o_que_mudou, OQueMudouWeb.Endpoint,
+config :arcada, ArcadaWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
   secret_key_base: "J1OlT97z3XUQXDGXBheRqA1aggKcWeF5CW0aomOkUWJhTDC29Cig0R/Gh91ejK8b",
   server: false
 
 # Oban: don't run jobs/plugins during tests; use Oban.Testing helpers instead.
-config :o_que_mudou, Oban, testing: :inline
+config :arcada, Oban, testing: :inline
 
 # Print only warnings and errors during test
 config :logger, level: :warning

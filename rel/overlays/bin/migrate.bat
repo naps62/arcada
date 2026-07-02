@@ -1,1 +1,1 @@
-call "%~dp0\o_que_mudou" eval OQueMudou.Release.migrate
+call "%~dp0\arcada" eval Arcada.Release.migrate

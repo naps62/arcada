@@ -1,4 +1,4 @@
-defmodule OQueMudou.Repo.Migrations.AddTruncatedToSummaries do
+defmodule Arcada.Repo.Migrations.AddTruncatedToSummaries do
   use Ecto.Migration
 
   def change do

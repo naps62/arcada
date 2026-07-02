@@ -1,4 +1,4 @@
-defmodule OQueMudou.Repo.Migrations.AddRankerModelToSummaries do
+defmodule Arcada.Repo.Migrations.AddRankerModelToSummaries do
   use Ecto.Migration
 
   def change do

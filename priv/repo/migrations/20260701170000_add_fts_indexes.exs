@@ -1,4 +1,4 @@
-defmodule OQueMudou.Repo.Migrations.AddFtsIndexes do
+defmodule Arcada.Repo.Migrations.AddFtsIndexes do
   use Ecto.Migration
 
   # Full-text search for hybrid search (issue #28). GIN expression indexes over
@@ -6,7 +6,7 @@ defmodule OQueMudou.Repo.Migrations.AddFtsIndexes do
   # that hold it: the act's identifying header (title/tipo/emitter — where law
   # numbers like "Lei 23/2023" live) and the summary's plain-language body.
   #
-  # The expressions here must match `OQueMudou.Search.FTS`'s query fragments
+  # The expressions here must match `Arcada.Search.FTS`'s query fragments
   # verbatim, or Postgres can't use these indexes for the lookup.
   def change do
     execute(

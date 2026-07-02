@@ -25,7 +25,7 @@ defmodule Mix.Tasks.Dre.Scrape do
 
     Mix.shell().info("Scraping DRE Série I for #{Date.to_iso8601(date)}...")
 
-    case OQueMudou.Scraper.ingest_date(date, enrich: Keyword.get(opts, :enrich, true)) do
+    case Arcada.Scraper.ingest_date(date, enrich: Keyword.get(opts, :enrich, true)) do
       {:ok, %{editions: e, acts: a, enriched: k}} ->
         Mix.shell().info("Done: #{e} edition(s), #{a} act(s) upserted, #{k} enriched.")
 

@@ -12,12 +12,12 @@ import Config
 # If you use `mix release`, you need to explicitly enable the server
 # by passing the PHX_SERVER=true when you start it:
 #
-#     PHX_SERVER=true bin/o_que_mudou start
+#     PHX_SERVER=true bin/arcada start
 #
 # Alternatively, you can use `mix phx.gen.release` to generate a `bin/server`
 # script that automatically sets the env var above.
 if System.get_env("PHX_SERVER") do
-  config :o_que_mudou, OQueMudouWeb.Endpoint, server: true
+  config :arcada, ArcadaWeb.Endpoint, server: true
 end
 
 # Host on which the /admin area is served. On a two-host deploy the public host
@@ -26,11 +26,11 @@ end
 # Unset (dev/test/single-host) → admin reachable on every host. Deep-merges the
 # host into the :admin keyword list from config.exs.
 if admin_host = System.get_env("ADMIN_HOST") do
-  config :o_que_mudou, :admin, host: admin_host
+  config :arcada, :admin, host: admin_host
   # /metrics lives on the same private VPN host as /admin. Reuse ADMIN_HOST so
   # RequireMetricsHost 404s it on the public host (issue #11); METRICS_HOST
   # overrides if they ever need to diverge.
-  config :o_que_mudou, :metrics, host: System.get_env("METRICS_HOST") || admin_host
+  config :arcada, :metrics, host: System.get_env("METRICS_HOST") || admin_host
 end
 
 # Real client IP behind Cloudflare → Traefik (issue #43). Makes conn.remote_ip
@@ -43,7 +43,7 @@ end
 #
 #   x-forwarded-for (default) — walk X-Forwarded-For, trusting the proxy CIDRs in
 #     :proxies (Cloudflare ranges + the Docker/Traefik overlay, via
-#     OQueMudouWeb.RemoteIpProxies.default/0). Safe even if the origin is NOT yet
+#     ArcadaWeb.RemoteIpProxies.default/0). Safe even if the origin is NOT yet
 #     firewalled to Cloudflare: a direct-to-origin request has an untrusted peer,
 #     so remote_ip stays put and cannot be spoofed to an arbitrary value.
 #
@@ -69,16 +69,16 @@ if remote_ip_enabled? do
     end
   end
 
-  config :o_que_mudou, :remote_ip,
+  config :arcada, :remote_ip,
     headers: csv.("REMOTE_IP_HEADERS", ["x-forwarded-for"]),
-    proxies: csv.("REMOTE_IP_PROXIES", OQueMudouWeb.RemoteIpProxies.default()),
+    proxies: csv.("REMOTE_IP_PROXIES", ArcadaWeb.RemoteIpProxies.default()),
     clients: csv.("REMOTE_IP_CLIENTS", [])
 end
 
 # Umami analytics (privacy-preserving, cookieless). Both vars must be set for
-# the tracking tag to render (see OQueMudouWeb.Layouts.umami/0). Read in every
+# the tracking tag to render (see ArcadaWeb.Layouts.umami/0). Read in every
 # env so it works for releases; left unset in dev and the VPN deployment.
-config :o_que_mudou, :umami,
+config :arcada, :umami,
   script_url: System.get_env("UMAMI_SCRIPT_URL"),
   website_id: System.get_env("UMAMI_WEBSITE_ID")
 
@@ -86,11 +86,11 @@ config :o_que_mudou, :umami,
 # without it the adapter returns {:error, :missing_api_key} and the manual
 # default applies. Read at runtime in every env so it works for releases + dev.
 if api_key = System.get_env("ANTHROPIC_API_KEY") do
-  config :o_que_mudou, OQueMudou.Summarizer.Adapters.Api, api_key: api_key
+  config :arcada, Arcada.Summarizer.Adapters.Api, api_key: api_key
 
   # If a key is present, default to the api adapter unless overridden.
   if System.get_env("SUMMARIZER_ADAPTER") in [nil, "api"] do
-    config :o_que_mudou, OQueMudou.Summarizer, adapter: :api
+    config :arcada, Arcada.Summarizer, adapter: :api
   end
 end
 
@@ -98,7 +98,7 @@ end
 # authenticated (no ANTHROPIC_API_KEY in the app). Set SUMMARIZER_SSH_HOST (and
 # SUMMARIZER_ADAPTER=ssh) to use it.
 if ssh_host = System.get_env("SUMMARIZER_SSH_HOST") do
-  config :o_que_mudou, OQueMudou.Summarizer.Adapters.Ssh,
+  config :arcada, Arcada.Summarizer.Adapters.Ssh,
     host: ssh_host,
     user: System.get_env("SUMMARIZER_SSH_USER") || "claude",
     identity_file: System.get_env("SUMMARIZER_SSH_IDENTITY") || "/app/.ssh/id_ed25519",
@@ -108,7 +108,7 @@ end
 
 # Explicit adapter override always wins (:manual | :api | :local | :ssh).
 if adapter = System.get_env("SUMMARIZER_ADAPTER") do
-  config :o_que_mudou, OQueMudou.Summarizer, adapter: String.to_atom(adapter)
+  config :arcada, Arcada.Summarizer, adapter: String.to_atom(adapter)
 end
 
 # Embeddings-based section ranking for oversized diplomas. An env fallback for the
@@ -116,7 +116,7 @@ end
 # `llama-server --embeddings`, Ollama, …), e.g. on a local GPU box. Without it (and
 # with no admin override) oversized acts head-truncate as before.
 if base_url = System.get_env("EMBEDDINGS_BASE_URL") do
-  config :o_que_mudou, OQueMudou.Summarizer.Embeddings,
+  config :arcada, Arcada.Summarizer.Embeddings,
     base_url: base_url,
     model: System.get_env("EMBEDDINGS_MODEL") || "bge-m3"
 end
@@ -133,7 +133,7 @@ summarize_concurrency =
   end
 
 # Deep-merges into the Oban queues list from config.exs (keeps default/scrape).
-config :o_que_mudou, Oban, queues: [summarize: summarize_concurrency]
+config :arcada, Oban, queues: [summarize: summarize_concurrency]
 
 # Public-user email via Resend (verification + password reset). Set RESEND_API_KEY
 # to send for real; without it the mailer stays on the compile-time adapter and
@@ -144,7 +144,7 @@ config :o_que_mudou, Oban, queues: [summarize: summarize_concurrency]
 # real monitored inbox (e.g. a SimpleLogin alias) so replies reach you. Read in
 # every env so it also shows in the dev mailbox preview. Unset → plain no-reply.
 if reply_to = System.get_env("MAILER_REPLY_TO") do
-  config :o_que_mudou, :mailer_reply_to, reply_to
+  config :arcada, :mailer_reply_to, reply_to
 end
 
 # Cloudflare Turnstile keys for the signup bot check. Both must be set for the
@@ -154,20 +154,20 @@ turnstile_site_key = System.get_env("TURNSTILE_SITE_KEY")
 turnstile_secret_key = System.get_env("TURNSTILE_SECRET_KEY")
 
 if turnstile_site_key && turnstile_secret_key do
-  config :o_que_mudou, OQueMudouWeb.Turnstile,
+  config :arcada, ArcadaWeb.Turnstile,
     site_key: turnstile_site_key,
     secret_key: turnstile_secret_key
 end
 
 if config_env() == :prod do
   if resend_key = System.get_env("RESEND_API_KEY") do
-    config :o_que_mudou, OQueMudou.Mailer,
+    config :arcada, Arcada.Mailer,
       adapter: Swoosh.Adapters.Resend,
       api_key: resend_key
   end
 
   if from_email = System.get_env("MAILER_FROM_EMAIL") do
-    config :o_que_mudou,
+    config :arcada,
            :mailer_from,
            {System.get_env("MAILER_FROM_NAME") || "Arcada", from_email}
   end
@@ -183,7 +183,7 @@ if config_env() == :prod do
 
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
-  config :o_que_mudou, OQueMudou.Repo,
+  config :arcada, Arcada.Repo,
     # ssl: true,
     url: database_url,
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
@@ -204,7 +204,7 @@ if config_env() == :prod do
   host = System.get_env("PHX_HOST") || "example.com"
   port = String.to_integer(System.get_env("PORT") || "4000")
 
-  config :o_que_mudou, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
+  config :arcada, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
   # The app is served on several hosts (public `arcada.naps.pt` + the private VPN
   # host `arcada.example.internal`, issue #37). Phoenix defaults `check_origin: true`,
@@ -219,7 +219,7 @@ if config_env() == :prod do
     |> Enum.flat_map(&["https://#{&1}", "http://#{&1}"])
     |> Enum.uniq()
 
-  config :o_que_mudou, OQueMudouWeb.Endpoint,
+  config :arcada, ArcadaWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     check_origin: check_origins,
     http: [
@@ -237,7 +237,7 @@ if config_env() == :prod do
   # To get SSL working, you will need to add the `https` key
   # to your endpoint configuration:
   #
-  #     config :o_que_mudou, OQueMudouWeb.Endpoint,
+  #     config :arcada, ArcadaWeb.Endpoint,
   #       https: [
   #         ...,
   #         port: 443,
@@ -259,7 +259,7 @@ if config_env() == :prod do
   # We also recommend setting `force_ssl` in your config/prod.exs,
   # ensuring no data is ever sent via http, always redirecting to https:
   #
-  #     config :o_que_mudou, OQueMudouWeb.Endpoint,
+  #     config :arcada, ArcadaWeb.Endpoint,
   #       force_ssl: [hsts: true]
   #
   # Check `Plug.SSL` for all available options in `force_ssl`.

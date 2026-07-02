@@ -112,11 +112,11 @@ Example resolved artifacts:
 
 The scraper re-derives a rotated `apiVersion` at runtime, over **plain HTTP** (no
 browser). When a data-action responds `versionInfo.hasApiVersionChanged: true`,
-`OQueMudou.Scraper.Client` re-derives the current hash, swaps it into the client,
+`Arcada.Scraper.Client` re-derives the current hash, swaps it into the client,
 and retries the call once — surviving DRE redeploys with no config edit. The
 threaded client means the fresh hash is reused for the rest of the run.
 
-Derivation (`OQueMudou.Scraper.ApiVersionResolver`):
+Derivation (`Arcada.Scraper.ApiVersionResolver`):
 1. `GET /dr/moduleservices/moduleinfo` → `manifest.urlVersions`: every asset path
    (incl. each screen's `*.mvc.js`) mapped to its rotating `?<hash>` suffix. This
    is the piece that made **option 1** (static mvc.js parse) viable — the hashed

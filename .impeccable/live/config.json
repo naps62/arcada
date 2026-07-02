@@ -1,5 +1,5 @@
 {
-  "files": ["lib/o_que_mudou_web/components/layouts/root.html.heex"],
+  "files": ["lib/arcada_web/components/layouts/root.html.heex"],
   "insertBefore": "</body>",
   "commentSyntax": "html",
   "cspChecked": true

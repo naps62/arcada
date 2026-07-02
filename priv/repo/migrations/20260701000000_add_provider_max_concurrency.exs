@@ -1,4 +1,4 @@
-defmodule OQueMudou.Repo.Migrations.AddProviderMaxConcurrency do
+defmodule Arcada.Repo.Migrations.AddProviderMaxConcurrency do
   use Ecto.Migration
 
   # Per-provider summarize parallelism (issue #22). SSH must stay at one

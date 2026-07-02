@@ -1,4 +1,4 @@
-defmodule OQueMudou.Repo.Migrations.DropReviewFromSummaries do
+defmodule Arcada.Repo.Migrations.DropReviewFromSummaries do
   use Ecto.Migration
 
   # The provenance/review feature (unreviewed → community → verified, plus the

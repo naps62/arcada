@@ -10,9 +10,9 @@
 
 import Ecto.Query
 
-alias OQueMudou.Repo
-alias OQueMudou.Register
-alias OQueMudou.Register.{Act, Summary}
+alias Arcada.Repo
+alias Arcada.Register
+alias Arcada.Register.{Act, Summary}
 
 now = DateTime.utc_now() |> DateTime.truncate(:second)
 hours_ago = fn h -> DateTime.add(now, -h * 3600, :second) end

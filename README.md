@@ -1,4 +1,4 @@
-# o-que-mudou
+# arcada
 
 **Arcada — o Diário da República em linguagem simples**
 

@@ -8,8 +8,8 @@ const path = require("path")
 module.exports = {
   content: [
     "./js/**/*.js",
-    "../lib/o_que_mudou_web.ex",
-    "../lib/o_que_mudou_web/**/*.*ex"
+    "../lib/arcada_web.ex",
+    "../lib/arcada_web/**/*.*ex"
   ],
   theme: {
     extend: {
