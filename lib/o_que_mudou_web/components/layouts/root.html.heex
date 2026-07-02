@@ -103,6 +103,13 @@
     </script>
     <script :if={umami = umami()} defer src={umami.script_url} data-website-id={umami.website_id}>
     </script>
+    <script
+      :if={OQueMudouWeb.Turnstile.enabled?()}
+      src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+      async
+      defer
+    >
+    </script>
   </head>
   <body class="bg-bg text-ink antialiased">
     {@inner_content}

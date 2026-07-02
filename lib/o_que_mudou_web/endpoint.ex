@@ -49,7 +49,16 @@ defmodule OQueMudouWeb.Endpoint do
 
   # Expose Prometheus metrics at /metrics. Placed before RequestId/Telemetry
   # so scrapes don't generate request logs or skew request metrics.
+  # RequireMetricsHost 404s /metrics on any host but the private VPN one, since
+  # PromEx.Plug has no router pipeline to gate it (issue #11).
+  plug OQueMudouWeb.Plugs.RequireMetricsHost
   plug PromEx.Plug, prom_ex_module: OQueMudou.PromEx
+
+  # Recover the real client IP from the Cloudflare → Traefik forwarded headers
+  # (issue #43). Placed before RequestId/Telemetry so logs and request metrics
+  # carry the true visitor IP, not the Traefik container. No-op unless
+  # `config :o_que_mudou, :remote_ip` is set (see the plug + config/runtime.exs).
+  plug OQueMudouWeb.Plugs.RemoteIp
 
   plug Plug.RequestId
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]

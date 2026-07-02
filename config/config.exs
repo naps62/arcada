@@ -101,6 +101,11 @@ config :o_que_mudou, Oban,
 # `bypass: true` (dev) skips the in-app group check. See issue #19.
 config :o_que_mudou, :admin, group: "oqm-admin", bypass: false
 
+# Prometheus /metrics: served by PromEx.Plug in the endpoint (no router
+# pipeline), so RequireMetricsHost host-guards it. `host: nil` (dev/test) leaves
+# it reachable on any host; prod sets it from ADMIN_HOST in runtime.exs. See #11.
+config :o_que_mudou, :metrics, host: nil
+
 # Kaffy raw-DB admin (mounted at /admin/db, behind the same Authelia/VPN gate).
 # Schemas are auto-discovered from the Repo; see OQueMudouWeb.Router.
 config :kaffy,
@@ -122,6 +127,13 @@ config :o_que_mudou, OQueMudouWeb.Endpoint,
   ],
   pubsub_server: OQueMudou.PubSub,
   live_view: [signing_salt: "6KZMKO7g"]
+
+# Real client IP behind the Cloudflare → Traefik proxy chain (issue #43). Off by
+# default (nil → the OQueMudouWeb.Plugs.RemoteIp plug is a no-op, so dev/test and
+# any no-proxy setup keep the socket peer as conn.remote_ip). Prod sets it from
+# env in config/runtime.exs. The value maps straight to RemoteIp plug options
+# (:headers, :proxies, :clients).
+config :o_que_mudou, :remote_ip, nil
 
 # Configure esbuild (the version is required)
 config :esbuild,
@@ -184,6 +196,16 @@ config :swoosh, api_client: Swoosh.ApiClient.Req
 # (MAILER_FROM_EMAIL / MAILER_FROM_NAME) — the Resend sender must be on a
 # verified domain. The dev/test default is only ever seen in the mailbox preview.
 config :o_que_mudou, :mailer_from, {"Arcada", "nao-responder@arcada.local"}
+
+# Global cap on new signups per UTC day. Protects the Resend free quota
+# (100 emails/day) since every registration sends a confirmation email.
+# Kept below 100 to leave headroom for password-reset / re-confirm mails.
+config :o_que_mudou, :daily_signup_cap, 80
+
+# Cloudflare Turnstile bot check on the signup form. Disabled by default
+# (no keys) — dev/test skip the widget and verification. Prod keys come from
+# env at runtime (see config/runtime.exs).
+config :o_que_mudou, OQueMudouWeb.Turnstile, site_key: nil, secret_key: nil
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

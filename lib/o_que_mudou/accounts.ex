@@ -81,6 +81,25 @@ defmodule OQueMudou.Accounts do
   end
 
   @doc """
+  Whether new signups are still under the global daily cap.
+
+  Every registration sends a confirmation email, so this guards the Resend
+  free-tier quota. Counts users created since the start of the current UTC day
+  against `:daily_signup_cap`.
+  """
+  def signups_open? do
+    cap = Application.get_env(:o_que_mudou, :daily_signup_cap, 80)
+
+    day_start =
+      DateTime.utc_now()
+      |> DateTime.to_date()
+      |> DateTime.new!(~T[00:00:00], "Etc/UTC")
+
+    count = Repo.aggregate(from(u in User, where: u.inserted_at >= ^day_start), :count)
+    count < cap
+  end
+
+  @doc """
   Returns an `%Ecto.Changeset{}` for tracking user changes.
 
   ## Examples
