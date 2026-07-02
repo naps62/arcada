@@ -12,15 +12,14 @@ defmodule Arcada.Scraper.Client do
        (a self-generated `Session_GUID` is accepted).
 
   `apiVersion` hashes also rotate; they're read from config with the
-  last-known-good values as defaults, then **self-healed at runtime**: when a
-  data-action reports `versionInfo.hasApiVersionChanged: true`, we re-derive the
-  current hash via `Arcada.Scraper.ApiVersionResolver`, swap it in, and retry
-  once — so the scraper survives DRE redeploys without a config edit.
+  last-known-good values as defaults. This module is a dumb transport: each
+  data-action is one request that reports rotation via `{:rotated, raw}` when
+  DRE sets `versionInfo.hasApiVersionChanged: true`. Detecting that, re-deriving
+  the fresh hash, and retrying is owned by `Arcada.Scraper.Session` — keeping the
+  self-heal in one place and this module free of the `ApiVersionResolver` cycle.
   """
 
-  require Logger
-
-  alias Arcada.Scraper.{ApiVersionResolver, Parser}
+  alias Arcada.Scraper.Parser
 
   @list_path "/dr/screenservices/dr/Home/WB_Serie1_List/DataActionGetDataAndApplicationSettings"
   @detail_path "/dr/screenservices/dr/Legislacao_Conteudos/Conteudo_Detalhe/DataActionGetAllConteudoDetalheData"
@@ -68,32 +67,13 @@ defmodule Arcada.Scraper.Client do
   end
 
   @doc """
-  List the Série I edition(s) (with their acts) published on `date`.
+  List the Série I edition(s) (with their acts) published on `date`. One request,
+  no heal — `Session` owns the retry.
 
-  Returns `{:ok, raw_json, client}` — the returned client carries any
-  self-healed `list_api_version` so callers can reuse it for the rest of the
-  run. Returns `{:error, reason}` on transport failure.
+  Returns `{:ok, raw_json}`, `{:rotated, raw_json}` (DRE reports the list
+  `apiVersion` rotated; `raw` carried for graceful fallback), or `{:error, reason}`.
   """
-  def list_editions(%__MODULE__{} = client, %Date{} = date) do
-    with {:ok, body} <- do_list(client, date) do
-      if version_changed?(body) do
-        case heal(client, :list) do
-          {:ok, healed} ->
-            case do_list(healed, date) do
-              {:ok, retried} -> {:ok, retried, healed}
-              {:error, reason} -> {:error, reason}
-            end
-
-          :error ->
-            {:ok, body, client}
-        end
-      else
-        {:ok, body, client}
-      end
-    end
-  end
-
-  defp do_list(client, date) do
+  def list(%__MODULE__{} = client, %Date{} = date) do
     iso = Date.to_iso8601(date)
 
     variables = %{
@@ -105,38 +85,17 @@ defmodule Arcada.Scraper.Client do
       "_isPageTrackedInDataFetchStatus" => 1
     }
 
-    body =
-      envelope(client, client.list_api_version, "Home.home", variables, %{"Data" => iso})
-
-    with {:ok, resp} <- request(client, :post, @list_path, json: body) do
-      {:ok, resp.body}
-    end
+    body = envelope(client, client.list_api_version, "Home.home", variables, %{"Data" => iso})
+    post(client, @list_path, body)
   end
 
   @doc """
-  Fetch an act's detail (full text + PDF URL) by `tipo` slug + `key`.
+  Fetch an act's raw detail response by `tipo` slug + `key`. One request, no heal.
 
-  Returns `{:ok, %{full_text:, pdf_url:}, client}` or `{:error, reason, client}`
-  — callers treat any error as "no enrichment" rather than failing the scrape.
-  The returned client carries any self-healed `detail_api_version`.
-
-  On a rotated `apiVersion` (`{:error, :api_version_changed}`) we re-derive the
-  current hash once and retry before giving up.
+  Returns `{:ok, raw_json}`, `{:rotated, raw_json}`, or `{:error, reason}`. The
+  caller (`Session`) parses the enrichment out of `raw`.
   """
-  def act_detail(%__MODULE__{} = client, tipo, key) do
-    case do_act_detail(client, tipo, key) do
-      {:error, :api_version_changed} ->
-        case heal(client, :detail) do
-          {:ok, healed} -> with_client(do_act_detail(healed, tipo, key), healed)
-          :error -> {:error, :api_version_changed, client}
-        end
-
-      result ->
-        with_client(result, client)
-    end
-  end
-
-  defp do_act_detail(client, tipo, key) do
+  def detail(%__MODULE__{} = client, tipo, key) do
     variables = %{
       "Tipo" => tipo,
       "Key" => key,
@@ -153,9 +112,7 @@ defmodule Arcada.Scraper.Client do
         %{}
       )
 
-    with {:ok, resp} <- request(client, :post, @detail_path, json: body) do
-      Parser.parse_detail(resp.body)
-    end
+    post(client, @detail_path, body)
   end
 
   @doc "Plain GET returning the (Req-decoded) response body — used by the resolver."
@@ -166,38 +123,25 @@ defmodule Arcada.Scraper.Client do
     end
   end
 
-  # --- self-healing ---
+  @doc "Read the current `apiVersion` hash for a data-action (`:list` / `:detail`)."
+  def api_version(%__MODULE__{list_api_version: v}, :list), do: v
+  def api_version(%__MODULE__{detail_api_version: v}, :detail), do: v
 
-  defp with_client({:ok, attrs}, client), do: {:ok, attrs, client}
-  defp with_client({:error, reason}, client), do: {:error, reason, client}
+  @doc "Return a client with the `apiVersion` hash for `:list` / `:detail` swapped."
+  def put_api_version(%__MODULE__{} = client, :list, v), do: %{client | list_api_version: v}
+  def put_api_version(%__MODULE__{} = client, :detail, v), do: %{client | detail_api_version: v}
 
-  defp version_changed?(%{"versionInfo" => %{"hasApiVersionChanged" => true}}), do: true
-  defp version_changed?(_), do: false
+  # --- internals ---
 
-  # Re-derive one action's live apiVersion. Returns `{:ok, client}` with the
-  # fresh hash only if it actually differs from the current one (otherwise a
-  # retry would fail identically), else `:error`.
-  defp heal(client, key) do
-    current = version_of(client, key)
-
-    case ApiVersionResolver.resolve(client, [key]) do
-      {:ok, %{^key => fresh}} when is_binary(fresh) and fresh != current ->
-        Logger.info("scraper: re-derived #{key} apiVersion #{current} -> #{fresh}")
-        {:ok, put_version(client, key, fresh)}
-
-      other ->
-        Logger.warning("scraper: could not re-derive #{key} apiVersion (#{inspect(other)})")
-        :error
+  # Single POST; the sole place a rotated apiVersion is detected from the body.
+  defp post(client, path, body) do
+    with {:ok, resp} <- request(client, :post, path, json: body) do
+      if rotated?(resp.body), do: {:rotated, resp.body}, else: {:ok, resp.body}
     end
   end
 
-  defp version_of(client, :list), do: client.list_api_version
-  defp version_of(client, :detail), do: client.detail_api_version
-
-  defp put_version(client, :list, v), do: %{client | list_api_version: v}
-  defp put_version(client, :detail, v), do: %{client | detail_api_version: v}
-
-  # --- internals ---
+  defp rotated?(%{"versionInfo" => %{"hasApiVersionChanged" => true}}), do: true
+  defp rotated?(_), do: false
 
   defp envelope(client, api_version, view_name, variables, client_variables) do
     %{

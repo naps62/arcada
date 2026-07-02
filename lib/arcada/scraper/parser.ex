@@ -53,13 +53,13 @@ defmodule Arcada.Scraper.Parser do
 
   @doc """
   Parse an act-detail (`GetAllConteudoDetalheData`) response into the
-  enrichment attrs (`full_text`, `pdf_url`). Returns `{:ok, attrs}`, or
-  `{:error, :api_version_changed}` / `{:error, :empty}` when DRE rotated the
-  data-action version (the caller degrades gracefully).
-  """
-  def parse_detail(%{"versionInfo" => %{"hasApiVersionChanged" => true}}),
-    do: {:error, :api_version_changed}
+  enrichment attrs (`full_text`, `pdf_url`). Returns `{:ok, attrs}` or
+  `{:error, :empty}` when there's nothing to extract.
 
+  Rotation is not a parsing concern — `Client`/`Session` detect and heal a
+  rotated `apiVersion` before this is called, so a rotated body (empty `data`)
+  simply reads as `:empty` here.
+  """
   def parse_detail(%{"data" => data}) when is_map(data) and map_size(data) > 0 do
     case find_detalhe(data) do
       nil ->
