@@ -23,8 +23,8 @@ end
 # Host on which the /admin area is served. On a two-host deploy the public host
 # (arcada.naps.pt) must NOT expose /admin at all — only the private VPN host
 # (arcada.example.internal) does. RequireAdminHost 404s admin paths on any other host.
-# Unset (dev/test/single-host) → admin reachable on every host. Deep-merges into
-# the :admin keyword list from config.exs (keeps group/bypass).
+# Unset (dev/test/single-host) → admin reachable on every host. Deep-merges the
+# host into the :admin keyword list from config.exs.
 if admin_host = System.get_env("ADMIN_HOST") do
   config :o_que_mudou, :admin, host: admin_host
   # /metrics lives on the same private VPN host as /admin. Reuse ADMIN_HOST so

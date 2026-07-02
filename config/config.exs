@@ -97,9 +97,11 @@ config :o_que_mudou, Oban,
     {Oban.Plugins.Cron, crontab: [{"0 7-19/2 * * 1-5", OQueMudou.Scraper.IngestWorker}]}
   ]
 
-# Admin area (/admin): edge-gated by Authelia (Remote-Groups header) + VPN ACL.
-# `bypass: true` (dev) skips the in-app group check. See issue #19.
-config :o_que_mudou, :admin, group: "oqm-admin", bypass: false
+# Admin area (/admin): served only on the private VPN host. `host` (set from
+# ADMIN_HOST in runtime.exs) makes RequireAdminHost 404 /admin on the public
+# host; `host: nil` (dev/test) leaves it reachable on any host. The VPN is the
+# access boundary — no in-app auth. See issues #19, #37.
+config :o_que_mudou, :admin, host: nil
 
 # Prometheus /metrics: served by PromEx.Plug in the endpoint (no router
 # pipeline), so RequireMetricsHost host-guards it. `host: nil` (dev/test) leaves

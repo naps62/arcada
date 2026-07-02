@@ -67,7 +67,7 @@ defmodule OQueMudouWeb do
   @doc """
   LiveViews for the back-of-house admin console. Same design tokens as the
   public broadsheet, but its own tool chrome (`:admin` layout) instead of the
-  public masthead. Edge-gated by Authelia + VPN; see `Plugs.RequireAdminGroup`.
+  public masthead. Served only on the VPN host; see `Plugs.RequireAdminHost`.
   """
   def live_view_admin do
     quote do

@@ -89,14 +89,14 @@ The app is served privately on `arcada.example.internal` (VPN). `arcada.naps.pt`
 
 | Host | Audience | Edge middlewares | `/admin*` |
 |---|---|---|---|
-| `arcada.example.internal` | private (VPN) | `vpn-allowlist` | Authelia-gated, served |
+| `arcada.example.internal` | private (VPN) | `vpn-allowlist` | served (VPN only) |
 | `arcada.naps.pt` | public *(not exposed yet)* | — | **404** (host guard) |
 
 - **`arcada.example.internal`** is the private VPN host carrying the
   `vpn-allowlist` IP-allowlist middleware (per the `*.example.internal`
-  model), and is `PHX_HOST`. It is the only host where `/admin*` exists;
-  `/admin` additionally routes through `authelia` + the in-app
-  `RequireAdminGroup` check (see the Admin section below).
+  model), and is `PHX_HOST`. It is the only host where `/admin*` exists. The VPN
+  IP-allowlist is the access boundary — `/admin` needs no further auth (see the
+  Admin section below).
 - **`arcada.naps.pt`** has **no Traefik row / Cloudflare route** for now — it is
   intentionally closed by not being exposed. The app is still hardened for it:
   `ADMIN_HOST=arcada.example.internal` makes `RequireAdminHost` raise a 404 for `/admin*`
@@ -199,22 +199,19 @@ via `bin/o_que_mudou rpc` —
 with `active_provider_id`/`active_model`.
 
 Admin lives **only** on the private host `arcada.example.internal` (see the two-host
-section above). Gated in three layers (fails closed):
+section above), and the VPN is the access boundary — no extra auth. Two layers:
 
 1. **Host (Traefik + app).** `/admin*` is not routed on the public host at all,
    and `RequireAdminHost` 404s it in-app if `conn.host != ADMIN_HOST`. So the
    surface simply doesn't exist off the VPN host.
-2. **Edge (Traefik).** Add a Dokploy domain row: `host=arcada.example.internal`,
-   `path=/admin`, middlewares `[authelia, vpn-allowlist]`. This
-   routes `/admin` through Authelia (and the VPN ACL); the path-specific router
-   wins over the catch-all `/` row.
-3. **App (defense in depth).** `OQueMudouWeb.Plugs.RequireAdminGroup` checks the
-   `Remote-Groups` header (set by Authelia) for `oqm-admin`. Config:
-   `config :o_que_mudou, :admin, group: "oqm-admin", bypass: false`. Dev sets
-   `bypass: true`.
+2. **Edge (Traefik).** The `arcada.example.internal` router carries the
+   `vpn-allowlist` IP-allowlist middleware, so only VPN clients
+   reach it. Anyone on the VPN reaching the admin host is trusted; `/admin` needs
+   no dedicated domain row or forwardAuth.
 
-Authelia setup: create group `oqm-admin`, add the operator user to it, and add an
-access-control rule for `arcada.example.internal/admin` requiring group `oqm-admin`.
+There is no in-app group check and no Authelia dependency for `/admin`. If a
+future deploy needs per-user admin auth, that's a separate change (see the
+architecture review / issue tracker).
 
 ## Observability (Loki + Prometheus)
 

@@ -70,9 +70,6 @@ config :o_que_mudou, dev_routes: true
 config :o_que_mudou, OQueMudou.Mailer, adapter: Swoosh.Adapters.Local
 config :swoosh, :api_client, false
 
-# No Authelia in front of the dev server — skip the /admin group check.
-config :o_que_mudou, :admin, group: "oqm-admin", bypass: true
-
 # Do not include metadata nor timestamps in development logs
 config :logger, :console, format: "[$level] $message\n"
 

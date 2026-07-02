@@ -1,8 +1,9 @@
 defmodule OQueMudouWeb.AdminLive do
   @moduledoc """
   Admin hub (`/admin`): pick the active summarizer provider + model (used by the
-  daily cron / auto-summarize) and manage provider instances. Gated by Authelia +
-  VPN ACL at the edge and `RequireAdminGroup` in-app. See issues #19, #20.
+  daily cron / auto-summarize) and manage provider instances. Served only on the
+  private VPN host (`RequireAdminHost`); the VPN is the access boundary. See
+  issues #19, #20.
   """
   use OQueMudouWeb, :live_view_admin
 

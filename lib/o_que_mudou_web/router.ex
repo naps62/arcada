@@ -19,14 +19,13 @@ defmodule OQueMudouWeb.Router do
     plug :accepts, ["json"]
   end
 
-  # Edge-gated by Traefik (authelia + VPN ACL); these plugs re-check as defense in
-  # depth (issues #19, #37). RequireAdminHost 404s /admin* on the public host so
-  # the surface only exists on the private VPN host; RequireAdminGroup then checks
-  # the Remote-Groups header. Host check first so the public host always 404s
-  # (never 403 — which would confirm the surface).
+  # Admin (/admin) is served ONLY on the private VPN host (ADMIN_HOST, e.g.
+  # arcada.example.internal): RequireAdminHost 404s it on the public host so the surface
+  # doesn't exist there at all. The access boundary is the VPN itself — reaching
+  # the admin host means you're already on the network, so no extra in-app auth
+  # (issues #19, #37).
   pipeline :admin do
     plug OQueMudouWeb.Plugs.RequireAdminHost
-    plug OQueMudouWeb.Plugs.RequireAdminGroup
   end
 
   scope "/", OQueMudouWeb do

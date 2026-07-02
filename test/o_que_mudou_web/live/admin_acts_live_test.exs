@@ -7,15 +7,6 @@ defmodule OQueMudouWeb.AdminActsLiveTest do
   alias OQueMudou.Register
   alias OQueMudou.Register.{Edition, Act, Summary}
 
-  setup do
-    prev = Application.get_env(:o_que_mudou, :admin, [])
-    Application.put_env(:o_que_mudou, :admin, group: "oqm-admin", bypass: false)
-    on_exit(fn -> Application.put_env(:o_que_mudou, :admin, prev) end)
-    :ok
-  end
-
-  defp as_admin(conn), do: put_req_header(conn, "remote-groups", "users,oqm-admin")
-
   defp edition(date) do
     %Edition{}
     |> Edition.changeset(%{
@@ -45,16 +36,12 @@ defmodule OQueMudouWeb.AdminActsLiveTest do
     |> Repo.insert!()
   end
 
-  test "403s without the oqm-admin group header", %{conn: conn} do
-    assert get(conn, ~p"/admin/acts").status == 403
-  end
-
   test "lists acts newest-first with summary counts", %{conn: conn} do
     a = act(%{title: "Older act", published_at: ~D[2026-06-01]})
     summary(a, %{plain_text: "s1", generated_at: ~U[2026-06-01 09:00:00Z]})
     _b = act(%{title: "Newer act", published_at: ~D[2026-06-20]})
 
-    {:ok, _lv, html} = conn |> as_admin() |> live(~p"/admin/acts")
+    {:ok, _lv, html} = conn |> live(~p"/admin/acts")
 
     assert html =~ "Older act"
     assert html =~ "Newer act"
@@ -68,7 +55,7 @@ defmodule OQueMudouWeb.AdminActsLiveTest do
     _recent = act(%{title: "Recent act", date: Date.utc_today(), published_at: Date.utc_today()})
     _old = act(%{title: "Ancient act", date: ~D[2000-01-01], published_at: ~D[2000-01-01]})
 
-    {:ok, _lv, html} = conn |> as_admin() |> live(~p"/admin/acts?period=semana")
+    {:ok, _lv, html} = conn |> live(~p"/admin/acts?period=semana")
 
     assert html =~ "Recent act"
     refute html =~ "Ancient act"
@@ -83,7 +70,7 @@ defmodule OQueMudouWeb.AdminActsLiveTest do
     _newer =
       summary(a, %{plain_text: "newer text", generated_at: ~U[2026-06-24 10:00:00Z]})
 
-    {:ok, lv, html} = conn |> as_admin() |> live(~p"/admin/acts/#{a.id}")
+    {:ok, lv, html} = conn |> live(~p"/admin/acts/#{a.id}")
 
     assert html =~ "older text"
     assert html =~ "newer text"
