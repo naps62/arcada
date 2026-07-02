@@ -201,6 +201,16 @@ defmodule OQueMudou.SearchTest do
     assert id == target.id
   end
 
+  test "semantic?: false runs FTS-only without touching the embedder (#32)" do
+    # The rate-limited path: the embedder must not be called at all, yet FTS
+    # still returns the exact-term match so search stays useful.
+    set_embeddings(embed_fn: fn _ -> raise "embedder must not run when semantic?: false" end)
+    target = act_fixture(%{title: "Lei n.º 42/2026 do arrendamento"})
+    indexed_summary(target, "texto do resumo com arrendamento", [1.0, 0.0])
+
+    assert Search.ranked_ids("arrendamento", semantic?: false) == [target.id]
+  end
+
   test "an exact-term match still ranks when its summary has no embedding at all" do
     set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
     target = act_fixture(%{title: "Portaria n.º 99/2026"})

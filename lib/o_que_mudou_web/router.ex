@@ -11,6 +11,8 @@ defmodule OQueMudouWeb.Router do
     plug :protect_from_forgery
     plug :put_secure_browser_headers
     plug :fetch_current_user
+    # Mint an opaque visitor id so anonymous search can be rate-limited (#32).
+    plug OQueMudouWeb.Plugs.VisitorId
   end
 
   pipeline :api do

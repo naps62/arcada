@@ -173,6 +173,15 @@ config :o_que_mudou, OQueMudou.PromEx,
   grafana: :disabled,
   metrics_server: :disabled
 
+# Per-caller rate limits for semantic search (issue #32). Two tiers, two windows
+# each. `:anon` is deliberately loose (a load valve + signup nudge, not a bot
+# wall — real IP keying awaits #43); `:user` rewards a verified account with far
+# more headroom. Over budget, search degrades to FTS-only, never fails. Tune here
+# without a code change.
+config :o_que_mudou, OQueMudou.RateLimit,
+  anon: [per_minute: 20, per_day: 200],
+  user: [per_minute: 120, per_day: 2_000]
+
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 

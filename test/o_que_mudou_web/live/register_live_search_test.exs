@@ -210,4 +210,83 @@ defmodule OQueMudouWeb.RegisterLiveSearchTest do
 
     assert html =~ "Nada encontrado"
   end
+
+  # --- Rate limiting (issue #32) ------------------------------------------------
+
+  alias OQueMudou.Accounts.User
+
+  # Force the semantic-search rate limits for the duration of a test, restoring
+  # them afterwards. `per_minute: 0` denies the very first query.
+  defp set_rate_limits(kw) do
+    prev = Application.get_env(:o_que_mudou, OQueMudou.RateLimit, [])
+    Application.put_env(:o_que_mudou, OQueMudou.RateLimit, kw)
+    on_exit(fn -> Application.put_env(:o_que_mudou, OQueMudou.RateLimit, prev) end)
+  end
+
+  # An act whose summary body FTS can match on `term`, so a rate-limited
+  # (semantic-off) search still surfaces it.
+  defp seed_fts_act(term) do
+    ed =
+      %Edition{}
+      |> Edition.changeset(%{serie: "I", number: "rl-1/2026", date: ~D[2026-06-24]})
+      |> Repo.insert!()
+
+    act =
+      %Act{}
+      |> Act.changeset(%{edition_id: ed.id, dre_id: "rl-1", title: "Lei do #{term}"})
+      |> Repo.insert!()
+
+    %Summary{}
+    |> Summary.changeset(%{act_id: act.id, plain_text: "novo apoio ao #{term} jovem"})
+    |> Repo.insert!()
+
+    act
+  end
+
+  test "over the anon limit, search degrades to FTS-only with a sign-up nudge", %{conn: conn} do
+    set_rate_limits(anon: [per_minute: 0, per_day: 0])
+    # Semantic must not even be attempted when degraded.
+    set_embeddings(embed_fn: fn _ -> raise "should not embed when rate-limited" end)
+    seed_fts_act("arrendamento")
+
+    {:ok, _lv, html} = live(conn, ~p"/?#{[q: "arrendamento"]}")
+
+    # The nudge appears with sign-in + register calls to action…
+    assert html =~ "resultados por texto"
+    assert html =~ "cria conta"
+    assert html =~ ~p"/users/register"
+    # …and FTS still returned the act, so search stayed useful.
+    assert html =~ "Lei do arrendamento"
+  end
+
+  test "under the limit there is no degraded banner", %{conn: conn} do
+    seed_indexed_act([1.0, 0.0])
+    set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+
+    {:ok, lv, _html} = live(conn, ~p"/")
+    html = lv |> form("#search-form", %{"q" => "sem limite atingido"}) |> render_change()
+
+    refute html =~ "resultados por texto"
+    refute html =~ "cria conta"
+  end
+
+  test "a verified user over their limit sees a slow-down message, not a sign-up nudge",
+       %{conn: conn} do
+    user =
+      OQueMudou.AccountsFixtures.user_fixture()
+      |> User.confirm_changeset()
+      |> OQueMudou.Repo.update!()
+
+    conn = log_in_user(conn, user)
+
+    set_rate_limits(user: [per_minute: 0, per_day: 0])
+    set_embeddings(embed_fn: fn _ -> raise "should not embed when rate-limited" end)
+    seed_fts_act("arrendamento")
+
+    {:ok, _lv, html} = live(conn, ~p"/?#{[q: "arrendamento"]}")
+
+    assert html =~ "depressa demais"
+    refute html =~ "cria conta"
+    assert html =~ "Lei do arrendamento"
+  end
 end
