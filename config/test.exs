@@ -35,6 +35,10 @@ config :arcada, ArcadaWeb.Endpoint,
 # Oban: don't run jobs/plugins during tests; use Oban.Testing helpers instead.
 config :arcada, Oban, testing: :inline
 
+# GpuGate: never shell out to nvidia-smi in tests — the default probe reports an
+# idle GPU (no foreign processes). Tests that exercise the gate override :probe.
+config :arcada, Arcada.Summarizer.GpuGate, probe: fn -> {"", 0} end
+
 # Print only warnings and errors during test
 config :logger, level: :warning
 

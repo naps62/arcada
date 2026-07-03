@@ -82,6 +82,18 @@ config :arcada, Arcada.Summarizer.Embeddings,
   model: "bge-m3",
   timeout: 30_000
 
+# Historical-backfill GPU gate. A backfill summary yields the card to any
+# *foreign* process (your own work on the RTX box, a one-off job) before it
+# runs — daily summaries are never gated. `own_processes` are the names that
+# count as ours (amalia's llama-server + a co-located embeddings server). The
+# probe defaults to a local `nvidia-smi`; when the app runs off the GPU box set
+# `probe: {"ssh", ["gpubox", "nvidia-smi", "--query-compute-apps=...", ...]}`.
+# Fails open if the probe is missing/errors. See Arcada.Summarizer.GpuGate.
+config :arcada, Arcada.Summarizer.GpuGate,
+  enabled: true,
+  own_processes: ["llama-server", "ollama"],
+  snooze_seconds: 30
+
 # Configures Oban (background jobs + daily cron).
 # The DRE scraper runs on a daily cron; see docs/PLAN.md.
 config :arcada, Oban,

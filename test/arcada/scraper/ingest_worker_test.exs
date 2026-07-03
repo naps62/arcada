@@ -82,4 +82,14 @@ defmodule Arcada.Scraper.IngestWorkerTest do
     # Both days resolve to the same fixture edition → idempotent upsert keeps 1.
     assert Repo.aggregate(Edition, :count) == 1
   end
+
+  test "backfill skips weekends, runs newest-first, at low priority with the backfill flag" do
+    # 2025-06-27 Fri, 28 Sat, 29 Sun, 30 Mon → only the two weekdays enqueue.
+    results = Scraper.backfill(~D[2025-06-27], ~D[2025-06-30])
+    jobs = Enum.map(results, fn {:ok, job} -> job end)
+
+    assert Enum.map(jobs, & &1.args["date"]) == ["2025-06-30", "2025-06-27"]
+    assert Enum.all?(jobs, &(&1.args["backfill"] == true))
+    assert Enum.all?(jobs, &(&1.priority == 9))
+  end
 end

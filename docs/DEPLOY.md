@@ -138,15 +138,38 @@ public Traefik domain / Let's Encrypt cert. Options:
 
 ## Operations
 
-- **Manual scrape / backfill** (Dokploy app shell):
+- **Manual scrape** (Dokploy app shell):
   ```
   /app/bin/arcada rpc 'Arcada.Scraper.IngestWorker.new(%{date: "2026-06-24"}) |> Oban.insert()'
-  /app/bin/arcada rpc 'Arcada.Scraper.backfill(~D[2026-06-01], ~D[2026-06-27])'
   ```
+- **Historical backfill** (throttled — enqueues jobs, returns immediately):
+  ```
+  /app/bin/arcada rpc 'Arcada.Scraper.backfill_since(~D[2025-07-03])'   # → today
+  /app/bin/arcada rpc 'Arcada.Scraper.backfill(~D[2025-06-01], ~D[2025-06-30])'
+  # or the mix task in a dev/console env:
+  mix dre.scrape --backfill --months 12
+  ```
+  One `IngestWorker` per **business day**, newest first. Every backfill job (and
+  the summaries it spawns) runs at low Oban priority (`9`) so the daily cron and
+  its summaries always dispatch ahead of it, and each backfill summary yields the
+  GPU to foreign work (see **Backfill GPU gate** below). Idempotent — re-running
+  a range re-scrapes but never duplicates acts or re-summarizes.
 - **Manual summary backfill** (manual adapter): use
   `Arcada.Summarizer.create_summary/2` from `bin/arcada remote`.
 - The ingest cron runs automatically every 2 hours, 07:00–19:00 UTC on weekdays
   (`0 7-19/2 * * 1-5`), once the release is up. Idempotent, so re-runs are free.
+
+**Backfill GPU gate (`Arcada.Summarizer.GpuGate`).** Before a *backfill* summary
+runs, it samples the GPU with `nvidia-smi` and snoozes if any process that isn't
+ours (`own_processes`, default `["llama-server", "ollama"]`) holds the card — so
+a backfill never starves your own work on the RTX box. Daily summaries are never
+gated. Config `config :arcada, Arcada.Summarizer.GpuGate`: `enabled`,
+`own_processes`, `snooze_seconds`, and `probe`. The probe defaults to a **local**
+`nvidia-smi`; when the app runs off the GPU box set
+`probe: {"ssh", ["gpubox", "nvidia-smi", "--query-compute-apps=pid,process_name,used_memory", "--format=csv,noheader,nounits"]}`.
+Fails **open** (allows the backfill, logs a warning) if the probe is missing or
+errors — the per-provider concurrency limit still keeps the model to one summary
+at a time.
 
 ## Admin page — `/admin` (issues #19, #20)
 

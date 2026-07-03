@@ -118,6 +118,21 @@ defmodule Arcada.SummarizerTest do
       assert args["provider_id"] == 7
       assert args["model"] == "m"
     end
+
+    test "a backfill run flags the job args and sets low Oban priority" do
+      act = act_fixture()
+
+      assert {:ok, %Oban.Job{args: args, priority: 9}} =
+               Summarizer.enqueue(act, backfill: true, priority: 9)
+
+      assert args["backfill"] == true
+    end
+
+    test "a normal run carries no backfill flag and no priority override" do
+      act = act_fixture()
+      assert {:ok, %Oban.Job{args: args}} = Summarizer.enqueue(act)
+      refute Map.has_key?(args, "backfill")
+    end
   end
 
   describe "SummarizeWorker" do
@@ -176,6 +191,36 @@ defmodule Arcada.SummarizerTest do
       assert {:snooze, _} = SummarizeWorker.perform(job)
       assert Repo.aggregate(Summary, :count) == 0
     end
+
+    test "a backfill job snoozes while a foreign process holds the GPU" do
+      set_gpu_gate(probe: fn -> {"99, python, 4000", 0} end)
+      act = act_fixture()
+
+      assert {:snooze, _} =
+               SummarizeWorker.perform(%Oban.Job{
+                 id: 1,
+                 args: %{"act_id" => act.id, "backfill" => true}
+               })
+
+      assert Repo.aggregate(Summary, :count) == 0
+    end
+
+    test "a daily (non-backfill) job ignores the GPU gate even when the card is busy" do
+      set_gpu_gate(probe: fn -> {"99, python, 4000", 0} end)
+      act = act_fixture()
+
+      # No active provider → runs to an async no-op, but crucially does NOT snooze
+      # on the GPU: the gate is backfill-only.
+      assert :ok =
+               SummarizeWorker.perform(%Oban.Job{id: 1, args: %{"act_id" => act.id}})
+    end
+  end
+
+  # Point the GpuGate at a stub probe for one test, restoring the config after.
+  defp set_gpu_gate(kw) do
+    prev = Application.get_env(:arcada, Arcada.Summarizer.GpuGate, [])
+    Application.put_env(:arcada, Arcada.Summarizer.GpuGate, kw)
+    on_exit(fn -> Application.put_env(:arcada, Arcada.Summarizer.GpuGate, prev) end)
   end
 
   describe "create_summary/2 (manual backfill)" do
@@ -393,5 +438,4 @@ defmodule Arcada.SummarizerTest do
                )
     end
   end
-
 end

@@ -23,7 +23,7 @@ defmodule Arcada.Scraper.IngestWorker do
 
     case Scraper.ingest_date(date, ingest_opts()) do
       {:ok, summary} ->
-        enqueued = enqueue_summaries(date)
+        enqueued = enqueue_summaries(date, args["backfill"] == true)
 
         Logger.info(
           "Ingested #{Date.to_iso8601(date)}: #{inspect(summary)}, #{enqueued} to summarize"
@@ -36,10 +36,15 @@ defmodule Arcada.Scraper.IngestWorker do
     end
   end
 
-  defp enqueue_summaries(date) do
+  # A backfill ingest hands its flag down to each summary job so the whole
+  # historical run stays low-priority and GPU-yielding; the daily cron enqueues
+  # summaries at the default priority with no GPU gate.
+  defp enqueue_summaries(date, backfill?) do
+    opts = if backfill?, do: [backfill: true, priority: 9], else: []
+
     date
     |> Register.acts_without_summary()
-    |> Enum.map(&Summarizer.enqueue/1)
+    |> Enum.map(&Summarizer.enqueue(&1, opts))
     |> length()
   end
 
