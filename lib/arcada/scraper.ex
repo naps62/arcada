@@ -41,43 +41,20 @@ defmodule Arcada.Scraper do
     end
   end
 
-  # Oban priority (0 highest, 9 lowest) for every backfill job. The daily cron
-  # ingest and its summaries run at the default priority (0), so they always
-  # dispatch ahead of a historical backfill sharing the same queues.
-  @backfill_priority 9
-
   @doc """
-  Enqueue a throttled historical backfill: one `IngestWorker` job per **business
-  day** in the range (Série I doesn't publish on weekends), newest day first so
-  recent history fills in before the deep archive.
-
-  Each job runs at low Oban priority and carries a `backfill` flag, so it and the
-  summaries it spawns always yield to the daily pipeline (priority) and to
-  foreign GPU work (`Arcada.Summarizer.GpuGate`). Safe to run repeatedly — every
-  day's ingest is idempotent and already-summarized acts are skipped.
-
-  Returns the list of `Oban.insert/1` results, newest date first.
+  Enqueue an `IngestWorker` job for each date in a range (inclusive). Backfill
+  helper — safe to run repeatedly since each day's ingest is idempotent.
+  Returns the list of `Oban.insert/1` results.
   """
   def backfill(%Date.Range{} = range) do
-    range
-    |> Enum.filter(&business_day?/1)
-    |> Enum.reverse()
-    |> Enum.map(fn date ->
-      %{date: Date.to_iso8601(date), backfill: true}
-      |> Arcada.Scraper.IngestWorker.new(priority: @backfill_priority)
+    Enum.map(range, fn date ->
+      %{date: Date.to_iso8601(date)}
+      |> Arcada.Scraper.IngestWorker.new()
       |> Oban.insert()
     end)
   end
 
   def backfill(%Date{} = from, %Date{} = to), do: backfill(Date.range(from, to))
-
-  @doc """
-  Backfill from `from` up to today (inclusive). Convenience over `backfill/2` for
-  the common "go back N days/months/years from now" operation.
-  """
-  def backfill_since(%Date{} = from), do: backfill(from, Date.utc_today())
-
-  defp business_day?(%Date{} = date), do: Date.day_of_week(date) in 1..5
 
   # The self-healed apiVersion lives in the `session` process, so persistence no
   # longer threads any transport state — it just upserts and asks the session to

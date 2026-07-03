@@ -14,7 +14,7 @@ defmodule Arcada.Summarizer.SummarizeWorker do
   alias Arcada.Providers.Provider
   alias Arcada.Register.Act
   alias Arcada.Summarizer
-  alias Arcada.Summarizer.{Concurrency, GpuGate}
+  alias Arcada.Summarizer.Concurrency
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"act_id" => act_id} = args} = job) do
@@ -31,34 +31,15 @@ defmodule Arcada.Summarizer.SummarizeWorker do
     end
   end
 
-  # Two gates, cheapest first. `provider_gate` throttles per the provider this
-  # job will use (issue #22). Then, only for backfill jobs, `gpu_gate` yields the
-  # GPU to any *foreign* process so a historical backfill never starves other
-  # work on the card. Daily summaries carry no `"backfill"` flag, so they skip
-  # the GPU probe entirely and run subject only to the provider limit.
+  # Throttle per the provider this job will actually use. With no resolvable
+  # provider (auto run + no active provider, or a pinned id that's gone) there's
+  # nothing to gate — `run/2` handles those as a no-op / error.
   defp gate(job, args) do
-    with :ok <- provider_gate(job, args) do
-      gpu_gate(args)
-    end
-  end
-
-  # With no resolvable provider (auto run + no active provider, or a pinned id
-  # that's gone) there's nothing to gate — `run/2` handles those as no-op/error.
-  defp provider_gate(job, args) do
     case effective_provider(args) do
       %Provider{} = provider -> Concurrency.check(job, provider)
       nil -> :ok
     end
   end
-
-  defp gpu_gate(%{"backfill" => true}) do
-    case GpuGate.check() do
-      :ok -> :ok
-      {:busy, _reason} -> {:snooze, GpuGate.snooze_seconds()}
-    end
-  end
-
-  defp gpu_gate(_args), do: :ok
 
   defp effective_provider(%{"provider_id" => pid}) when not is_nil(pid),
     do: Providers.get_provider(pid)

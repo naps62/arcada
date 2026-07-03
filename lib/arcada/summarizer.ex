@@ -57,11 +57,6 @@ defmodule Arcada.Summarizer do
   provider+model; pass `provider_id:`/`model:` for a manual run on a specific one,
   and `text_strategy:` (`:rank | :truncate | :auto`) to force how an oversized
   act's text is prepared (for the per-act ranking comparison).
-
-  Backfill callers pass `backfill: true` (tags the job so `SummarizeWorker`
-  yields the GPU to foreign work, see `Arcada.Summarizer.GpuGate`) and
-  `priority: 9` (Oban job priority, `0` highest) so daily summaries always
-  dispatch ahead of the historical backfill.
   """
   def enqueue(act, opts \\ [])
   def enqueue(%Act{id: id}, opts), do: enqueue(id, opts)
@@ -71,8 +66,7 @@ defmodule Arcada.Summarizer do
     |> put_opt(opts, :provider_id)
     |> put_opt(opts, :model)
     |> put_opt(opts, :text_strategy)
-    |> put_flag(opts, :backfill)
-    |> SummarizeWorker.new(job_opts(opts))
+    |> SummarizeWorker.new()
     |> Oban.insert()
   end
 
@@ -80,19 +74,6 @@ defmodule Arcada.Summarizer do
     case Keyword.get(opts, key) do
       nil -> args
       v -> Map.put(args, to_string(key), v)
-    end
-  end
-
-  # A boolean flag lands in the job args only when truthy (keeps daily job args
-  # untouched); Oban `:priority` is a job option, not an arg.
-  defp put_flag(args, opts, key) do
-    if Keyword.get(opts, key), do: Map.put(args, to_string(key), true), else: args
-  end
-
-  defp job_opts(opts) do
-    case Keyword.get(opts, :priority) do
-      nil -> []
-      priority -> [priority: priority]
     end
   end
 
