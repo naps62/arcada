@@ -74,6 +74,14 @@ defmodule Arcada.Scraper.IngestWorkerTest do
     assert Repo.aggregate(Edition, :count) == 1
   end
 
+  test "an ingest with summarize: false persists acts but enqueues no summaries" do
+    assert :ok = perform_job(IngestWorker, %{date: "2026-06-24", summarize: false})
+
+    assert Repo.aggregate(Act, :count) == 17
+    # Ingest-only (the backfill path) — the sweeper summarizes these later.
+    assert Repo.aggregate(Summary, :count) == 0
+  end
+
   test "backfill/2 enqueues + runs a job per date" do
     # Inline Oban runs each enqueued IngestWorker against the stub client.
     results = Scraper.backfill(~D[2026-06-23], ~D[2026-06-24])
@@ -81,5 +89,16 @@ defmodule Arcada.Scraper.IngestWorkerTest do
     assert Enum.all?(results, &match?({:ok, _}, &1))
     # Both days resolve to the same fixture edition → idempotent upsert keeps 1.
     assert Repo.aggregate(Edition, :count) == 1
+    # Backfill is ingest-only — summaries are left to the sweeper.
+    assert Repo.aggregate(Summary, :count) == 0
+  end
+
+  test "backfill skips weekends, newest-first, ingest-only" do
+    # 2025-06-27 Fri, 28 Sat, 29 Sun, 30 Mon → only the two weekdays enqueue.
+    results = Scraper.backfill(~D[2025-06-27], ~D[2025-06-30])
+    jobs = Enum.map(results, fn {:ok, job} -> job end)
+
+    assert Enum.map(jobs, & &1.args["date"]) == ["2025-06-30", "2025-06-27"]
+    assert Enum.all?(jobs, &(&1.args["summarize"] == false))
   end
 end

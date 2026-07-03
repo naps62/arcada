@@ -57,6 +57,14 @@ defmodule Arcada.Summarizer do
   provider+model; pass `provider_id:`/`model:` for a manual run on a specific one,
   and `text_strategy:` (`:rank | :truncate | :auto`) to force how an oversized
   act's text is prepared (for the per-act ranking comparison).
+
+  Job-level opts (used by `SummarySweeper` to drain the backlog gently):
+
+    * `priority:` — Oban priority (`0` highest). The sweeper enqueues backlog
+      summaries at a low priority so freshly-ingested daily acts jump ahead.
+    * `unique: true` — dedupe on `act_id` while a job for that act is still
+      pending/running, so repeated sweeper ticks never pile duplicates onto the
+      same act. Manual/daily enqueues omit it (regeneration is allowed).
   """
   def enqueue(act, opts \\ [])
   def enqueue(%Act{id: id}, opts), do: enqueue(id, opts)
@@ -66,7 +74,7 @@ defmodule Arcada.Summarizer do
     |> put_opt(opts, :provider_id)
     |> put_opt(opts, :model)
     |> put_opt(opts, :text_strategy)
-    |> SummarizeWorker.new()
+    |> SummarizeWorker.new(job_opts(opts))
     |> Oban.insert()
   end
 
@@ -74,6 +82,35 @@ defmodule Arcada.Summarizer do
     case Keyword.get(opts, key) do
       nil -> args
       v -> Map.put(args, to_string(key), v)
+    end
+  end
+
+  # Translate caller opts into Oban job options.
+  defp job_opts(opts) do
+    []
+    |> maybe_priority(opts)
+    |> maybe_unique(opts)
+  end
+
+  defp maybe_priority(job_opts, opts) do
+    case Keyword.get(opts, :priority) do
+      nil -> job_opts
+      priority -> Keyword.put(job_opts, :priority, priority)
+    end
+  end
+
+  # Dedupe against any not-yet-finished job for the same act. `period: :infinity`
+  # + the non-terminal state filter means uniqueness lasts exactly as long as a
+  # job for that act is still in flight, not a fixed time window.
+  defp maybe_unique(job_opts, opts) do
+    if Keyword.get(opts, :unique) do
+      Keyword.put(job_opts, :unique,
+        keys: [:act_id],
+        period: :infinity,
+        states: [:available, :scheduled, :executing, :retryable]
+      )
+    else
+      job_opts
     end
   end
 

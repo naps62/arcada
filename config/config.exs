@@ -94,7 +94,14 @@ config :arcada, Oban,
     # working day so supplements/late editions are picked up the same day.
     # 07:00–19:00 UTC (~08:00–20:00 Lisbon in summer); UTC avoids a tzdata dep.
     # IngestWorker defaults to today's date and is idempotent, so re-runs are free.
-    {Oban.Plugins.Cron, crontab: [{"0 7-19/2 * * 1-5", Arcada.Scraper.IngestWorker}]}
+    {Oban.Plugins.Cron,
+     crontab: [
+       {"0 7-19/2 * * 1-5", Arcada.Scraper.IngestWorker},
+       # Drain the backlog of un-summarized acts (historical backfill + any daily
+       # summary whose job failed out) a batch at a time. Cheap no-op query once
+       # everything is summarized. See Arcada.Summarizer.SummarySweeper.
+       {"*/5 * * * *", Arcada.Summarizer.SummarySweeper}
+     ]}
   ]
 
 # Admin area (/admin): served only on the private VPN host. `host` (set from

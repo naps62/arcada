@@ -42,19 +42,33 @@ defmodule Arcada.Scraper do
   end
 
   @doc """
-  Enqueue an `IngestWorker` job for each date in a range (inclusive). Backfill
-  helper — safe to run repeatedly since each day's ingest is idempotent.
-  Returns the list of `Oban.insert/1` results.
+  Enqueue a historical **ingest** job per business day in the range (inclusive),
+  newest day first — Série I doesn't publish on weekends. Ingest-only: the acts
+  land without summaries, and `Arcada.Summarizer.SummarySweeper` summarizes them
+  gradually. Safe to run repeatedly — each day's ingest is idempotent.
+
+  Returns the list of `Oban.insert/1` results, newest date first.
   """
   def backfill(%Date.Range{} = range) do
-    Enum.map(range, fn date ->
-      %{date: Date.to_iso8601(date)}
+    range
+    |> Enum.filter(&business_day?/1)
+    |> Enum.reverse()
+    |> Enum.map(fn date ->
+      %{date: Date.to_iso8601(date), summarize: false}
       |> Arcada.Scraper.IngestWorker.new()
       |> Oban.insert()
     end)
   end
 
   def backfill(%Date{} = from, %Date{} = to), do: backfill(Date.range(from, to))
+
+  @doc """
+  Backfill from `from` up to today (inclusive) — the one-shot "ingest the last N
+  days/months of the register" call. The sweeper takes it from there.
+  """
+  def backfill_since(%Date{} = from), do: backfill(from, Date.utc_today())
+
+  defp business_day?(%Date{} = date), do: Date.day_of_week(date) in 1..5
 
   # The self-healed apiVersion lives in the `session` process, so persistence no
   # longer threads any transport state — it just upserts and asks the session to

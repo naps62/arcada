@@ -138,11 +138,29 @@ public Traefik domain / Let's Encrypt cert. Options:
 
 ## Operations
 
-- **Manual scrape / backfill** (Dokploy app shell):
+- **Manual scrape** (Dokploy app shell):
   ```
   /app/bin/arcada rpc 'Arcada.Scraper.IngestWorker.new(%{date: "2026-06-24"}) |> Oban.insert()'
-  /app/bin/arcada rpc 'Arcada.Scraper.backfill(~D[2026-06-01], ~D[2026-06-27])'
   ```
+- **Historical backfill** (ingest-only; the sweeper summarizes afterwards):
+  ```
+  /app/bin/arcada rpc 'Arcada.Scraper.backfill_since(~D[2025-07-03])'   # → today
+  /app/bin/arcada rpc 'Arcada.Scraper.backfill(~D[2025-06-01], ~D[2025-06-30])'
+  # or in a dev/console env:
+  mix dre.scrape --backfill --months 12
+  ```
+  Enqueues one ingest job per **business day**, newest first, each `summarize:
+  false` — the acts land without summaries and the **SummarySweeper** picks them
+  up. Idempotent; safe to re-run.
+- **Summary sweeper** (`Arcada.Summarizer.SummarySweeper`, cron `*/5 * * * *`):
+  every 5 min it enqueues a summarize job for up to `batch` (default 100) acts
+  that have no summary — historical backlog *and* any daily summary whose job
+  failed. Low priority (daily jumps ahead) and deduped per act, so it never
+  floods or double-queues. The real pace is the provider's `max_concurrency`
+  (SSH/local = 1). A summary that fails is simply retried on a later tick, so the
+  register self-heals until every act is summarized; once it is, the tick is a
+  single cheap query. Tune the batch with
+  `config :arcada, Arcada.Summarizer.SummarySweeper, batch: N`.
 - **Manual summary backfill** (manual adapter): use
   `Arcada.Summarizer.create_summary/2` from `bin/arcada remote`.
 - The ingest cron runs automatically every 2 hours, 07:00–19:00 UTC on weekdays

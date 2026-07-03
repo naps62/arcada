@@ -125,4 +125,40 @@ defmodule Arcada.RegisterTest do
     assert "administração" in Arcada.Register.life_domains()
     assert length(Arcada.Register.life_domains()) == 10
   end
+
+  describe "acts_without_summary/1 (limit form — the sweeper's queue)" do
+    setup do
+      %{edition: insert_edition()}
+    end
+
+    defp bare_act(edition, n) do
+      insert_act(edition, %{dre_id: "sweep-#{n}", title: "Act #{n}"})
+    end
+
+    defp summarized_act(edition, n) do
+      act = bare_act(edition, n)
+      %Summary{} |> Summary.changeset(%{act_id: act.id, plain_text: "s"}) |> Repo.insert!()
+      act
+    end
+
+    test "returns only acts lacking a summary", %{edition: edition} do
+      bare = bare_act(edition, 1)
+      _has = summarized_act(edition, 2)
+
+      assert Enum.map(Arcada.Register.acts_without_summary(100), & &1.id) == [bare.id]
+    end
+
+    test "caps at the limit and orders newest (highest id) first", %{edition: edition} do
+      _a = bare_act(edition, 1)
+      b = bare_act(edition, 2)
+      c = bare_act(edition, 3)
+
+      assert Enum.map(Arcada.Register.acts_without_summary(2), & &1.id) == [c.id, b.id]
+    end
+
+    test "empty when every act is summarized", %{edition: edition} do
+      summarized_act(edition, 1)
+      assert Arcada.Register.acts_without_summary(100) == []
+    end
+  end
 end

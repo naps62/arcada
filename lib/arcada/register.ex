@@ -302,12 +302,31 @@ defmodule Arcada.Register do
     [:updated_at | present]
   end
 
-  @doc "Acts published on `date` with no summary yet — what the daily cron enqueues for summarization."
+  @doc """
+  Acts with no summary yet. Two forms:
+
+    * `acts_without_summary(%Date{})` — every act published on that date, what the
+      daily cron enqueues for immediate summarization.
+    * `acts_without_summary(limit)` — up to `limit` acts anywhere in the register,
+      newest first, what `Arcada.Summarizer.SummarySweeper` drains each tick.
+      Backlog acts and any act whose summary never landed (a failed daily job)
+      both surface here, so the sweeper keeps retrying until all are summarized.
+  """
   def acts_without_summary(%Date{} = date) do
     from(a in Act,
       join: e in assoc(a, :edition),
       left_join: s in assoc(a, :summaries),
       where: e.date == ^date and is_nil(s.id)
+    )
+    |> Repo.all()
+  end
+
+  def acts_without_summary(limit) when is_integer(limit) do
+    from(a in Act,
+      left_join: s in assoc(a, :summaries),
+      where: is_nil(s.id),
+      order_by: [desc: a.id],
+      limit: ^limit
     )
     |> Repo.all()
   end
