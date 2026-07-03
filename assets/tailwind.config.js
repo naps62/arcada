@@ -21,6 +21,7 @@ module.exports = {
         "surface-inset": "var(--surface-inset)",
         ink: "var(--ink)",
         muted: "var(--muted)",
+        placeholder: "var(--placeholder)",
         border: "var(--border)",
         "rule-strong": "var(--rule-strong)",
         primary: {

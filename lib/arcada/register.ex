@@ -22,6 +22,27 @@ defmodule Arcada.Register do
   @doc "Date-range filter options, each a window from some past point up to today."
   def periods, do: @periods
 
+  # Plain-language search prompts: the bare everyday word a citizen actually
+  # thinks in — "desemprego", not "subsídio de desemprego" — never a diploma
+  # number or the official programme name. The empty field teaches that semantic
+  # search runs on ordinary Portuguese, not legalese. Spread across the
+  # life-domains so the rotation also hints at the taxonomy's breadth.
+  @search_examples [
+    "renda de casa",
+    "desemprego",
+    "IRS",
+    "reforma",
+    "propinas",
+    "portagens",
+    "baixa médica",
+    "salário mínimo",
+    "creches",
+    "licença parental"
+  ]
+
+  @doc "Example queries seeded into the search field's placeholder rotation."
+  def search_examples, do: @search_examples
+
   @doc "Human (Portuguese) label for a period — shared by the filter chips and SEO titles."
   def period_label(:semana), do: "Esta semana"
   def period_label(:mes), do: "Este mês"

@@ -53,6 +53,9 @@
   --surface-inset: oklch(0.925 0.011 85);
   --ink: oklch(0.23 0.012 60);
   --muted: oklch(0.45 0.014 65);
+  /* Dimmer than muted, so the rotating search examples read plainly as a hint,
+     not typed text — held at the AA floor (~4.7:1 on surface), no lighter. */
+  --placeholder: oklch(0.52 0.012 70);
   --border: oklch(0.84 0.012 80);
   --rule-strong: oklch(0.23 0.012 60);
   --primary: oklch(0.46 0.12 255);
@@ -78,6 +81,7 @@
     --surface-inset: oklch(0.25 0.009 70);
     --ink: oklch(0.92 0.01 85);
     --muted: oklch(0.68 0.012 80);
+    --placeholder: oklch(0.62 0.01 75);
     --border: oklch(0.32 0.01 75);
     --rule-strong: oklch(0.62 0.012 80);
     --primary: oklch(0.74 0.11 250);
@@ -99,6 +103,7 @@
   --surface-inset: oklch(0.25 0.009 70);
   --ink: oklch(0.92 0.01 85);
   --muted: oklch(0.68 0.012 80);
+  --placeholder: oklch(0.62 0.01 75);
   --border: oklch(0.32 0.01 75);
   --rule-strong: oklch(0.62 0.012 80);
   --primary: oklch(0.74 0.11 250);

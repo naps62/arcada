@@ -24,8 +24,9 @@ import topbar from "../vendor/topbar"
 import {ThemeToggle} from "./theme"
 import {Collapsible} from "./collapsible"
 import {FlashOnResult} from "./flash"
+import {SearchPlaceholder} from "./search_placeholder"
 
-let Hooks = {ThemeToggle, Collapsible, FlashOnResult}
+let Hooks = {ThemeToggle, Collapsible, FlashOnResult, SearchPlaceholder}
 
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 let liveSocket = new LiveSocket("/live", Socket, {

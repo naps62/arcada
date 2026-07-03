@@ -17,6 +17,7 @@ defmodule ArcadaWeb.RegisterLive do
        front_page: true,
        domains: Register.life_domains(),
        periods: Register.periods(),
+       search_examples: Register.search_examples(),
        query: "",
        search_results: nil,
        search_ids: nil,
@@ -208,10 +209,12 @@ defmodule ArcadaWeb.RegisterLive do
               id="search-q"
               name="q"
               value={@query}
+              phx-hook="SearchPlaceholder"
+              data-placeholders={Jason.encode!(@search_examples)}
               phx-debounce="300"
               autocomplete="off"
-              placeholder="Descreve a mudança que procuras…"
-              class="h-14 w-full rounded-md border-2 border-border bg-surface pl-12 pr-4 text-base text-ink transition-colors duration-150 ease-out-quart placeholder:text-muted focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/15 sm:h-16 sm:pl-14 sm:text-lg"
+              placeholder={"ex.: " <> List.first(@search_examples)}
+              class="h-14 w-full rounded-md border-2 border-border bg-surface pl-12 pr-4 text-base text-ink transition-colors duration-150 ease-out-quart placeholder:text-placeholder focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/15 sm:h-16 sm:pl-14 sm:text-lg"
             />
           </div>
           <%!-- Desktop only: a strong primary affordance. On mobile the live
