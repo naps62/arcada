@@ -72,7 +72,7 @@ defmodule ArcadaWeb.RegisterLiveSearchTest do
   test "renders the search box above the filters", %{conn: conn} do
     {:ok, _lv, html} = live(conn, ~p"/")
     assert html =~ "search-form"
-    assert html =~ "Descreve a mudança que procuras"
+    assert html =~ "Pesquisa por significado"
   end
 
   test "typing a query shows ranked results instead of the filters", %{conn: conn} do

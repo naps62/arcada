@@ -7,7 +7,7 @@ defmodule ArcadaWeb.RegisterLive do
   use ArcadaWeb, :live_view
 
   alias Arcada.{Register, Search}
-  alias Arcada.RateLimit
+  alias ArcadaWeb.Plugs.VisitorId
   alias ArcadaWeb.SEO
 
   @impl true
@@ -99,35 +99,19 @@ defmodule ArcadaWeb.RegisterLive do
     end
   end
 
-  # Search is paginated (infinite scroll): embed the query once and cache the
-  # full ranked id list, then load only the first window. The "load-more"
-  # handler pages through the cached ids — no re-embedding per page.
+  # Search is paginated (infinite scroll): `Search.for_visitor/2` charges the
+  # rate limit, degrades to FTS-only when over budget (#32), fuses the ranking,
+  # and emits telemetry — the whole policy lives in the context. We cache the
+  # full ranked id list and load only the first window; the "load-more" handler
+  # pages through the cached ids — no re-charging or re-embedding per page.
   defp assign_search(socket, query) do
-    # Charge the semantic leg against this caller's budget (#32). Over budget →
-    # FTS-only (still useful, no GPU spend) plus the signup nudge. FTS itself is
-    # never limited, so a rate-limited caller still gets live text results.
-    {tier, _} = identity = socket.assigns.search_identity
-
-    degraded? =
-      case RateLimit.search_semantic(identity) do
-        :ok -> false
-        {:deny, _retry_ms} -> true
-      end
-
-    ids = Search.ranked_ids(query, semantic?: not degraded?)
-    page = Search.load_page(ids, 0, Search.page_size())
-
-    :telemetry.execute(
-      [:arcada, :search, :query],
-      %{count: 1},
-      %{tier: tier, degraded: degraded?}
-    )
+    {results, ids, degraded?} = Search.for_visitor(query, socket.assigns.search_identity)
 
     assign(socket,
       query: query,
       search_ids: ids,
-      search_results: page,
-      search_more?: length(ids) > length(page),
+      search_results: results,
+      search_more?: length(ids) > length(results),
       search_degraded: degraded?,
       browse_cursor: nil,
       browse_more?: false,
@@ -143,7 +127,7 @@ defmodule ArcadaWeb.RegisterLive do
   defp search_identity(socket, session) do
     case socket.assigns[:current_user] do
       %{id: id, confirmed_at: %DateTime{}} -> {:user, id}
-      _ -> {:anon, session["visitor_id"]}
+      _ -> {:anon, session[VisitorId.session_key()]}
     end
   end
 

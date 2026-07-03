@@ -16,6 +16,13 @@ defmodule ArcadaWeb.Plugs.VisitorId do
 
   @session_key "visitor_id"
 
+  @doc """
+  The session key the visitor id is stored under. Consumers that key anonymous
+  rate limiting off it (e.g. `ArcadaWeb.RegisterLive`) read it through here so
+  the string literal has a single home — the plug that mints it.
+  """
+  def session_key, do: @session_key
+
   def init(opts), do: opts
 
   def call(conn, _opts) do

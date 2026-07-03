@@ -17,7 +17,7 @@ defmodule Arcada.Search do
   """
   import Ecto.Query
 
-  alias Arcada.{Admin, Repo}
+  alias Arcada.{Admin, RateLimit, Repo}
   alias Arcada.Register.Act
   alias Arcada.Search.{FTS, Index}
   alias Arcada.Summarizer.Embeddings
@@ -46,6 +46,49 @@ defmodule Arcada.Search do
     |> ranked_ids()
     |> Enum.take(Keyword.get(opts, :limit, @default_limit))
     |> load_acts()
+  end
+
+  @doc """
+  The visitor-facing search entry point (#32, #50): the whole "rate-limited
+  callers degrade to FTS-only" policy in one place, so it lives in the context
+  instead of inline in a LiveView and is testable as a plain function call.
+
+  Charges `identity`'s semantic-search budget; on an over-budget deny it degrades
+  to FTS-only (still useful, no GPU spend) and flags it. Then runs the fused
+  ranking, loads the first result window, and emits the `[:arcada, :search,
+  :query]` telemetry event tagged by tier + degradation.
+
+  `identity` is a `{tier, key}` rate-limit bucket (see `Arcada.RateLimit`).
+  Returns `{results, ids, degraded?}`:
+
+    * `ids` — the full fused ranked id list; callers cache it and page it with
+      `load_page/3` (infinite scroll re-pages the cache — it neither re-charges
+      the limit nor re-embeds)
+    * `results` — the first loaded window (`page_size/0` acts)
+    * `degraded?` — true when the rate limit forced FTS-only, so the caller can
+      show the "sign in for smarter search" nudge
+
+  The caller derives the identity (which tier a visitor earns is a product rule)
+  and renders what it gets back.
+  """
+  @spec for_visitor(term(), RateLimit.identity()) :: {[Act.t()], [term()], boolean()}
+  def for_visitor(query, {tier, _key} = identity) do
+    degraded? =
+      case RateLimit.search_semantic(identity) do
+        :ok -> false
+        {:deny, _retry_ms} -> true
+      end
+
+    ids = ranked_ids(query, semantic?: not degraded?)
+    results = load_page(ids, 0, page_size())
+
+    :telemetry.execute(
+      [:arcada, :search, :query],
+      %{count: 1},
+      %{tier: tier, degraded: degraded?}
+    )
+
+    {results, ids, degraded?}
   end
 
   @doc """

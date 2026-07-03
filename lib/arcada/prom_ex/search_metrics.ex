@@ -5,7 +5,7 @@ defmodule Arcada.PromEx.SearchMetrics do
   meant to drive: `anon` vs `user` volume shows the signup funnel, and
   `degraded` (over rate limit → FTS-only) shows how often the nudge fires.
 
-  Emitted from `ArcadaWeb.RegisterLive` as `[:arcada, :search, :query]`.
+  Emitted from `Arcada.Search.for_visitor/2` as `[:arcada, :search, :query]`.
   """
 
   use PromEx.Plugin

@@ -230,4 +230,72 @@ defmodule Arcada.SearchTest do
 
     assert Search.ranked_ids("termo-inexistente-xyz") == []
   end
+
+  # --- Visitor entry point / rate-limit policy (issue #32, #50) -------------
+
+  # Force the semantic-search rate limits for the duration of a test, restoring
+  # them afterwards. `per_minute: 0` denies the very first query.
+  defp set_rate_limits(kw) do
+    prev = Application.get_env(:arcada, Arcada.RateLimit, [])
+    Application.put_env(:arcada, Arcada.RateLimit, kw)
+    on_exit(fn -> Application.put_env(:arcada, Arcada.RateLimit, prev) end)
+  end
+
+  # A distinct rate-limit bucket per test — the Hammer ETS table is process-wide
+  # and outlives any one test, so unique keys keep budgets from leaking across.
+  defp unique_identity(tier),
+    do: {tier, "visitor-#{System.unique_integer([:positive])}"}
+
+  test "for_visitor under budget returns fused results, ids and degraded? false" do
+    set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+    act = act_fixture()
+    indexed_summary(act, [1.0, 0.0])
+
+    {results, ids, degraded?} = Search.for_visitor(unique_query(), unique_identity(:anon))
+
+    assert degraded? == false
+    assert ids == [act.id]
+    assert [%Act{id: id}] = results
+    assert id == act.id
+  end
+
+  test "for_visitor over budget degrades to FTS-only without touching the embedder" do
+    set_rate_limits(anon: [per_minute: 0, per_day: 0])
+    # Semantic must not even be attempted once the limit denies the query.
+    set_embeddings(embed_fn: fn _ -> raise "must not embed when rate-limited" end)
+
+    target = act_fixture(%{title: "Lei do arrendamento"})
+    indexed_summary(target, "novo apoio ao arrendamento jovem", [1.0, 0.0])
+
+    {results, ids, degraded?} = Search.for_visitor("arrendamento", unique_identity(:anon))
+
+    assert degraded? == true
+    # FTS still surfaced the act, so search stayed useful.
+    assert ids == [target.id]
+    assert [%Act{id: id}] = results
+    assert id == target.id
+  end
+
+  test "for_visitor emits the search telemetry tagged by tier and degradation" do
+    set_rate_limits(anon: [per_minute: 0, per_day: 0])
+    set_embeddings([])
+
+    ref = make_ref()
+    parent = self()
+
+    :telemetry.attach(
+      "test-search-#{inspect(ref)}",
+      [:arcada, :search, :query],
+      fn _event, measurements, metadata, _ ->
+        send(parent, {:telemetry, ref, measurements, metadata})
+      end,
+      nil
+    )
+
+    on_exit(fn -> :telemetry.detach("test-search-#{inspect(ref)}") end)
+
+    Search.for_visitor("qualquer coisa", unique_identity(:anon))
+
+    assert_received {:telemetry, ^ref, %{count: 1}, %{tier: :anon, degraded: true}}
+  end
 end
