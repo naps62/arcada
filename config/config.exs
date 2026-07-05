@@ -52,9 +52,24 @@ config :arcada, Arcada.Summarizer.Adapters.Ssh,
 #
 #   config :arcada, Arcada.Summarizer.ContextWindow,
 #     default_window: 200_000,
-#     windows: %{"claude-sonnet-4" => 1_000_000, "claude-opus-4" => 1_000_000, "claude-cli" => 1_000_000},
 #     reserve_fraction: 0.2,
 #     chars_per_token: 3.5
+config :arcada, Arcada.Summarizer.ContextWindow,
+  windows: %{
+    # Claude (SSH `claude -p`) exposes ~1M tokens; acts summarise whole.
+    "claude-sonnet-4" => 1_000_000,
+    "claude-opus-4" => 1_000_000,
+    "claude-cli" => 1_000_000,
+    # AMALIA-9B (local llama.cpp, `owned_by: llama-swap`) runs at `-c 32768` on
+    # the GPU box, but its tokenizer is dense on PT legal text (~1.7 chars/token)
+    # and llama-server reserves context for the generated summary — so the safe
+    # *input* budget is far below the raw window. This is an EFFECTIVE budget, not
+    # amalia's real context: 14_600 here → a ~40.9k-char cap (via the 3.5
+    # chars_per_token derivation), validated against the largest acts (~228k raw,
+    # ranked down to fit). Keep in step with the `-c` value in the llama-swap
+    # config on the GPU host — raising -c lets you raise this proportionally.
+    "amalia" => 14_600
+  }
 
 # Cost target the ranker trims act text down to, distinct from the safety cap
 # above (issue #41). Ranking fills this budget with the most change-relevant
