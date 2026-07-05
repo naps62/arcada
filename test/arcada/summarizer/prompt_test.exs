@@ -50,6 +50,26 @@ defmodule Arcada.Summarizer.PromptTest do
                Prompt.parse(reply(%{"plain_text" => "z", "domains" => []}))
     end
 
+    # AMALIA-9B reproducibly emits a valid object, then keeps talking: a markdown
+    # `**Nota:**`, a self-correction, and a second object. We take the first
+    # object and drop the trailing chatter (observed on act 164, RCM 128/2026).
+    test "recovers the first object when the model appends prose and a second object" do
+      first = reply(%{"plain_text" => "Apoio militar à Ucrânia.", "domains" => ["fiscal"]})
+      second = reply(%{"plain_text" => "corrigido", "domains" => ["saúde"]})
+      raw = first <> "\r\n\r\n**Nota:** o domínio não se aplica. Vou corrigir:\r\n\r\n" <> second
+
+      assert {:ok, %{plain_text: "Apoio militar à Ucrânia.", domains: [:fiscal]}} =
+               Prompt.parse(raw)
+    end
+
+    test "ignores braces inside string values when finding the object" do
+      raw =
+        ~s({"plain_text": "usa {chavetas} e \\"aspas\\" no texto", "domains": []}) <>
+          "\n\ntrailing junk }"
+
+      assert {:ok, %{plain_text: "usa {chavetas} e \"aspas\" no texto"}} = Prompt.parse(raw)
+    end
+
     test "non-list domains become an empty list" do
       assert {:ok, %{domains: []}} =
                Prompt.parse(reply(%{"plain_text" => "z", "domains" => "fiscal"}))
@@ -87,6 +107,7 @@ defmodule Arcada.Summarizer.PromptTest do
     test "decodes fenced and plain JSON, errors on junk" do
       assert {:ok, %{"a" => 1}} = Prompt.decode(~s({"a": 1}))
       assert {:ok, %{"a" => 1}} = Prompt.decode("```json\n" <> ~s({"a": 1}) <> "\n```")
+      assert {:ok, %{"a" => 1}} = Prompt.decode(~s({"a": 1}) <> "\n\ntrailing prose")
       assert {:error, _} = Prompt.decode("garbage")
       assert {:error, :not_a_string} = Prompt.decode(nil)
     end

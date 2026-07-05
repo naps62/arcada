@@ -160,9 +160,74 @@ defmodule Arcada.Summarizer.Prompt do
   Decode possibly-fenced JSON text into a map. Used by `parse/1` for the reply
   and by the SSH adapter for its CLI envelope (the outer layer wrapping the
   reply). `{:ok, map}` or `{:error, reason}`.
+
+  Small local models (AMALIA-9B in particular) ignore the "reply with JSON only"
+  instruction and append prose after the object — a `**Nota:** …` justification,
+  a self-correction, even a second JSON object. `response_format: json_object`
+  is only advisory on llama.cpp, so this arrives often. When a whole-string
+  decode fails we fall back to the first brace-balanced `{…}` object in the text,
+  which is the JSON we asked for; the trailing chatter is dropped.
   """
-  def decode(raw) when is_binary(raw), do: raw |> strip_fences() |> Jason.decode()
+  def decode(raw) when is_binary(raw) do
+    stripped = strip_fences(raw)
+
+    case Jason.decode(stripped) do
+      {:ok, _} = ok ->
+        ok
+
+      {:error, _} = err ->
+        case first_json_object(stripped) do
+          nil -> err
+          obj -> Jason.decode(obj)
+        end
+    end
+  end
+
   def decode(_), do: {:error, :not_a_string}
+
+  # First brace-balanced JSON object embedded in `str`, as a binary, or nil.
+  # String-aware so braces inside "..." values don't throw off the depth count.
+  defp first_json_object(str) do
+    case :binary.match(str, "{") do
+      :nomatch ->
+        nil
+
+      {start, _} ->
+        head = binary_part(str, start, byte_size(str) - start)
+
+        case scan(head, 0, false, false) do
+          nil -> nil
+          len -> binary_part(head, 0, len)
+        end
+    end
+  end
+
+  # Walk the binary tracking brace depth; return the byte length up to and
+  # including the `}` that closes the object opened at byte 0, or nil if it never
+  # balances. Non-ASCII bytes (UTF-8 continuation bytes in accented text) fall
+  # through the default branch untouched — only structural ASCII chars matter.
+  defp scan(<<>>, _depth, _in_str, _esc), do: nil
+
+  defp scan(<<c, rest::binary>>, depth, in_str, esc) do
+    {depth, in_str, esc} = advance(c, depth, in_str, esc)
+
+    if depth == 0 and not in_str do
+      1
+    else
+      case scan(rest, depth, in_str, esc) do
+        nil -> nil
+        n -> n + 1
+      end
+    end
+  end
+
+  defp advance(_c, depth, in_str, true), do: {depth, in_str, false}
+  defp advance(?\\, depth, true, false), do: {depth, true, true}
+  defp advance(?", depth, in_str, false), do: {depth, not in_str, false}
+  defp advance(_c, depth, true, false), do: {depth, true, false}
+  defp advance(?{, depth, false, false), do: {depth + 1, false, false}
+  defp advance(?}, depth, false, false), do: {depth - 1, false, false}
+  defp advance(_c, depth, false, false), do: {depth, false, false}
 
   @doc "Strip ```` ```json ```` code fences a model may wrap its JSON reply in."
   def strip_fences(str) do
