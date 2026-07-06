@@ -193,6 +193,7 @@ defmodule ArcadaWeb.RegisterLive do
               id="search-q"
               name="q"
               value={@query}
+              autofocus
               phx-hook="SearchPlaceholder"
               data-placeholders={Jason.encode!(@search_examples)}
               phx-debounce="300"

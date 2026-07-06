@@ -28,6 +28,12 @@ const LAST_SHOWN_KEY = "arcada:search-placeholder"
 
 export const SearchPlaceholder = {
   mounted() {
+    // Autofocus on mount so the field is ready to type — covers SPA
+    // (live_navigate/patch) arrivals where the HTML `autofocus` attribute
+    // doesn't re-fire. Skip when the field already carries a query (e.g. a
+    // shared `?q=…` link) so we don't yank the caret to the end mid-read.
+    if (this.el.value === "") this.el.focus()
+
     this.reduce = window.matchMedia("(prefers-reduced-motion: reduce)")
 
     try {
