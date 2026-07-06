@@ -216,7 +216,15 @@ config :arcada, Arcada.RateLimit,
 # nudge. Tunable here without a code change.
 config :arcada, Arcada.Search,
   recency_beta: 0.15,
-  recency_half_life_days: 180
+  recency_half_life_days: 180,
+  # Relevance floor on the semantic leg (see `Arcada.Search.above_relevance_floor/1`):
+  # drop acts whose cosine is below `max(min_relevance_score, relevance_ratio × top)`.
+  # Relative-to-top because bge-m3's scores swing by query (weak ~0.39, strong ~0.64),
+  # so no fixed cutoff fits both; `min_relevance_score` is the nonsense-query backstop
+  # (nothing clears it → no results). FTS/exact-term matches are never dropped (they
+  # re-enter via the FTS list). `relevance_ratio: 0.0` disables the floor.
+  relevance_ratio: 0.90,
+  min_relevance_score: 0.33
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason

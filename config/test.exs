@@ -35,6 +35,12 @@ config :arcada, ArcadaWeb.Endpoint,
 # Oban: don't run jobs/plugins during tests; use Oban.Testing helpers instead.
 config :arcada, Oban, testing: :inline
 
+# Search ranking tweaks off by default in tests (merges over config.exs, leaving
+# recency_beta intact): the relevance floor and recency boost each get their own
+# focused tests that enable them explicitly, so the rest of the suite ranks on pure
+# relevance and stays unaffected by the prod-tuned defaults.
+config :arcada, Arcada.Search, relevance_ratio: 0.0, recency_beta: 0.0
+
 # Print only warnings and errors during test
 config :logger, level: :warning
 

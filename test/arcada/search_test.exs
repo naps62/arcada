@@ -60,7 +60,7 @@ defmodule Arcada.SearchTest do
   # its own stub.
   defp unique_query, do: "consulta-#{System.unique_integer([:positive])}"
 
-  defp set_recency(kw) do
+  defp set_search_cfg(kw) do
     prev = Application.get_env(:arcada, Search, [])
     Application.put_env(:arcada, Search, kw)
     on_exit(fn -> Application.put_env(:arcada, Search, prev) end)
@@ -100,7 +100,7 @@ defmodule Arcada.SearchTest do
   describe "recency boost" do
     # The whole point: a fresher act wins a near-tie it would lose on cosine alone.
     test "breaks a near-tie toward the fresher act" do
-      set_recency(recency_beta: 0.15, recency_half_life_days: 180)
+      set_search_cfg(recency_beta: 0.15, recency_half_life_days: 180)
       set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
 
       older = act_fixture(%{published_at: ~D[2000-01-01]})
@@ -113,7 +113,7 @@ defmodule Arcada.SearchTest do
     end
 
     test "β = 0 is pure relevance — the better cosine wins regardless of age" do
-      set_recency(recency_beta: 0.0)
+      set_search_cfg(recency_beta: 0.0)
       set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
 
       older = act_fixture(%{published_at: ~D[2000-01-01]})
@@ -127,7 +127,7 @@ defmodule Arcada.SearchTest do
     # The bound must protect a clearly stronger older match: a fresh act sitting
     # far down the relevance ranking can't be lifted to the top by recency alone.
     test "a fresh but far-down act does not overtake a strong older match" do
-      set_recency(recency_beta: 0.15, recency_half_life_days: 180)
+      set_search_cfg(recency_beta: 0.15, recency_half_life_days: 180)
       set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
 
       strong = act_fixture(%{published_at: ~D[2000-01-01]})
@@ -142,6 +142,68 @@ defmodule Arcada.SearchTest do
       indexed_summary(fresh, unit_vec(0.1 * 13))
 
       assert hd(Search.ranked_ids(unique_query())) == strong.id
+    end
+  end
+
+  describe "relevance floor" do
+    test "keeps acts within ratio of the top score and drops the weak tail" do
+      set_search_cfg(relevance_ratio: 0.90)
+      set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+
+      a = act_fixture()
+      indexed_summary(a, unit_vec(0.0))     # cosine 1.000  → top
+      b = act_fixture()
+      indexed_summary(b, unit_vec(0.3))     # cosine 0.958  → within 90% of top
+      c = act_fixture()
+      indexed_summary(c, unit_vec(0.4))     # cosine 0.928  → within 90% of top
+      tail = act_fixture()
+      indexed_summary(tail, unit_vec(2.0))  # cosine 0.447  → below the 0.9 floor
+
+      ids = Search.ranked_ids(unique_query())
+      assert ids == [a.id, b.id, c.id]
+      refute tail.id in ids
+    end
+
+    test "min_relevance_score drops everything when the whole field is weak" do
+      set_search_cfg(relevance_ratio: 0.90, min_relevance_score: 0.33)
+      set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+
+      # Top cosine 0.316 < min 0.33 → the nonsense-query backstop empties the list.
+      top = act_fixture()
+      indexed_summary(top, unit_vec(3.0))
+      other = act_fixture()
+      indexed_summary(other, unit_vec(4.0))
+
+      assert Search.ranked_ids(unique_query()) == []
+    end
+
+    test "an FTS match survives even with a cosine below the floor" do
+      set_search_cfg(relevance_ratio: 0.90)
+      set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+
+      strong = act_fixture(%{title: "Diploma bem alinhado"})
+      indexed_summary(strong, "corpo", unit_vec(0.0))       # cosine 1.0 → clears floor
+      fts_only = act_fixture(%{title: "Lei n.º 77/2024 dos transportes"})
+      indexed_summary(fts_only, "corpo", unit_vec(2.0))     # cosine 0.447 → below floor
+      dropped = act_fixture(%{title: "Diploma irrelevante"})
+      indexed_summary(dropped, "corpo", unit_vec(2.0))      # below floor, no FTS hit
+
+      ids = Search.ranked_ids("Lei 77/2024")
+      assert strong.id in ids
+      assert fts_only.id in ids
+      refute dropped.id in ids
+    end
+
+    test "relevance_ratio 0 disables the floor — the full ranked list is returned" do
+      set_search_cfg(relevance_ratio: 0.0)
+      set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+
+      a = act_fixture()
+      indexed_summary(a, unit_vec(0.0))     # cosine 1.0
+      far = act_fixture()
+      indexed_summary(far, unit_vec(9.0))   # cosine ~0.11 — kept anyway
+
+      assert Search.ranked_ids(unique_query()) == [a.id, far.id]
     end
   end
 

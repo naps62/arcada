@@ -214,7 +214,38 @@ defmodule Arcada.Search do
     |> Enum.sort_by(fn {_act_id, score} -> score end, :desc)
     # An act can have several (re-run) summaries indexed; keep its best score.
     |> Enum.uniq_by(fn {act_id, _score} -> act_id end)
+    |> above_relevance_floor()
     |> Enum.map(fn {act_id, _score} -> act_id end)
+  end
+
+  # Drop the long tail of weakly-related acts: keep only those whose cosine clears
+  # `max(min_score, ratio × top_score)`. The floor is *relative to the top hit*
+  # because bge-m3's absolute scores swing by query (a weak query like "ronaldo"
+  # tops out ~0.39, a broad one ~0.64), so no fixed cutoff fits both — a fixed 0.40
+  # wipes the weak query yet leaves hundreds for the broad one. The small absolute
+  # `min_score` still floors out nonsense (nothing clears it → no results). FTS
+  # matches are unaffected: they re-enter through the FTS list in `rrf/1`, so
+  # exact-term hits survive a low cosine. `ratio <= 0` (default) disables the floor,
+  # preserving the show-everything behaviour. Expects `scored` sorted best-first.
+  defp above_relevance_floor([]), do: []
+
+  defp above_relevance_floor([{_id, top} | _] = scored) do
+    {ratio, min_score} = relevance_config()
+
+    if ratio <= 0.0 do
+      scored
+    else
+      floor = max(min_score, ratio * top)
+      Enum.take_while(scored, fn {_id, score} -> score >= floor end)
+    end
+  end
+
+  # `ratio` (keep acts within this fraction of the top cosine, 0.0 = floor off) and
+  # the absolute `min_score` (nonsense-query backstop). Tunable live via
+  # `config :arcada, #{inspect(__MODULE__)}`.
+  defp relevance_config do
+    cfg = Application.get_env(:arcada, __MODULE__, [])
+    {cfg[:relevance_ratio] || 0.0, cfg[:min_relevance_score] || 0.0}
   end
 
   defp load_acts([]), do: []
