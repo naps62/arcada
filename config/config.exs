@@ -206,6 +206,18 @@ config :arcada, Arcada.RateLimit,
   anon: [per_minute: 20, per_day: 200],
   user: [per_minute: 120, per_day: 2_000]
 
+# Recency boost for hybrid search ranking. After semantic+FTS fusion (RRF), each
+# act's score is multiplied by a bounded factor in [1, 1+recency_beta]: newest
+# acts get the full boost, older ones decay toward 1.0 with `recency_half_life_days`.
+# Bounded on purpose — recency only breaks near-ties; a relevance gap wider than a
+# factor of (1+beta) still wins, and a recent-but-irrelevant act can't be lifted
+# into the results. `recency_beta: 0.0` disables it (pure relevance). ~1.6% RRF per
+# rank near the top, so beta 0.15 lets recency swing ~9 ranks; drop it for a gentler
+# nudge. Tunable here without a code change.
+config :arcada, Arcada.Search,
+  recency_beta: 0.15,
+  recency_half_life_days: 180
+
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 

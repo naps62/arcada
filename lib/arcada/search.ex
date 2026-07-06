@@ -140,8 +140,9 @@ defmodule Arcada.Search do
   end
 
   # Reciprocal Rank Fusion: each list votes 1/(k+rank) (rank 1-based) for the
-  # ids it ranks; sum the votes, best total first. Ids in both lists compound;
-  # a stable id tiebreak keeps the order deterministic.
+  # ids it ranks; sum the votes, best total first. Ids in both lists compound.
+  # A bounded recency boost then breaks near-ties toward fresher acts, and a
+  # stable id tiebreak keeps the order deterministic.
   defp rrf(ranked_lists) do
     ranked_lists
     |> Enum.reduce(%{}, fn ids, scores ->
@@ -151,8 +152,51 @@ defmodule Arcada.Search do
         Map.update(scores, id, 1.0 / (@rrf_k + rank), &(&1 + 1.0 / (@rrf_k + rank)))
       end)
     end)
+    |> apply_recency()
     |> Enum.sort_by(fn {id, score} -> {-score, id} end)
     |> Enum.map(fn {id, _score} -> id end)
+  end
+
+  # Multiply each fused score by a bounded recency factor in `[1, 1+β]`: the
+  # newest acts get `1+β`, older ones decay toward the neutral `1.0` with a
+  # configurable half-life. Because the factor is bounded, recency only reorders
+  # near-ties — a relevance gap wider than a factor of `(1+β)` still wins, and a
+  # recent-but-irrelevant act (deep in the list) can't be lifted into the page.
+  # `β = 0` (the default) short-circuits to the pre-recency behaviour exactly.
+  # Acts with an unknown `published_at` take the neutral factor.
+  defp apply_recency(scores) do
+    case recency_config() do
+      {beta, _half_life} when beta <= 0.0 or map_size(scores) == 0 ->
+        scores
+
+      {beta, half_life} ->
+        dates = published_ats(Map.keys(scores))
+        today = Date.utc_today()
+
+        Map.new(scores, fn {id, score} ->
+          {id, score * recency_factor(dates[id], today, beta, half_life)}
+        end)
+    end
+  end
+
+  defp recency_factor(%Date{} = published, today, beta, half_life) do
+    age_days = max(Date.diff(today, published), 0)
+    1.0 + beta * :math.pow(0.5, age_days / half_life)
+  end
+
+  defp recency_factor(_no_date, _today, _beta, _half_life), do: 1.0
+
+  # `β` (max fractional boost for a brand-new act, 0.0 = off) and the half-life in
+  # days over which that boost decays. Tunable live via `config :arcada, #{inspect(__MODULE__)}`.
+  defp recency_config do
+    cfg = Application.get_env(:arcada, __MODULE__, [])
+    {cfg[:recency_beta] || 0.0, cfg[:recency_half_life_days] || 180}
+  end
+
+  defp published_ats(ids) do
+    from(a in Act, where: a.id in ^ids, select: {a.id, a.published_at})
+    |> Repo.all()
+    |> Map.new()
   end
 
   @doc """

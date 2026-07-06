@@ -60,6 +60,19 @@ defmodule Arcada.SearchTest do
   # its own stub.
   defp unique_query, do: "consulta-#{System.unique_integer([:positive])}"
 
+  defp set_recency(kw) do
+    prev = Application.get_env(:arcada, Search, [])
+    Application.put_env(:arcada, Search, kw)
+    on_exit(fn -> Application.put_env(:arcada, Search, prev) end)
+  end
+
+  # A unit vector whose cosine against the query `[1.0, 0.0]` is `1/sqrt(1+slope²)`
+  # — strictly decreasing in `slope`, so a larger slope = a lower-ranked match.
+  defp unit_vec(slope) do
+    n = :math.sqrt(1.0 + slope * slope)
+    [1.0 / n, slope / n]
+  end
+
   test "ranks acts by cosine similarity to the query, best match first" do
     close = act_fixture()
     far = act_fixture()
@@ -82,6 +95,54 @@ defmodule Arcada.SearchTest do
 
     assert [%Act{id: id}] = Search.search(unique_query())
     assert id == act.id
+  end
+
+  describe "recency boost" do
+    # The whole point: a fresher act wins a near-tie it would lose on cosine alone.
+    test "breaks a near-tie toward the fresher act" do
+      set_recency(recency_beta: 0.15, recency_half_life_days: 180)
+      set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+
+      older = act_fixture(%{published_at: ~D[2000-01-01]})
+      indexed_summary(older, unit_vec(0.0))
+      fresh = act_fixture(%{published_at: Date.utc_today()})
+      indexed_summary(fresh, unit_vec(0.0447))
+
+      # Without recency this is [older, fresh] (older has the better cosine).
+      assert Search.ranked_ids(unique_query()) == [fresh.id, older.id]
+    end
+
+    test "β = 0 is pure relevance — the better cosine wins regardless of age" do
+      set_recency(recency_beta: 0.0)
+      set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+
+      older = act_fixture(%{published_at: ~D[2000-01-01]})
+      indexed_summary(older, unit_vec(0.0))
+      fresh = act_fixture(%{published_at: Date.utc_today()})
+      indexed_summary(fresh, unit_vec(0.0447))
+
+      assert Search.ranked_ids(unique_query()) == [older.id, fresh.id]
+    end
+
+    # The bound must protect a clearly stronger older match: a fresh act sitting
+    # far down the relevance ranking can't be lifted to the top by recency alone.
+    test "a fresh but far-down act does not overtake a strong older match" do
+      set_recency(recency_beta: 0.15, recency_half_life_days: 180)
+      set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+
+      strong = act_fixture(%{published_at: ~D[2000-01-01]})
+      indexed_summary(strong, unit_vec(0.0))
+
+      for k <- 1..12 do
+        filler = act_fixture(%{published_at: ~D[2000-01-01]})
+        indexed_summary(filler, unit_vec(0.1 * k))
+      end
+
+      fresh = act_fixture(%{published_at: Date.utc_today()})
+      indexed_summary(fresh, unit_vec(0.1 * 13))
+
+      assert hd(Search.ranked_ids(unique_query())) == strong.id
+    end
   end
 
   test "blank query returns no results without touching the embedder" do
