@@ -243,7 +243,7 @@ defmodule ArcadaWeb.RegisterLiveSearchTest do
     act
   end
 
-  test "over the anon limit, search degrades to FTS-only with a sign-up nudge", %{conn: conn} do
+  test "over the anon limit, search degrades to FTS-only with a degraded banner", %{conn: conn} do
     set_rate_limits(anon: [per_minute: 0, per_day: 0])
     # Semantic must not even be attempted when degraded.
     set_embeddings(embed_fn: fn _ -> raise "should not embed when rate-limited" end)
@@ -251,10 +251,11 @@ defmodule ArcadaWeb.RegisterLiveSearchTest do
 
     {:ok, _lv, html} = live(conn, ~p"/?#{[q: "arrendamento"]}")
 
-    # The nudge appears with sign-in + register calls to action…
+    # The banner explains why results degraded…
     assert html =~ "resultados por texto"
-    assert html =~ "cria conta"
-    assert html =~ ~p"/users/register"
+    # …but the sign-up CTA is hidden for launch (issue #53) — no account links.
+    refute html =~ "cria conta"
+    refute html =~ ~p"/users/register"
     # …and FTS still returned the act, so search stayed useful.
     assert html =~ "Lei do arrendamento"
   end

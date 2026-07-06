@@ -242,16 +242,17 @@ defmodule ArcadaWeb.RegisterLive do
         class="flex items-start gap-2 border-b border-border bg-surface-inset px-3 py-3 text-sm text-muted"
       >
         <.icon name="hero-bolt-slash-micro" class="mt-0.5 size-4 shrink-0 text-primary" />
+        <%!-- Account CTA hidden for launch — we don't advertise sign-ups yet, so the
+             anonymous nudge keeps only the "why results degraded" explanation and drops
+             the "Entra ou cria conta" links. Restore them when signups open (issue #53):
+
+               <.link navigate={~p"/users/log_in"} class="font-semibold text-primary hover:underline">Entra</.link>
+               ou
+               <.link navigate={~p"/users/register"} class="font-semibold text-primary hover:underline">cria conta</.link>
+               para pesquisa por significado e mais pesquisas. --%>
         <p :if={is_nil(@current_user)}>
           A mostrar resultados por texto — atingiste o limite de pesquisa inteligente.
-          <.link navigate={~p"/users/log_in"} class="font-semibold text-primary hover:underline">
-            Entra
-          </.link>
-          ou
-          <.link navigate={~p"/users/register"} class="font-semibold text-primary hover:underline">
-            cria conta
-          </.link>
-          para pesquisa por significado e mais pesquisas.
+          Dá uns minutos e volta a estar disponível.
         </p>
         <p :if={@current_user}>
           A pesquisar depressa demais — a mostrar resultados por texto por agora.
