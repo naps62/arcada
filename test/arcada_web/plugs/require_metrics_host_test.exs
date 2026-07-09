@@ -31,6 +31,15 @@ defmodule ArcadaWeb.Plugs.RequireMetricsHostTest do
       assert conn.resp_body =~ "# HELP" or conn.resp_body =~ "# TYPE"
     end
 
+    test "serves /metrics on an IP-literal host (internal Alloy scrape)", %{conn: _conn} do
+      # Alloy scrapes the container by IP over dokploy-network, so conn.host is
+      # a bare IP, not the metrics FQDN. This must not 404 (issue #11 regression).
+      for host <- ["10.0.1.130", "172.16.0.9", "::1"] do
+        conn = build_conn() |> on_host(host) |> get("/metrics")
+        assert conn.status == 200
+      end
+    end
+
     test "does not guard other paths on the public host", %{conn: conn} do
       # A non-/metrics path on the public host is untouched by this plug.
       conn = conn |> on_host(@public_host) |> get("/")
