@@ -84,26 +84,44 @@ Wiring steps:
 
 ## Two-host setup — public `arcada.naps.pt` + private `arcada.example.internal` (issue #37)
 
-The app is served privately on `arcada.example.internal` (VPN). `arcada.naps.pt` is the
-**future** public host — **not wired up yet** (see below).
+**LIVE since 2026-07-09.** The app is served publicly on `arcada.naps.pt`
+(Cloudflare-proxied) and privately on `arcada.example.internal` (VPN).
 
-| Host | Audience | Edge middlewares | `/admin*` |
-|---|---|---|---|
-| `arcada.example.internal` | private (VPN) | `vpn-allowlist` | served (VPN only) |
-| `arcada.naps.pt` | public *(not exposed yet)* | — | **404** (host guard) |
+| Host | Audience | Entrypoint | Edge middlewares | `/admin*` |
+|---|---|---|---|---|
+| `arcada.example.internal` | private (VPN) | `websecure` (:443) | `vpn-allowlist` | served (VPN only) |
+| `arcada.naps.pt` | public | `websecure-public` (:8443) | `cloudflare-only` | **404** (host guard) |
+
+**How the public host works.** The Dokploy Traefik defines a dedicated
+`websecure-public` entrypoint on `:8443` that trusts Cloudflare forwarded headers
+and carries **no** default VPN ACL (the `:443 websecure` entrypoint applies
+`vpn-allowlist` to every router by default). The `arcada.naps.pt`
+domain row is pointed at that entrypoint (`customEntrypoint: websecure-public`)
+with the `cloudflare-only@file` ipAllowList so only Cloudflare edge IPs can reach
+the origin (no direct-to-origin bypass). Cloudflare proxies `arcada.naps.pt`
+(orange-cloud A record → origin `:8443`). `PHX_HOST=arcada.naps.pt` so canonical
+URLs / OG tags / sitemap advertise the public host; `ADMIN_HOST=arcada.example.internal`
+keeps `/admin*` a 404 on the public host, and `CHECK_ORIGIN_HOSTS` lists both so
+LiveView upgrades work on either. `REMOTE_IP=true` (X-Forwarded-For) recovers the
+real visitor IP behind Cloudflare.
+
+**The one non-Dokploy gotcha:** a public app must live on the `:8443`
+`websecure-public` entrypoint. Left on the default `:443` entrypoint it inherits
+the VPN ACL and Cloudflare-proxied traffic 404s (wrong entrypoint) — this is set
+per-domain-row via `customEntrypoint`, not an app env var.
 
 - **`arcada.example.internal`** is the private VPN host carrying the
   `vpn-allowlist` IP-allowlist middleware (per the `*.example.internal`
   model), and is `PHX_HOST`. It is the only host where `/admin*` exists. The VPN
   IP-allowlist is the access boundary — `/admin` needs no further auth (see the
   Admin section below).
-- **`arcada.naps.pt`** has **no Traefik row / Cloudflare route** for now — it is
-  intentionally closed by not being exposed. The app is still hardened for it:
-  `ADMIN_HOST=arcada.example.internal` makes `RequireAdminHost` raise a 404 for `/admin*`
-  on any other host, and `arcada.naps.pt` is pre-listed in `CHECK_ORIGIN_HOSTS`
-  so LiveView works the moment it's opened.
+- **`arcada.naps.pt`** is open to the public (no auth gate — the sign-in/up UI is
+  hidden, issue #53, but the register is world-readable). It is hardened by:
+  `ADMIN_HOST=arcada.example.internal` (RequireAdminHost 404s `/admin*` off the private
+  host), `cloudflare-only` origin lock, and a `noindex`-free but `/admin`-`/users`-
+  `/dev`-disallowing `robots.txt`.
 
-  **Why not Authelia (as first tried):** the shared `authelia` middleware
+  **Why not Authelia (considered, not used):** the shared `authelia` middleware
   forward-auths to Authelia at `192.0.2.20:9091`, which is configured only for
   `*.example.internal` (→ `auth.example.internal`) and `*.example.internal`. For the bare `naps.pt`
   cookie domain it returns **400**, so `authelia@file` cannot gate
