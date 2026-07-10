@@ -8,7 +8,10 @@ defmodule Arcada.Summarizer.Adapters.Ssh do
   Robustness: the prompt is written to a temp file and piped to the remote command
   over SSH stdin (`ssh … <cmd> < tmpfile`). No act content is ever interpolated
   into a command line — no injection, no MAX_ARG_STRLEN limit for long diplomas.
-  Tests inject `:runner` via `Application.put_env(:arcada, __MODULE__, ...)`.
+  The single-value connection fields (`ssh_user`, `ssh_host`, `ssh_identity_file`)
+  and the tmpfile are shell-quoted, so a hostile provider row can't break out of
+  the local `sh -c` (issue #59; `ssh_claude_cmd` stays unquoted — it is a remote
+  command by design). Tests inject `:runner` via `Application.put_env/3`.
 
   Model selection: a real selected model is forwarded to the remote CLI's
   `--model` flag (shell-quoted). The sentinel `#{"claude-cli"}` and a nil model
@@ -88,12 +91,25 @@ defmodule Arcada.Summarizer.Adapters.Ssh do
     end
   end
 
-  defp ssh_command(%Provider{} = p, tmpfile, model) do
+  @doc """
+  Build the local `sh -c` line that opens the SSH connection and pipes the prompt
+  file to the remote command. The connection fields (`ssh_user`, `ssh_host`,
+  `ssh_identity_file`) and the tmpfile are single-value inputs and are
+  `shell_quote/1`-wrapped, so a hostile provider row (e.g. `ssh_host: "h; rm -rf /"`
+  set via a compromised admin surface, issue #59) can't break out of the local
+  shell. `ssh_claude_cmd` is deliberately NOT quoted: it is a remote command line
+  by design (interpreted by the remote shell) — an admin who can set it already has
+  remote execution, so quoting it would only break legitimate flags.
+
+  Public only so the quoting is unit-testable.
+  """
+  def ssh_command(%Provider{} = p, tmpfile, model) do
     user = p.ssh_user || "claude"
     claude_cmd = remote_claude_cmd(p.ssh_claude_cmd || @default_claude_cmd, model)
-    identity = if f = p.ssh_identity_file, do: "-i #{f} ", else: ""
+    identity = if f = p.ssh_identity_file, do: "-i #{shell_quote(f)} ", else: ""
     extra = Enum.join(@default_ssh_extra, " ")
-    "ssh #{identity}#{extra} #{user}@#{p.ssh_host} #{claude_cmd} < #{tmpfile}"
+    dest = shell_quote("#{user}@#{p.ssh_host}")
+    "ssh #{identity}#{extra} #{dest} #{claude_cmd} < #{shell_quote(tmpfile)}"
   end
 
   @doc """

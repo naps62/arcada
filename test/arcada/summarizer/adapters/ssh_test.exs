@@ -127,4 +127,43 @@ defmodule Arcada.Summarizer.Adapters.SshTest do
                ~s(#{@base} --model 'a'\\''; rm -rf /')
     end
   end
+
+  describe "ssh_command/3 — shell-quoting of connection fields (issue #59)" do
+    alias Arcada.Providers.Provider
+
+    test "single-quotes the user@host destination and identity file" do
+      p = %Provider{ssh_user: "claude", ssh_host: "box.internal", ssh_identity_file: "/k/id"}
+      cmd = Ssh.ssh_command(p, "/tmp/prompt", "claude-cli")
+
+      assert cmd =~ "-i '/k/id' "
+      assert cmd =~ " 'claude@box.internal' "
+      assert cmd =~ " < '/tmp/prompt'"
+    end
+
+    test "neutralizes shell injection in ssh_host" do
+      p = %Provider{ssh_host: "h; touch /pwned", ssh_user: "claude"}
+      cmd = Ssh.ssh_command(p, "/tmp/prompt", "claude-cli")
+
+      # the whole user@host is one single-quoted token → the metacharacters are inert
+      assert cmd =~ "'claude@h; touch /pwned'"
+      refute cmd =~ "; touch /pwned "
+    end
+
+    test "neutralizes shell injection in ssh_user and identity file" do
+      p = %Provider{ssh_host: "box", ssh_user: "u'; id #", ssh_identity_file: "/k; rm -rf /"}
+      cmd = Ssh.ssh_command(p, "/tmp/p", "claude-cli")
+
+      refute cmd =~ "; rm -rf / "
+      refute cmd =~ "; id # "
+      # identity single-quoted with the POSIX close/escape/reopen for the inner quote
+      assert cmd =~ "-i '/k; rm -rf /'"
+    end
+
+    test "leaves ssh_claude_cmd unquoted (remote command by design)" do
+      p = %Provider{ssh_host: "box", ssh_claude_cmd: "claude -p --output-format json"}
+      cmd = Ssh.ssh_command(p, "/tmp/p", "claude-cli")
+
+      assert cmd =~ " claude -p --output-format json < "
+    end
+  end
 end
