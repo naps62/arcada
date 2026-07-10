@@ -14,7 +14,7 @@ defmodule Arcada.Search.FTS do
   import Ecto.Query
 
   alias Arcada.Repo
-  alias Arcada.Register.Act
+  alias Arcada.Register.{Act, Summary}
 
   @doc """
   Act ids whose header or summary text matches `query`, best match first.
@@ -34,23 +34,18 @@ defmodule Arcada.Search.FTS do
 
   # The tsvector expressions must stay byte-for-byte identical to the ones in the
   # `add_fts_indexes` migration, or the GIN indexes won't be used for the match.
+  #
+  # Candidate acts come from `candidate_ids/1` — an index-friendly UNION. The
+  # match itself (`a.id in subquery(...)`) is kept out of this join's WHERE on
+  # purpose: an `acts_tsvector @@ q OR summaries_tsvector @@ q` here spans both
+  # sides of the acts⋈summaries join, so Postgres can use neither GIN index and
+  # materializes the whole join per keystroke. This ranking join now runs only
+  # over the pre-filtered candidates; its ORDER BY (max header+body ts_rank
+  # across an act's summaries) is unchanged, so ranking is identical.
   defp ranked_query(q) do
     from a in Act,
       join: s in assoc(a, :summaries),
-      where:
-        fragment(
-          "to_tsvector('portuguese', coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')) @@ websearch_to_tsquery('portuguese', ?)",
-          a.title,
-          a.tipo,
-          a.emitter,
-          ^q
-        ) or
-          fragment(
-            "to_tsvector('portuguese', coalesce(?, '') || ' ' || coalesce(?, '')) @@ websearch_to_tsquery('portuguese', ?)",
-            s.plain_text,
-            s.headline,
-            ^q
-          ),
+      where: a.id in subquery(candidate_ids(q)),
       group_by: a.id,
       # Best combined header+body rank across the act's summaries; a non-matching
       # tsvector contributes ts_rank 0, so this is just the matching side's score.
@@ -72,5 +67,40 @@ defmodule Arcada.Search.FTS do
         asc: a.id
       ],
       select: a.id
+  end
+
+  # Ids of acts that match on the header OR the body, as a UNION of two
+  # single-table subqueries. Each half touches one table's tsvector only, so
+  # each can be answered by its own `add_fts_indexes` GIN index (acts_fts_idx /
+  # summaries_fts_idx) with a bitmap index scan — the whole point of the split.
+  #
+  # The header half can surface a summary-less act, but the ranking join's inner
+  # `assoc(:summaries)` drops those again, so the original inner-join semantics
+  # (summary-less acts are invisible) are preserved.
+  defp candidate_ids(q) do
+    header =
+      from a in Act,
+        where:
+          fragment(
+            "to_tsvector('portuguese', coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')) @@ websearch_to_tsquery('portuguese', ?)",
+            a.title,
+            a.tipo,
+            a.emitter,
+            ^q
+          ),
+        select: a.id
+
+    body =
+      from s in Summary,
+        where:
+          fragment(
+            "to_tsvector('portuguese', coalesce(?, '') || ' ' || coalesce(?, '')) @@ websearch_to_tsquery('portuguese', ?)",
+            s.plain_text,
+            s.headline,
+            ^q
+          ),
+        select: s.act_id
+
+    union(header, ^body)
   end
 end
