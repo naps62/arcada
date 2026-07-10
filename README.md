@@ -13,11 +13,11 @@ Live at **[arcada.naps.pt](https://arcada.naps.pt)**.
 - **Summarize** it in plain Portuguese with an LLM, keeping citations to the source articles.
 - **Publish** to a searchable register, filtered to each reader's profile.
 
-Every summary carries a visible **provenance ladder** — 🤖 unreviewed → 👥 community-reviewed → ✓ verified — so readers always know how much a summary can be trusted. Arcada is a **signpost, not an authority**: it links to the official text and never poses as legal advice.
+Arcada is a **signpost, not an authority**: it links to the official text and never poses as legal advice.
 
 ## Stack
 
-Elixir · Phoenix / LiveView · PostgreSQL · Oban. Local LLM for summarization.
+Elixir · Phoenix / LiveView · PostgreSQL · Oban. Local LLM (llama.cpp) for summarization.
 
 ## Development
 
