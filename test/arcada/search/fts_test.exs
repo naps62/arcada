@@ -123,4 +123,40 @@ defmodule Arcada.Search.FTSTest do
     assert a.id < b.id
     assert FTS.ranked_ids("arrendamento") == [a.id, b.id]
   end
+
+  # --- result cap (#72) ---
+
+  defp set_fts_cfg(kw) do
+    prev = Application.get_env(:arcada, FTS, [])
+    Application.put_env(:arcada, FTS, kw)
+    on_exit(fn -> Application.put_env(:arcada, FTS, prev) end)
+  end
+
+  test "caps the result set at the configured limit, keeping the top-ranked (#72)" do
+    set_fts_cfg(limit: 3)
+
+    # Five matching acts with strictly increasing rank via header term frequency
+    # (more repetitions of the term → higher ts_rank; the body is neutral).
+    acts =
+      for k <- 1..5, into: %{} do
+        title = String.duplicate("arrendamento ", k) <> "diploma #{k}"
+        {k, act_with_summary(%{title: title}, "corpo neutro")}
+      end
+
+    ids = FTS.ranked_ids("arrendamento")
+
+    assert length(ids) == 3
+    # The three strongest survive; the two weakest are dropped by the cap.
+    assert Enum.all?([5, 4, 3], fn k -> acts[k].id in ids end)
+    refute acts[1].id in ids
+    refute acts[2].id in ids
+  end
+
+  test "returns every match when there are fewer than the limit (#72)" do
+    set_fts_cfg(limit: 500)
+    a = act_with_summary(%{title: "arrendamento um"}, "corpo")
+    b = act_with_summary(%{title: "arrendamento dois"}, "corpo")
+
+    assert Enum.sort(FTS.ranked_ids("arrendamento")) == Enum.sort([a.id, b.id])
+  end
 end
