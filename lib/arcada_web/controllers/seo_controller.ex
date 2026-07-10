@@ -60,10 +60,10 @@ defmodule ArcadaWeb.SeoController do
   end
 
   defp act_urls do
-    Enum.map(Register.sitemap_acts(), fn {id, updated_at} ->
+    Enum.map(Register.sitemap_acts(), fn act ->
       %{
-        loc: SEO.url(~p"/acts/#{id}"),
-        lastmod: updated_at && DateTime.to_iso8601(updated_at),
+        loc: SEO.act_url(act),
+        lastmod: act.updated_at && DateTime.to_iso8601(act.updated_at),
         changefreq: "monthly",
         priority: "0.7"
       }

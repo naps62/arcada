@@ -42,7 +42,7 @@ defmodule ArcadaWeb.ActLiveTest do
 
   test "renders summary, sources and full-text toggle", %{conn: conn} do
     %{act: act} = seed()
-    {:ok, lv, html} = live(conn, ~p"/acts/#{act.id}")
+    {:ok, lv, html} = live(conn, ~p"/acts/#{act.dre_id}/#{Act.slug(act)}")
 
     assert html =~ "Decreto n.º 84/2026"
     assert html =~ "Em linguagem simples: muda X."
@@ -79,7 +79,7 @@ defmodule ArcadaWeb.ActLiveTest do
       })
       |> Repo.insert!()
 
-    {:ok, lv, _html} = live(conn, ~p"/acts/#{act.id}")
+    {:ok, lv, _html} = live(conn, ~p"/acts/#{act.dre_id}/#{Act.slug(act)}")
     shown = lv |> element("button", "Ver texto integral") |> render_click()
 
     # legal formatting preserved
@@ -92,16 +92,23 @@ defmodule ArcadaWeb.ActLiveTest do
     refute shown =~ "onerror"
   end
 
-  test "unknown act id raises (404)", %{conn: conn} do
-    assert_raise Ecto.NoResultsError, fn -> live(conn, ~p"/acts/999999") end
+  test "unknown act dre_id raises (404)", %{conn: conn} do
+    assert_raise Ecto.NoResultsError, fn -> live(conn, ~p"/acts/999999/x") end
+  end
+
+  test "bare /acts/:dre_id 301s to the canonical slug URL", %{conn: conn} do
+    %{act: act} = seed()
+    conn = get(conn, ~p"/acts/#{act.dre_id}")
+
+    assert redirected_to(conn, 301) == "/acts/#{act.dre_id}/#{Act.slug(act)}"
   end
 
   test "emits per-act SEO: canonical, article OG, JSON-LD", %{conn: conn} do
     %{act: act} = seed()
-    {:ok, _lv, html} = live(conn, ~p"/acts/#{act.id}")
+    {:ok, _lv, html} = live(conn, ~p"/acts/#{act.dre_id}/#{Act.slug(act)}")
 
     assert html =~ ~s(rel="canonical")
-    assert html =~ "/acts/#{act.id}"
+    assert html =~ "/acts/#{act.dre_id}/#{Act.slug(act)}"
     assert html =~ ~s(property="og:type" content="article")
     assert html =~ ~s(name="description")
     assert html =~ "Em linguagem simples: muda X."

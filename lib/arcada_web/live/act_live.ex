@@ -10,9 +10,11 @@ defmodule ArcadaWeb.ActLive do
   alias Arcada.Register.Summary
   alias ArcadaWeb.SEO
 
+  # Public act pages key on the stable `dre_id`; the `:slug` segment is
+  # decorative (ignored here) and reconciled by the canonical <link>.
   @impl true
-  def mount(%{"id" => id}, _session, socket) do
-    act = Register.get_act!(id)
+  def mount(%{"dre_id" => dre_id}, _session, socket) do
+    act = Register.get_act_by_dre_id!(dre_id)
     summary = Register.published_summary(act)
 
     {:ok,

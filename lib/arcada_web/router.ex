@@ -36,6 +36,11 @@ defmodule ArcadaWeb.Router do
     get "/robots.txt", SeoController, :robots
     get "/sitemap.xml", SeoController, :sitemap
 
+    # Bare `/acts/:dre_id` (no slug) 301s to the canonical `/acts/:dre_id/:slug`
+    # via a real HTTP redirect (not a LiveView client nav) so crawlers see one
+    # canonical URL per act. Lives outside the live_session — it's a plain GET.
+    get "/acts/:dre_id", ActRedirectController, :show
+
     # Public pages mount the current user (nil when logged out) so the masthead
     # can show account/login links. Auth is optional here — gating (issue #27)
     # happens per-route with :require_authenticated_user, not on these.
@@ -44,7 +49,7 @@ defmodule ArcadaWeb.Router do
       live "/", RegisterLive, :index
       live "/faq", FaqLive, :index
       live "/sobre", AboutLive, :index
-      live "/acts/:id", ActLive, :show
+      live "/acts/:dre_id/:slug", ActLive, :show
     end
   end
 

@@ -719,7 +719,7 @@ defmodule ArcadaWeb.CoreComponents do
   def act_entry(%{summary: nil} = assigns) do
     ~H"""
     <.link
-      navigate={~p"/acts/#{@act.id}"}
+      navigate={ArcadaWeb.SEO.act_path(@act)}
       class="group flex items-baseline justify-between gap-4 py-3"
     >
       <span class="min-w-0 font-display text-[0.9375rem] text-ink group-hover:text-primary">
@@ -741,7 +741,7 @@ defmodule ArcadaWeb.CoreComponents do
             {@act.emitter || @act.tipo}
           </p>
           <h3 class="mt-1.5 text-pretty font-display text-xl font-semibold leading-snug text-ink sm:text-[1.375rem]">
-            <.link navigate={~p"/acts/#{@act.id}"} class="rounded-sm hover:text-primary">
+            <.link navigate={ArcadaWeb.SEO.act_path(@act)} class="rounded-sm hover:text-primary">
               {Arcada.Register.Summary.strip_terms(@summary.headline) || @act.title || @act.tipo}
             </.link>
           </h3>

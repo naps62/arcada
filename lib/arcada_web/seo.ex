@@ -20,7 +20,7 @@ defmodule ArcadaWeb.SEO do
   import Phoenix.VerifiedRoutes, except: [url: 1]
 
   alias Arcada.Register
-  alias Arcada.Register.Summary
+  alias Arcada.Register.{Act, Summary}
   alias ArcadaWeb.Endpoint
 
   @default_description "O Diário da República, Série I, em linguagem simples: o que muda, para quem, e a partir de quando — sempre com a fonte oficial ao lado."
@@ -30,6 +30,15 @@ defmodule ArcadaWeb.SEO do
 
   @doc "Absolute URL for `path` (e.g. `/acts/12`), rooted at the endpoint host."
   def url(path), do: Endpoint.url() <> path
+
+  @doc """
+  Canonical path for an act: `/acts/:dre_id/:slug`, keyed on the stable `dre_id`
+  with a decorative title slug. The bare `/acts/:dre_id` (no slug) 301s here.
+  """
+  def act_path(%{dre_id: dre_id} = act), do: ~p"/acts/#{dre_id}/#{Act.slug(act)}"
+
+  @doc "Absolute canonical URL for an act (see `act_path/1`)."
+  def act_url(act), do: url(act_path(act))
 
   @doc """
   The `robots` meta content for a page. Indexable by default; a page opts out of
@@ -79,7 +88,7 @@ defmodule ArcadaWeb.SEO do
   def metadata_for({:act, act, summary}) do
     title = act_title(act, summary)
     description = act_description(act, summary)
-    canonical = url(~p"/acts/#{act.id}")
+    canonical = act_url(act)
 
     %{
       page_title: title,

@@ -332,24 +332,35 @@ defmodule Arcada.Register do
   end
 
   @doc """
-  Lean act rows for the sitemap: `{id, last_modified}` for every act that has a
-  published summary (an act with no summary is a stub — nothing to index yet).
-  Newest first, capped so the sitemap stays well under the 50k-URL limit.
+  Lean act rows for the sitemap: every act that has a published summary (an act
+  with no summary is a stub — nothing to index yet). Returns maps carrying the
+  fields the sitemap needs to build a canonical `/acts/:dre_id/:slug` URL plus
+  `updated_at` for `<lastmod>`. Newest first, capped well under the 50k limit.
   """
   def sitemap_acts(limit \\ 20_000) do
     from(a in Act,
       where: not is_nil(a.published_summary_id),
       order_by: [desc: a.updated_at, desc: a.id],
       limit: ^limit,
-      select: {a.id, a.updated_at}
+      select: %{dre_id: a.dre_id, title: a.title, tipo: a.tipo, updated_at: a.updated_at}
     )
     |> Repo.all()
   end
 
-  @doc "Fetch one act with edition + summaries (each with its provider) preloaded."
+  @doc "Fetch one act by its internal DB id, with edition + summaries preloaded."
   def get_act!(id) do
     Act
     |> Repo.get!(id)
+    |> Repo.preload([:edition, summaries: :provider])
+  end
+
+  @doc """
+  Fetch one act by its stable `dre_id` (the public URL key), with edition +
+  summaries preloaded. Raises `Ecto.NoResultsError` when unknown (→ 404).
+  """
+  def get_act_by_dre_id!(dre_id) do
+    Act
+    |> Repo.get_by!(dre_id: dre_id)
     |> Repo.preload([:edition, summaries: :provider])
   end
 

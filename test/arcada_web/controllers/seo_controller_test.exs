@@ -50,7 +50,7 @@ defmodule ArcadaWeb.SeoControllerTest do
       assert body =~ "/faq</loc>" or body =~ "/faq<"
       assert body =~ "/sobre"
       assert body =~ "domain=fiscal"
-      assert body =~ "/acts/#{act.id}</loc>"
+      assert body =~ "/acts/#{act.dre_id}/#{Act.slug(act)}</loc>"
     end
 
     test "omits acts without a published summary", %{conn: conn} do
@@ -65,7 +65,7 @@ defmodule ArcadaWeb.SeoControllerTest do
         |> Repo.insert!()
 
       body = conn |> get(~p"/sitemap.xml") |> response(200)
-      refute body =~ "/acts/#{act.id}</loc>"
+      refute body =~ "/acts/#{act.dre_id}/#{Act.slug(act)}</loc>"
     end
   end
 end

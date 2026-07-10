@@ -78,6 +78,24 @@ defmodule Arcada.RegisterTest do
     end
   end
 
+  describe "Act.slug/1" do
+    test "slugifies the title: downcase, strip accents + punctuation" do
+      assert Act.slug(%Act{title: "Decreto n.º 84/2026"}) == "decreto-n-84-2026"
+      assert Act.slug(%Act{title: "Portaria — Saúde & Educação"}) == "portaria-saude-educacao"
+    end
+
+    test "falls back to tipo, then a constant, and never trails a hyphen" do
+      assert Act.slug(%Act{title: nil, tipo: "Aviso"}) == "aviso"
+      assert Act.slug(%Act{title: nil, tipo: nil}) == "ato"
+      assert Act.slug(%Act{title: "!!!"}) == "ato"
+      refute String.ends_with?(Act.slug(%Act{title: "Título longo…"}), "-")
+    end
+
+    test "caps length at 80 chars" do
+      assert String.length(Act.slug(%Act{title: String.duplicate("palavra ", 40)})) <= 80
+    end
+  end
+
   describe "Summary.changeset/2" do
     setup do
       edition = insert_edition()

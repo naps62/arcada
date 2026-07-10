@@ -89,7 +89,7 @@ defmodule ArcadaWeb.AdminActLive do
           <span class="text-ink">Act</span>
         </div>
         <a
-          href={~p"/acts/#{@act.id}"}
+          href={ArcadaWeb.SEO.act_path(@act)}
           class="inline-flex shrink-0 items-center gap-1 font-medium text-muted hover:text-primary hover:underline"
         >
           View public page <.icon name="hero-arrow-top-right-on-square-micro" class="size-3.5" />

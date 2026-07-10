@@ -63,6 +63,7 @@ defmodule ArcadaWeb.SEOTest do
     test "headline drives the title; ships an Article JSON-LD with source + date" do
       act = %Act{
         id: 42,
+        dre_id: "84",
         tipo: "Decreto",
         title: "Decreto n.º 84/2026",
         source_url: "https://diariodarepublica.pt/x",
@@ -76,20 +77,21 @@ defmodule ArcadaWeb.SEOTest do
       # [[term]] markers stripped from the headline
       assert m.page_title == "Muda o IVA"
       assert m.page_description == "Em linguagem simples: muda X."
-      assert m.canonical_url == SEO.url("/acts/42")
+      # canonical keys on the stable dre_id with a decorative title slug
+      assert m.canonical_url == SEO.url("/acts/84/decreto-n-84-2026")
       assert m.og_type == "article"
 
       ld = m.json_ld
       assert ld["@type"] == "Article"
       assert ld["headline"] == "Muda o IVA"
-      assert ld["mainEntityOfPage"] == SEO.url("/acts/42")
+      assert ld["mainEntityOfPage"] == SEO.url("/acts/84/decreto-n-84-2026")
       assert ld["datePublished"] == "2026-06-24"
       assert ld["articleSection"] == "Decreto"
       assert ld["isBasedOn"] == "https://diariodarepublica.pt/x"
     end
 
     test "falls back to the act title/description when there's no summary" do
-      act = %Act{id: 7, tipo: "Portaria", title: "Portaria n.º 7/2026"}
+      act = %Act{id: 7, dre_id: "7", tipo: "Portaria", title: "Portaria n.º 7/2026"}
 
       m = SEO.metadata_for({:act, act, nil})
 
@@ -101,7 +103,7 @@ defmodule ArcadaWeb.SEOTest do
     end
 
     test "long descriptions are truncated with an ellipsis" do
-      act = %Act{id: 1, title: String.duplicate("a", 500)}
+      act = %Act{id: 1, dre_id: "1", title: String.duplicate("a", 500)}
       m = SEO.metadata_for({:act, act, nil})
 
       assert String.length(m.page_description) == 300
