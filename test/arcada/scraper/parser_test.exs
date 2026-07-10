@@ -3,7 +3,14 @@ defmodule Arcada.Scraper.ParserTest do
 
   alias Arcada.Scraper.Parser
 
-  @list_fixture Path.join([__DIR__, "..", "..", "support", "fixtures", "dre_list_2026-06-24.json"])
+  @list_fixture Path.join([
+                  __DIR__,
+                  "..",
+                  "..",
+                  "support",
+                  "fixtures",
+                  "dre_list_2026-06-24.json"
+                ])
 
   defp list_json, do: @list_fixture |> File.read!() |> Jason.decode!()
 

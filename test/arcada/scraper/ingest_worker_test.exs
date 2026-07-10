@@ -10,7 +10,14 @@ defmodule Arcada.Scraper.IngestWorkerTest do
   alias Arcada.Scraper.{Client, IngestWorker}
   alias Arcada.Register.{Edition, Act, Summary}
 
-  @list_fixture Path.join([__DIR__, "..", "..", "support", "fixtures", "dre_list_2026-06-24.json"])
+  @list_fixture Path.join([
+                  __DIR__,
+                  "..",
+                  "..",
+                  "support",
+                  "fixtures",
+                  "dre_list_2026-06-24.json"
+                ])
 
   setup do
     # Active SSH provider + stubbed runner so the inline summarize jobs persist
@@ -19,7 +26,10 @@ defmodule Arcada.Scraper.IngestWorkerTest do
     provider = ssh_provider()
 
     {:ok, _} =
-      Admin.update_settings(%{"active_provider_id" => provider.id, "active_model" => "claude-cli"})
+      Admin.update_settings(%{
+        "active_provider_id" => provider.id,
+        "active_model" => "claude-cli"
+      })
 
     fixture = @list_fixture |> File.read!() |> Jason.decode!()
 

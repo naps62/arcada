@@ -38,7 +38,11 @@ defmodule Arcada.ProvidersTest do
     assert api.max_concurrency == 5
 
     {:ok, custom} =
-      Providers.create_provider(%{"name" => "c", "kind" => "anthropic", "max_concurrency" => "12"})
+      Providers.create_provider(%{
+        "name" => "c",
+        "kind" => "anthropic",
+        "max_concurrency" => "12"
+      })
 
     assert custom.max_concurrency == 12
   end

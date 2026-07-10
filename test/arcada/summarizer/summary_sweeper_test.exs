@@ -16,7 +16,10 @@ defmodule Arcada.Summarizer.SummarySweeperTest do
     provider = ssh_provider()
 
     {:ok, _} =
-      Admin.update_settings(%{"active_provider_id" => provider.id, "active_model" => "claude-cli"})
+      Admin.update_settings(%{
+        "active_provider_id" => provider.id,
+        "active_model" => "claude-cli"
+      })
 
     edition =
       %Edition{}
