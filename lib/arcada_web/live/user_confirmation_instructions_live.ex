@@ -2,6 +2,8 @@ defmodule ArcadaWeb.UserConfirmationInstructionsLive do
   use ArcadaWeb, :live_view
 
   alias Arcada.Accounts
+  alias Arcada.RateLimit
+  alias ArcadaWeb.Plugs.VisitorId
 
   def render(assigns) do
     ~H"""
@@ -28,12 +30,20 @@ defmodule ArcadaWeb.UserConfirmationInstructionsLive do
     """
   end
 
-  def mount(_params, _session, socket) do
-    {:ok, assign(socket, form: to_form(%{}, as: "user"))}
+  def mount(_params, session, socket) do
+    {:ok,
+     assign(socket,
+       form: to_form(%{}, as: "user"),
+       visitor_key: session[VisitorId.session_key()]
+     )}
   end
 
   def handle_event("send_instructions", %{"user" => %{"email" => email}}, socket) do
-    if user = Accounts.get_user_by_email(email) do
+    # Rate-limit before sending (issue #61). On deny we skip the send but keep the
+    # same generic message — a throttle looks identical to an already-confirmed or
+    # unregistered address (no enumeration, no inbox bombing / quota burn).
+    with :ok <- RateLimit.email_send(socket.assigns.visitor_key, email),
+         user when not is_nil(user) <- Accounts.get_user_by_email(email) do
       Accounts.deliver_user_confirmation_instructions(
         user,
         &url(~p"/users/confirm/#{&1}")

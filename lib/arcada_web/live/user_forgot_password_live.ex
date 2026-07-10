@@ -2,6 +2,8 @@ defmodule ArcadaWeb.UserForgotPasswordLive do
   use ArcadaWeb, :live_view
 
   alias Arcada.Accounts
+  alias Arcada.RateLimit
+  alias ArcadaWeb.Plugs.VisitorId
 
   def render(assigns) do
     ~H"""
@@ -27,12 +29,20 @@ defmodule ArcadaWeb.UserForgotPasswordLive do
     """
   end
 
-  def mount(_params, _session, socket) do
-    {:ok, assign(socket, form: to_form(%{}, as: "user"))}
+  def mount(_params, session, socket) do
+    {:ok,
+     assign(socket,
+       form: to_form(%{}, as: "user"),
+       visitor_key: session[VisitorId.session_key()]
+     )}
   end
 
   def handle_event("send_email", %{"user" => %{"email" => email}}, socket) do
-    if user = Accounts.get_user_by_email(email) do
+    # Rate-limit before sending (issue #61). On deny we skip the send but still
+    # show the same generic message, so a throttle is indistinguishable from an
+    # unregistered address (no enumeration, no inbox bombing / quota burn).
+    with :ok <- RateLimit.email_send(socket.assigns.visitor_key, email),
+         user when not is_nil(user) <- Accounts.get_user_by_email(email) do
       Accounts.deliver_user_reset_password_instructions(
         user,
         &url(~p"/users/reset_password/#{&1}")

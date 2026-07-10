@@ -31,11 +31,21 @@ defmodule Arcada.RateLimit do
   @type identity :: {tier(), term()}
 
   @minute :timer.minutes(1)
+  @hour :timer.hours(1)
   @day :timer.hours(24)
 
   @defaults [
     anon: [per_minute: 20, per_day: 200],
     user: [per_minute: 120, per_day: 2_000]
+  ]
+
+  # Account emails (password reset + confirmation resend, issue #61). Two
+  # dimensions: the *caller* (visitor id — a soft valve against a loop) and the
+  # *target inbox* (the real anti-bombing / Resend-quota ceiling, since bombing a
+  # victim must reuse their address regardless of cookie resets).
+  @email_defaults [
+    visitor: [per_minute: 5, per_day: 50],
+    email: [per_hour: 3, per_day: 6]
   ]
 
   @doc """
@@ -57,6 +67,49 @@ defmodule Arcada.RateLimit do
       {:deny, retry_ms} -> {:deny, retry_ms}
     end
   end
+
+  @doc """
+  Charge one account-email send (reset / confirmation resend) against both the
+  caller (`visitor_key`) and the `email` inbox. Returns `:ok` when allowed, or
+  `{:deny, retry_after_ms}` for the first exhausted window. Caller windows are
+  charged before the inbox windows, so a looping caller is stopped without
+  spending the victim's budget; a victim already at their cap is protected no
+  matter who triggers it. Email is normalized (trim + downcase) so case/space
+  variants share a bucket.
+
+  Limits: `config :arcada, Arcada.RateLimit, email: [visitor: [...], email: [...]]`
+  over `#{inspect(@email_defaults)}`.
+  """
+  @spec email_send(term(), String.t(), keyword()) :: :ok | {:deny, non_neg_integer()}
+  def email_send(visitor_key, email, opts \\ []) do
+    v = email_limits(:visitor, opts)
+    e = email_limits(:email, opts)
+    to = normalize_email(email)
+
+    with {:allow, _} <- hit({:email_v_min, visitor_key}, @minute, v[:per_minute]),
+         {:allow, _} <- hit({:email_v_day, visitor_key}, @day, v[:per_day]),
+         {:allow, _} <- hit({:email_to_hour, to}, @hour, e[:per_hour]),
+         {:allow, _} <- hit({:email_to_day, to}, @day, e[:per_day]) do
+      :ok
+    else
+      {:deny, retry_ms} -> {:deny, retry_ms}
+    end
+  end
+
+  defp email_limits(dimension, opts) do
+    configured = Application.get_env(:arcada, __MODULE__, [])
+    email_cfg = Keyword.get(configured, :email, [])
+
+    @email_defaults
+    |> Keyword.fetch!(dimension)
+    |> Keyword.merge(Keyword.get(email_cfg, dimension, []))
+    |> Keyword.merge(Keyword.get(opts, dimension, []))
+  end
+
+  defp normalize_email(email) when is_binary(email),
+    do: email |> String.trim() |> String.downcase()
+
+  defp normalize_email(other), do: other
 
   @doc "The configured limits for `tier`, merged over the built-in defaults."
   @spec limits_for(tier(), keyword()) :: keyword()

@@ -204,7 +204,15 @@ config :arcada, Arcada.PromEx,
 # without a code change.
 config :arcada, Arcada.RateLimit,
   anon: [per_minute: 20, per_day: 200],
-  user: [per_minute: 120, per_day: 2_000]
+  user: [per_minute: 120, per_day: 2_000],
+  # Account emails (reset + confirmation resend, issue #61). `visitor` caps a
+  # single caller (a valve against a loop); `email` caps a single inbox — the
+  # real anti-bombing / Resend-quota ceiling. Over budget the send is skipped
+  # behind the same generic message. Tune here without a code change.
+  email: [
+    visitor: [per_minute: 5, per_day: 50],
+    email: [per_hour: 3, per_day: 6]
+  ]
 
 # Recency boost for hybrid search ranking. After semantic+FTS fusion (RRF), each
 # act's score is multiplied by a bounded factor in [1, 1+recency_beta]: newest
