@@ -17,7 +17,7 @@ defmodule Arcada.Search do
   """
   import Ecto.Query
 
-  alias Arcada.{Admin, RateLimit, Repo}
+  alias Arcada.{Admin, RateLimit, Register, Repo}
   alias Arcada.Register.Act
   alias Arcada.Search.{FTS, Index}
   alias Arcada.Summarizer.Embeddings
@@ -252,7 +252,11 @@ defmodule Arcada.Search do
 
   defp load_acts(ids) do
     by_id =
-      from(a in Act, where: a.id in ^ids, preload: [:edition, :summaries])
+      from(a in Act,
+        where: a.id in ^ids,
+        select: struct(a, ^Register.act_listing_fields()),
+        preload: [:edition, summaries: ^Register.summaries_listing_preload()]
+      )
       |> Repo.all()
       |> Map.new(&{&1.id, &1})
 

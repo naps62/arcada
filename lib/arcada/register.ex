@@ -12,6 +12,20 @@ defmodule Arcada.Register do
   alias Arcada.Repo
   alias Arcada.Register.{Edition, Act, Summary}
 
+  # Listing + search hot paths render neither an act's `full_text` (entire law
+  # text) nor a summary's `embedding` (a 1024-float vector the Embedding type
+  # decodes on every load) — only the act detail page and the search index do.
+  # Slim them out of the selects so a 20-row page doesn't drag megabytes + decode
+  # a vector per row for fields the templates never touch (issue #70).
+  # Computed at runtime (not a module attribute) to avoid a compile-time
+  # dependency on the schema modules, which would form a cycle.
+  @doc false
+  def act_listing_fields, do: Act.__schema__(:fields) -- [:full_text]
+
+  @doc false
+  def summaries_listing_preload,
+    do: from(s in Summary, select: struct(s, ^(Summary.__schema__(:fields) -- [:embedding])))
+
   @life_domains ~w(fiscal trabalho saúde família habitação educação transportes justiça ambiente administração)
 
   @doc "The fixed life-domain taxonomy used to tag summaries."
@@ -117,7 +131,8 @@ defmodule Arcada.Register do
     base =
       from(a in Act,
         order_by: [desc: a.published_at, desc: a.id],
-        preload: [:edition, :summaries]
+        select: struct(a, ^act_listing_fields()),
+        preload: [:edition, summaries: ^summaries_listing_preload()]
       )
 
     base
@@ -204,7 +219,8 @@ defmodule Arcada.Register do
       as: :ed,
       where: e.date in ^dates,
       order_by: [desc: a.published_at, desc: a.id],
-      preload: [:edition, :summaries]
+      select: struct(a, ^act_listing_fields()),
+      preload: [:edition, summaries: ^summaries_listing_preload()]
     )
     |> filter_domain(domain)
     |> Repo.all()

@@ -179,4 +179,41 @@ defmodule Arcada.RegisterTest do
       assert Arcada.Register.acts_without_summary(100) == []
     end
   end
+
+  describe "listing / search loads are slim (issue #70)" do
+    setup do
+      edition = insert_edition()
+      act = insert_act(edition, %{title: "Lei X", full_text: "<p>texto integral</p>"})
+
+      %Summary{}
+      |> Summary.changeset(%{
+        act_id: act.id,
+        plain_text: "resumo simples",
+        domains: [:fiscal],
+        embedding: [0.1, 0.2, 0.3]
+      })
+      |> Repo.insert!()
+
+      %{act: act}
+    end
+
+    test "list_acts omits act.full_text and summary.embedding, keeps listing fields", %{act: act} do
+      [loaded] = Arcada.Register.list_acts()
+
+      assert loaded.id == act.id
+      # slimmed out (the row HAS a full_text, so nil proves it wasn't selected)
+      refute loaded.full_text
+
+      [summary] = loaded.summaries
+      assert summary.plain_text == "resumo simples"
+      assert summary.domains == [:fiscal]
+      # the row HAS an embedding, so nil proves it wasn't loaded/decoded
+      refute summary.embedding
+    end
+
+    test "the act detail load still carries full_text", %{act: act} do
+      loaded = Arcada.Register.get_act_by_dre_id!(act.dre_id)
+      assert loaded.full_text =~ "texto integral"
+    end
+  end
 end
