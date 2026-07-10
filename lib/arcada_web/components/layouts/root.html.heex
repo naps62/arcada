@@ -75,7 +75,7 @@
       :if={assigns[:json_ld]}
       type="application/ld+json"
     >
-      <%= raw(Jason.encode!(@json_ld)) %>
+      <%= raw(Jason.encode!(@json_ld, escape: :html_safe)) %>
     </script>
     <link
       rel="preload"

@@ -4,11 +4,13 @@ defmodule ArcadaWeb.Endpoint do
   # The session will be stored in the cookie and signed,
   # this means its contents can be read but not tampered with.
   # Set :encryption_salt if you would also like to encrypt it.
+  # secure: on in prod, off in dev/test (http localhost) — see :secure_cookies.
   @session_options [
     store: :cookie,
     key: "_arcada_key",
     signing_salt: "xSzix2Dy",
-    same_site: "Lax"
+    same_site: "Lax",
+    secure: Application.compile_env(:arcada, :secure_cookies, false)
   ]
 
   socket "/live", Phoenix.LiveView.Socket,

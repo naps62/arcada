@@ -174,6 +174,15 @@ if config_env() == :prod do
 end
 
 if config_env() == :prod do
+  # Fail closed: RequireAdminHost is the only admin gate and passes everything when
+  # the host is unset, so require ADMIN_HOST in prod rather than default open (#55).
+  System.get_env("ADMIN_HOST") ||
+    raise """
+    environment variable ADMIN_HOST is missing.
+    /admin has no in-app auth — without it the admin + raw-DB surface is open on
+    every host. Set it to the private admin host (e.g. arcada.example.internal).
+    """
+
   database_url =
     System.get_env("DATABASE_URL") ||
       raise """
