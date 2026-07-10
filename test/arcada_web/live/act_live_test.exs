@@ -57,6 +57,41 @@ defmodule ArcadaWeb.ActLiveTest do
     assert shown =~ "Texto integral do diploma"
   end
 
+  test "sanitizes scraped full_text HTML before rendering (XSS)", %{conn: conn} do
+    ed =
+      %Edition{}
+      |> Edition.changeset(%{serie: "I", number: "121/2026", date: ~D[2026-06-25]})
+      |> Repo.insert!()
+
+    act =
+      %Act{}
+      |> Act.changeset(%{
+        edition_id: ed.id,
+        dre_id: "85",
+        title: "Decreto n.º 85/2026",
+        full_text: """
+        <h2>Artigo 1.º</h2><p onclick="steal()">texto</p>\
+        <table><tr><td>célula</td></tr></table>\
+        <script>alert(document.cookie)</script><img src=x onerror=alert(1)>\
+        """,
+        source_url: "https://diariodarepublica.pt/dr/detalhe/y",
+        published_at: ~D[2026-06-25]
+      })
+      |> Repo.insert!()
+
+    {:ok, lv, _html} = live(conn, ~p"/acts/#{act.id}")
+    shown = lv |> element("button", "Ver texto integral") |> render_click()
+
+    # legal formatting preserved
+    assert shown =~ "Artigo 1.º"
+    assert shown =~ "<table>"
+    assert shown =~ "célula"
+    # XSS vectors stripped
+    refute shown =~ "<script"
+    refute shown =~ "onclick"
+    refute shown =~ "onerror"
+  end
+
   test "unknown act id raises (404)", %{conn: conn} do
     assert_raise Ecto.NoResultsError, fn -> live(conn, ~p"/acts/999999") end
   end

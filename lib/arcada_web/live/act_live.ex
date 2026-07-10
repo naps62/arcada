@@ -26,6 +26,11 @@ defmodule ArcadaWeb.ActLive do
     {:noreply, assign(socket, show_full: !socket.assigns.show_full)}
   end
 
+  # full_text is scraped DRE HTML (untrusted); scrub to an allowlist before raw/1.
+  # html5 keeps legal formatting (tables/headings/lists), drops scripts + handlers.
+  defp safe_full_text(nil), do: nil
+  defp safe_full_text(html), do: HtmlSanitizeEx.html5(html)
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -124,7 +129,7 @@ defmodule ArcadaWeb.ActLive do
           Texto integral
         </h2>
         <div class="prose prose-sm mt-3 max-w-none font-serif text-ink prose-headings:font-display prose-headings:text-ink prose-a:text-primary">
-          {raw(@act.full_text)}
+          {raw(safe_full_text(@act.full_text))}
         </div>
       </section>
     </div>

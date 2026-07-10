@@ -58,6 +58,7 @@ defmodule Arcada.MixProject do
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 0.26"},
+      {:html_sanitize_ex, "~> 1.4"},
       {:jason, "~> 1.2"},
       {:bcrypt_elixir, "~> 3.0"},
       {:swoosh, "~> 1.16"},
