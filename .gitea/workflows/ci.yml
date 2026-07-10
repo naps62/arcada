@@ -30,7 +30,15 @@ jobs:
         run: |
           apt-get update
           apt-get install -y --no-install-recommends ca-certificates curl gnupg git postgresql
-          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+          # Node.js 20 from the NodeSource apt repo via a pinned keyring — no
+          # `curl | bash` (don't pipe a remote script into a root shell). The key
+          # is fetched once and every nodejs package is signature-verified against
+          # it, so a compromised/unavailable setup script can't run arbitrary code.
+          curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+            | gpg --dearmor -o /usr/share/keyrings/nodesource.gpg
+          echo "deb [signed-by=/usr/share/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" \
+            > /etc/apt/sources.list.d/nodesource.list
+          apt-get update
           apt-get install -y --no-install-recommends nodejs
 
       - name: Start PostgreSQL (localhost:5433, trust auth)
