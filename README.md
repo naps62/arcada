@@ -1,35 +1,34 @@
-# arcada
+# Arcada
 
-**Arcada — o Diário da República em linguagem simples**
+**O Diário da República em linguagem simples.**
 
-> Status: early planning. This README captures the loose project description; scope and architecture are still being worked out.
+Arcada reads the *Diário da República, Série I* (Portugal's official journal) every day and turns each act into a plain-language summary that answers one question: *what changed, for whom, and from when* — with article-level citations back to the official source.
 
-## The idea
+Live at **[arcada.naps.pt](https://arcada.naps.pt)**.
 
-Daily scrape of **Diário da República Série I** → classify by life-domain → plain-language LLM summaries answering *what changed, for whom, from when*, with **article-level citations**.
+## How it works
 
-A **provenance ladder**:
+- **Scrape** the daily Série I.
+- **Classify** each act by life-domain.
+- **Summarize** it in plain Portuguese with an LLM, keeping citations to the source articles.
+- **Publish** to a searchable register, filtered to each reader's profile.
 
-1. 🤖 **unreviewed** (opt-in, screenshot-proof labeling, hot-topics carved out)
-2. 👥 **community-reviewed** (vouched reviewers, flag-anyone / promote-by-vouch)
-3. ✓ **verified**
+Every summary carries a visible **provenance ladder** — 🤖 unreviewed → 👥 community-reviewed → ✓ verified — so readers always know how much a summary can be trusted. Arcada is a **signpost, not an authority**: it links to the official text and never poses as legal advice.
 
-A personal profile filters the firehose to your life. Newsletter + social bot for distribution; **journalists as the growth loop**.
+## Stack
 
-No clean official API — it's OutSystems scraping (prior art exists: `hgg/dre`, Apify) — so the real cost is the **daily editorial cadence**, kept coffee-sized by Série I's low volume and the review-as-diff-against-grounding trick.
+Elixir · Phoenix / LiveView · PostgreSQL · Oban. Local LLM for summarization.
 
-## Ratings (from the shortlist)
+## Development
 
-- **Effort to MVP:** weeks
-- **Upkeep:** daily but small, community-distributable
-- **Money:** donations/grants at most
-- **Fit:** high — civic gravitas; the cadence is the one real commitment
+```sh
+mix setup          # install deps, create + migrate DB, build assets
+mix phx.server     # serve at http://localhost:4000
+mix test           # run tests
+```
 
-## Design principles
+Requires Elixir/OTP (see `mix.exs`) and PostgreSQL.
 
-- **Signpost, not authority.** Visible source links, "last verified" dates, plain "isto não é aconselhamento" framing.
-- **Go to market one district deep, not nationally shallow.**
+## License
 
-## Shared infrastructure
-
-Shares its entire crawl/classify/verify pipeline with [`filho-em-portugal`](../filho-em-portugal) and the recall & safety aggregator (which could even be a *module* of this).
+TBD.
