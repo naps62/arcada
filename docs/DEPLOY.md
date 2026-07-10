@@ -5,8 +5,8 @@ Private, VPN-only deployment via **Dokploy** on `example.internal`, per `docs/PL
 
 ## What's in the repo
 
-- **`Dockerfile`** — multi-stage Elixir release (`hexpm/elixir:1.17.3-erlang-25.3.2.8`
-  builder → `debian:bullseye-slim` runtime). Runs `mix assets.deploy` + `mix release`.
+- **`Dockerfile`** — multi-stage Elixir release (`hexpm/elixir:1.18.4-erlang-27.3.4.14`
+  builder → `debian:bookworm-slim` runtime). Runs `mix assets.deploy` + `mix release`.
 - **`rel/overlays/bin/{server,migrate}`**, **`lib/arcada/release.ex`** — release entrypoints.
 - **`config/runtime.exs`** — reads `DATABASE_URL`, `SECRET_KEY_BASE`, `PHX_HOST`,
   `PORT`, `ANTHROPIC_API_KEY`, `SUMMARIZER_ADAPTER` at boot.

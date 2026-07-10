@@ -8,11 +8,11 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    # Pinned to the toolchain this project actually needs: Elixir 1.15+ on OTP 25
-    # (apt's Elixir 1.14 is too old for current Hex deps). The official image
-    # bundles full OTP, so mint's public_key/ssl shims compile out of the box.
+    # Pinned to the toolchain this project actually needs: Elixir 1.18 on OTP 27
+    # (apt's Elixir is too old for current Hex deps). The official image bundles
+    # full OTP, so mint's public_key/ssl shims compile out of the box.
     container:
-      image: elixir:1.17.3-otp-25
+      image: elixir:1.18.4-otp-27
 
     env:
       MIX_ENV: test
