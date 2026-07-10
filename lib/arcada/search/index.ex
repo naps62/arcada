@@ -39,14 +39,51 @@ defmodule Arcada.Search.Index do
 
   def start_link(opts \\ []), do: GenServer.start_link(__MODULE__, opts, name: __MODULE__)
 
-  @doc "Every indexed `{summary_id, act_id, vector}` row."
-  def all, do: :ets.tab2list(@table)
+  @doc """
+  Every indexed row as `{summary_id, act_id, vector}` with the vector decoded
+  back to a float list. Debug/test convenience — copies the whole table, so the
+  hot search path uses `scores/1` (a fold), never this.
+  """
+  def all do
+    :ets.foldl(
+      fn {id, act_id, bin, _norm}, acc -> [{id, act_id, unpack(bin)} | acc] end,
+      [],
+      @table
+    )
+  end
 
   @doc "Test helper: empty the index. Never called by the app itself."
   def clear, do: :ets.delete_all_objects(@table)
 
-  @doc "(Re)index one summary's embedding — called after it's generated/regenerated."
-  def put(summary_id, act_id, vector), do: :ets.insert(@table, {summary_id, act_id, vector})
+  @doc """
+  (Re)index one summary's embedding — called after it's generated/regenerated.
+  The vector is packed to a float32 binary (a quarter of the list encoding) and
+  its norm is precomputed so `scores/1` skips the per-search `sqrt(dot(v,v))`.
+  """
+  def put(summary_id, act_id, vector) do
+    bin = pack(vector)
+    :ets.insert(@table, {summary_id, act_id, bin, vnorm(bin)})
+  end
+
+  @doc """
+  Cosine similarity of `query_vec` against every indexed summary, as
+  `[{act_id, score}]`. Folds over the ETS table in place (issue #71): the fat
+  `{id, act_id, [1024 floats]}` rows never leave ETS — only the small
+  `{act_id, score}` list is built — so a search no longer copies the whole
+  vector index (~64MB at 2k rows) into the caller's heap.
+  """
+  def scores(query_vec) do
+    qbin = pack(query_vec)
+    qnorm = vnorm(qbin)
+
+    :ets.foldl(
+      fn {_id, act_id, vbin, vnorm}, acc ->
+        [{act_id, cosine(qbin, qnorm, vbin, vnorm)} | acc]
+      end,
+      [],
+      @table
+    )
+  end
 
   @doc """
   (Re)load every summary embedding from the DB. Runs as a plain query in the
@@ -200,4 +237,23 @@ defmodule Arcada.Search.Index do
       state
     end
   end
+
+  # Vector packing (issue #71). Stored as little-endian float32 — the same
+  # encoding the DB `Arcada.Register.Embedding` type uses, so this is a compact
+  # representation, not a precision change (embeddings are float32 on disk).
+  defp pack(vec), do: for(f <- vec, into: <<>>, do: <<f * 1.0::float-32-little>>)
+
+  defp unpack(bin), do: for(<<f::float-32-little <- bin>>, do: f)
+
+  defp vnorm(bin), do: :math.sqrt(dot(bin, bin, 0.0))
+
+  defp cosine(qbin, qnorm, vbin, vnorm) do
+    if qnorm == 0.0 or vnorm == 0.0, do: 0.0, else: dot(qbin, vbin, 0.0) / (qnorm * vnorm)
+  end
+
+  defp dot(<<a::float-32-little, ra::binary>>, <<b::float-32-little, rb::binary>>, acc) do
+    dot(ra, rb, acc + a * b)
+  end
+
+  defp dot(<<>>, <<>>, acc), do: acc
 end

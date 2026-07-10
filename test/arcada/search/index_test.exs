@@ -3,6 +3,7 @@ defmodule Arcada.Search.IndexTest do
 
   alias Arcada.Register.{Act, Edition, Summary}
   alias Arcada.Search.Index
+  alias Arcada.Summarizer.Embeddings
 
   setup do
     Index.clear()
@@ -83,6 +84,38 @@ defmodule Arcada.Search.IndexTest do
     cfg = [embed_fn: fn _ -> {:error, :boom} end]
     query = "erro-#{System.unique_integer([:positive])}"
     assert {:error, :boom} = Index.embed_query(query, cfg)
+  end
+
+  test "scores/1 returns each indexed act's cosine to the query (#71)" do
+    a = act_fixture()
+    b = act_fixture()
+    Index.put(1, a.id, [1.0, 0.0])
+    Index.put(2, b.id, [0.0, 1.0])
+    q = [0.6, 0.8]
+
+    scores = Map.new(Index.scores(q))
+    # Vectors are stored as packed float32 in ETS, so allow float32 rounding.
+    assert_in_delta scores[a.id], Embeddings.cosine(q, [1.0, 0.0]), 1.0e-5
+    assert_in_delta scores[b.id], Embeddings.cosine(q, [0.0, 1.0]), 1.0e-5
+  end
+
+  test "scores/1 gives a zero vector cosine 0, never divides by zero (#71)" do
+    a = act_fixture()
+    Index.put(1, a.id, [0.0, 0.0])
+    assert Index.scores([1.0, 0.0]) == [{a.id, 0.0}]
+  end
+
+  test "scores/1 over an empty index is [] (#71)" do
+    assert Index.scores([1.0, 0.0]) == []
+  end
+
+  test "put/3 then all/0 round-trips the vector through packed storage (#71)" do
+    a = act_fixture()
+    Index.put(7, a.id, [1.0, 0.5, 0.25])
+    assert [{7, act_id, vec}] = Index.all()
+    assert act_id == a.id
+    # float32-exact for these values.
+    assert vec == [1.0, 0.5, 0.25]
   end
 
   defp uq(p), do: "#{p}-#{System.unique_integer([:positive])}"

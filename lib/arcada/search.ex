@@ -239,8 +239,7 @@ defmodule Arcada.Search do
   end
 
   defp rank_ids(query_vec) do
-    Index.all()
-    |> Enum.map(fn {_summary_id, act_id, vec} -> {act_id, Embeddings.cosine(query_vec, vec)} end)
+    Index.scores(query_vec)
     |> Enum.sort_by(fn {_act_id, score} -> score end, :desc)
     # An act can have several (re-run) summaries indexed; keep its best score.
     |> Enum.uniq_by(fn {act_id, _score} -> act_id end)
