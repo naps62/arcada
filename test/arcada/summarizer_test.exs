@@ -393,5 +393,4 @@ defmodule Arcada.SummarizerTest do
                )
     end
   end
-
 end

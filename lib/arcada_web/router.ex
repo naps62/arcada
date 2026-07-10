@@ -66,7 +66,7 @@ defmodule ArcadaWeb.Router do
   scope "/admin" do
     pipe_through [:browser, :admin]
 
-    oban_dashboard "/jobs"
+    oban_dashboard("/jobs")
   end
 
   # Raw-DB admin (Kaffy): auto-generated CRUD over every Ecto schema, mounted at

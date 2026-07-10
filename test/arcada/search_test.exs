@@ -151,13 +151,17 @@ defmodule Arcada.SearchTest do
       set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
 
       a = act_fixture()
-      indexed_summary(a, unit_vec(0.0))     # cosine 1.000  → top
+      # cosine 1.000  → top
+      indexed_summary(a, unit_vec(0.0))
       b = act_fixture()
-      indexed_summary(b, unit_vec(0.3))     # cosine 0.958  → within 90% of top
+      # cosine 0.958  → within 90% of top
+      indexed_summary(b, unit_vec(0.3))
       c = act_fixture()
-      indexed_summary(c, unit_vec(0.4))     # cosine 0.928  → within 90% of top
+      # cosine 0.928  → within 90% of top
+      indexed_summary(c, unit_vec(0.4))
       tail = act_fixture()
-      indexed_summary(tail, unit_vec(2.0))  # cosine 0.447  → below the 0.9 floor
+      # cosine 0.447  → below the 0.9 floor
+      indexed_summary(tail, unit_vec(2.0))
 
       ids = Search.ranked_ids(unique_query())
       assert ids == [a.id, b.id, c.id]
@@ -182,11 +186,14 @@ defmodule Arcada.SearchTest do
       set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
 
       strong = act_fixture(%{title: "Diploma bem alinhado"})
-      indexed_summary(strong, "corpo", unit_vec(0.0))       # cosine 1.0 → clears floor
+      # cosine 1.0 → clears floor
+      indexed_summary(strong, "corpo", unit_vec(0.0))
       fts_only = act_fixture(%{title: "Lei n.º 77/2024 dos transportes"})
-      indexed_summary(fts_only, "corpo", unit_vec(2.0))     # cosine 0.447 → below floor
+      # cosine 0.447 → below floor
+      indexed_summary(fts_only, "corpo", unit_vec(2.0))
       dropped = act_fixture(%{title: "Diploma irrelevante"})
-      indexed_summary(dropped, "corpo", unit_vec(2.0))      # below floor, no FTS hit
+      # below floor, no FTS hit
+      indexed_summary(dropped, "corpo", unit_vec(2.0))
 
       ids = Search.ranked_ids("Lei 77/2024")
       assert strong.id in ids
@@ -199,9 +206,11 @@ defmodule Arcada.SearchTest do
       set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
 
       a = act_fixture()
-      indexed_summary(a, unit_vec(0.0))     # cosine 1.0
+      # cosine 1.0
+      indexed_summary(a, unit_vec(0.0))
       far = act_fixture()
-      indexed_summary(far, unit_vec(9.0))   # cosine ~0.11 — kept anyway
+      # cosine ~0.11 — kept anyway
+      indexed_summary(far, unit_vec(9.0))
 
       assert Search.ranked_ids(unique_query()) == [a.id, far.id]
     end
