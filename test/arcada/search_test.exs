@@ -235,6 +235,50 @@ defmodule Arcada.SearchTest do
     assert Search.search(unique_query()) == []
   end
 
+  test "a raising embedder degrades to FTS-only instead of crashing the caller (#69)" do
+    # The embed leg runs in a task; a raise there must not exit the caller (a
+    # visitor LiveView). FTS still runs, so the exact-term match survives.
+    set_embeddings(embed_fn: fn _ -> raise "embed server exploded" end)
+    target = act_fixture(%{title: "Lei n.º 23/2023 das finanças"})
+    indexed_summary(target, "corpo do resumo", [1.0, 0.0])
+
+    assert Search.ranked_ids("Lei 23/2023") == [target.id]
+  end
+
+  test "a hung/slow embedder times out and degrades to FTS-only, never crashes (#69)" do
+    # One slow embedding request must not stall or crash search: past the
+    # configured budget the semantic leg is abandoned and FTS carries the result.
+    set_search_cfg(semantic_timeout_ms: 150)
+
+    set_embeddings(
+      embed_fn: fn texts ->
+        Process.sleep(2_000)
+        {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)}
+      end
+    )
+
+    target = act_fixture(%{title: "Decreto-Lei n.º 10-A/2022"})
+    indexed_summary(target, "corpo do resumo", [1.0, 0.0])
+
+    {elapsed_us, ids} = :timer.tc(fn -> Search.ranked_ids("10-A/2022") end)
+
+    assert ids == [target.id]
+    # Returned on the timeout budget, not after the full 2s embed.
+    assert elapsed_us < 1_000_000
+  end
+
+  test "for_visitor survives a raising embedder — no crash, FTS-only results (#69)" do
+    set_embeddings(embed_fn: fn _ -> raise "embed server exploded" end)
+    target = act_fixture(%{title: "Lei do arrendamento urgente"})
+    indexed_summary(target, "novo apoio ao arrendamento jovem", [1.0, 0.0])
+
+    {results, ids, _degraded?} = Search.for_visitor("arrendamento", unique_identity(:anon))
+
+    assert ids == [target.id]
+    assert [%Act{id: id}] = results
+    assert id == target.id
+  end
+
   test "limit caps the result count" do
     set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
 

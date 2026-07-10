@@ -25,6 +25,10 @@ defmodule Arcada.Application do
       # caller. Expired buckets are swept every 10 min.
       {Arcada.RateLimit, [clean_period: :timer.minutes(10)]},
       {Oban, Application.fetch_env!(:arcada, Oban)},
+      # Runs the semantic leg of a search unlinked (issue #69), so a crashing or
+      # killed embedding task degrades to FTS-only instead of taking the visitor
+      # LiveView down with it.
+      {Task.Supervisor, name: Arcada.Search.TaskSupervisor},
       # Semantic-search index (issue #27): loads summary embeddings into ETS.
       Arcada.Search.Index,
       # Start a worker by calling: Arcada.Worker.start_link(arg)

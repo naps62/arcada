@@ -120,10 +120,15 @@ defmodule Arcada.Search do
         # task while FTS hits Postgres in this process. The task only touches the
         # in-memory index + embeddings client — no Repo — so it's sandbox-safe.
         cfg = Admin.embeddings_config()
-        semantic = Task.async(fn -> semantic_ids(query, cfg) end)
+
+        semantic =
+          Task.Supervisor.async_nolink(Arcada.Search.TaskSupervisor, fn ->
+            semantic_ids(query, cfg)
+          end)
+
         fts = FTS.ranked_ids(query)
 
-        rrf([Task.await(semantic, 35_000), fts])
+        rrf([await_semantic(semantic), fts])
       else
         FTS.ranked_ids(query)
       end
@@ -137,6 +142,31 @@ defmodule Arcada.Search do
     else
       _ -> []
     end
+  end
+
+  # The semantic leg is the slow, network-bound half (issue #69): a hung or
+  # crashing embeddings request must degrade to FTS-only, never take the caller
+  # (a visitor LiveView) down with it. `Task.yield` returns the result if it
+  # lands in the budget, `{:exit, _}` if the task died, or `nil` on timeout — in
+  # which case we kill the straggler (aborting its HTTP and freeing its embed
+  # slot via the Index monitor). Any non-success collapses to an empty list, so
+  # RRF simply fuses over FTS alone.
+  defp await_semantic(task) do
+    case Task.yield(task, semantic_timeout()) do
+      {:ok, ids} ->
+        ids
+
+      {:exit, _reason} ->
+        []
+
+      nil ->
+        Task.shutdown(task, :brutal_kill)
+        []
+    end
+  end
+
+  defp semantic_timeout do
+    Application.get_env(:arcada, __MODULE__, [])[:semantic_timeout_ms] || 35_000
   end
 
   # Reciprocal Rank Fusion: each list votes 1/(k+rank) (rank 1-based) for the
