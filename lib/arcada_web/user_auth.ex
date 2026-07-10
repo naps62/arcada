@@ -11,9 +11,7 @@ defmodule ArcadaWeb.UserAuth do
   # the token expiry itself in UserToken.
   @max_age 60 * 60 * 24 * 60
   @remember_me_cookie "_arcada_web_user_remember_me"
-  # `secure: true` in prod (config :arcada, :secure_cookies) keeps the remember-me
-  # cookie — which carries the session token — off any plaintext hop. False in
-  # dev/test (http://localhost).
+  # secure: on in prod (carries the session token), off in dev/test — :secure_cookies.
   @remember_me_options [
     sign: true,
     max_age: @max_age,

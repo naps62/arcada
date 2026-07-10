@@ -174,17 +174,13 @@ if config_env() == :prod do
 end
 
 if config_env() == :prod do
-  # Fail closed on the admin gate. `/admin`, `/admin/db` (raw-DB CRUD) and
-  # `/admin/jobs` have no in-app auth — RequireAdminHost is the only gate, and it
-  # passes everything when the host is unset. In prod that would silently expose
-  # the entire admin + DB surface on the public host, so require ADMIN_HOST at
-  # boot instead of defaulting open (issue #55).
+  # Fail closed: RequireAdminHost is the only admin gate and passes everything when
+  # the host is unset, so require ADMIN_HOST in prod rather than default open (#55).
   System.get_env("ADMIN_HOST") ||
     raise """
     environment variable ADMIN_HOST is missing.
-    /admin has no in-app authentication and is gated only by request host; without
-    ADMIN_HOST the admin + raw-DB surface is reachable on every host. Set it to the
-    private admin host (e.g. arcada.example.internal) so admin paths 404 elsewhere.
+    /admin has no in-app auth — without it the admin + raw-DB surface is open on
+    every host. Set it to the private admin host (e.g. arcada.example.internal).
     """
 
   database_url =

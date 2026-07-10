@@ -4,9 +4,7 @@ defmodule ArcadaWeb.Endpoint do
   # The session will be stored in the cookie and signed,
   # this means its contents can be read but not tampered with.
   # Set :encryption_salt if you would also like to encrypt it.
-  # `secure: true` (set in prod via config :arcada, :secure_cookies) marks the
-  # session cookie HTTPS-only so it can't leak over a plaintext hop. Left false in
-  # dev/test where the app is served over http://localhost.
+  # secure: on in prod, off in dev/test (http localhost) — see :secure_cookies.
   @session_options [
     store: :cookie,
     key: "_arcada_key",
