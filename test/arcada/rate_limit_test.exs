@@ -49,6 +49,47 @@ defmodule Arcada.RateLimitTest do
     assert :ok = RateLimit.search_semantic(user, per_minute: 1, per_day: 100)
   end
 
+  describe "email_send/3 (issue #61)" do
+    defp uniq, do: System.unique_integer([:positive])
+    defp visitor, do: "visitor-#{uniq()}"
+    defp target, do: "u#{uniq()}@example.com"
+
+    test "caps a single caller, then denies with a retry hint" do
+      v = visitor()
+      opts = [visitor: [per_minute: 2, per_day: 100], email: [per_hour: 100, per_day: 100]]
+
+      assert :ok = RateLimit.email_send(v, target(), opts)
+      assert :ok = RateLimit.email_send(v, target(), opts)
+      assert {:deny, retry_ms} = RateLimit.email_send(v, target(), opts)
+      assert is_integer(retry_ms) and retry_ms > 0
+    end
+
+    test "caps a single target inbox regardless of the caller (anti-bombing)" do
+      to = target()
+      opts = [visitor: [per_minute: 100, per_day: 100], email: [per_hour: 2, per_day: 100]]
+
+      # different callers, same victim → the inbox bucket still stops it
+      assert :ok = RateLimit.email_send(visitor(), to, opts)
+      assert :ok = RateLimit.email_send(visitor(), to, opts)
+      assert {:deny, _} = RateLimit.email_send(visitor(), to, opts)
+    end
+
+    test "normalizes the target email (case/whitespace share a bucket)" do
+      opts = [visitor: [per_minute: 100, per_day: 100], email: [per_hour: 1, per_day: 100]]
+
+      assert :ok = RateLimit.email_send(visitor(), "Victim@Example.com", opts)
+      assert {:deny, _} = RateLimit.email_send(visitor(), "  victim@example.com  ", opts)
+    end
+
+    test "distinct inboxes are independent buckets" do
+      opts = [visitor: [per_minute: 100, per_day: 100], email: [per_hour: 1, per_day: 100]]
+      v = visitor()
+
+      assert :ok = RateLimit.email_send(v, target(), opts)
+      assert :ok = RateLimit.email_send(v, target(), opts)
+    end
+  end
+
   describe "limits_for/2" do
     test "falls back to built-in defaults" do
       assert Keyword.has_key?(RateLimit.limits_for(:anon), :per_minute)
