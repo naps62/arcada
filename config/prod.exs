@@ -6,7 +6,17 @@ import Config
 # which you should run after static files are built and
 # before starting your production server.
 config :arcada, ArcadaWeb.Endpoint,
-  cache_static_manifest: "priv/static/cache_manifest.json"
+  cache_static_manifest: "priv/static/cache_manifest.json",
+  # Redirect any http request to https and emit HSTS. `rewrite_on:
+  # [:x_forwarded_proto]` trusts the Cloudflare → Traefik chain's scheme header
+  # (TLS terminates at the edge; the app receives http with x-forwarded-proto:
+  # https), so this must NOT be enabled unless the origin only sees proxied
+  # traffic — the `cloudflare-only` origin lock guarantees that.
+  force_ssl: [rewrite_on: [:x_forwarded_proto], hsts: true]
+
+# Mark session + remember-me cookies Secure (HTTPS-only) in production. Read at
+# compile time by the cookie option lists in ArcadaWeb.Endpoint / ArcadaWeb.UserAuth.
+config :arcada, :secure_cookies, true
 
 # Do not print debug messages in production
 config :logger, level: :info
