@@ -90,9 +90,17 @@
       </span>
     </a>
 
-    <%!-- Front-page standfirst — the page's h1. --%>
+    <%!-- The register's h1: the active section's scope on a filtered view (a
+         per-section topical signal matching the title/canonical), else the
+         slogan standfirst at the unfiltered front door. --%>
     <h1
-      :if={assigns[:front_page]}
+      :if={assigns[:section_heading]}
+      class="mt-5 px-2 text-center font-display text-[1.75rem] font-medium leading-tight text-ink sm:mt-6 sm:text-[2.25rem]"
+    >
+      {@section_heading}
+    </h1>
+    <h1
+      :if={assigns[:front_page] && !assigns[:section_heading]}
       class="mt-5 text-balance px-2 text-center font-display text-[1.75rem] font-light italic leading-tight text-ink sm:mt-6 sm:text-[2.25rem]"
     >
       Onde a lei fala português.

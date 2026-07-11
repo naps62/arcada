@@ -76,6 +76,18 @@ defmodule ArcadaWeb.RegisterLiveTest do
     assert html =~ "Nada a mostrar"
   end
 
+  test "front door shows the slogan h1; a section shows its scoped h1", %{conn: conn} do
+    seed()
+
+    {:ok, _lv, root} = live(conn, ~p"/")
+    assert root =~ "<h1"
+    assert root =~ "Onde a lei fala português."
+
+    {:ok, _lv, section} = live(conn, ~p"/?domain=fiscal")
+    assert section =~ ~r|<h1[^>]*>\s*Fiscal\s*</h1>|
+    refute section =~ "Onde a lei fala português."
+  end
+
   test "domain pills show act counts", %{conn: conn} do
     seed()
     {:ok, _lv, html} = live(conn, ~p"/")

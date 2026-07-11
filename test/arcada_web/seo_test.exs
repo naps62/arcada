@@ -51,6 +51,13 @@ defmodule ArcadaWeb.SEOTest do
     test "period-only canonical carries just the period" do
       assert SEO.metadata_for({:browse, nil, :ano}).canonical_url == SEO.url("/?period=ano")
     end
+
+    test "section_heading: nil at root, capitalised scope when filtered" do
+      assert SEO.section_heading(nil, nil) == nil
+      assert SEO.section_heading("fiscal", nil) == "Fiscal"
+      assert SEO.section_heading(nil, :semana) == "Esta semana"
+      assert SEO.section_heading("habitação", :mes) == "Habitação · Este mês"
+    end
   end
 
   describe "metadata_for {:search, query}" do

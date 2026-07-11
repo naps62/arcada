@@ -15,6 +15,8 @@ defmodule ArcadaWeb.RegisterLive do
     {:ok,
      assign(socket,
        front_page: true,
+       # Scoped <h1> for a filtered section (nil at the root → slogan stands in).
+       section_heading: nil,
        domains: Register.life_domains(),
        periods: Register.periods(),
        search_examples: Register.search_examples(),
@@ -115,6 +117,8 @@ defmodule ArcadaWeb.RegisterLive do
       search_degraded: degraded?,
       browse_cursor: nil,
       browse_more?: false,
+      # Search results aren't a section — clear any heading left by a prior browse.
+      section_heading: nil,
       search_token: socket.assigns.search_token + 1
     )
     |> assign(SEO.metadata_for({:search, query}))
@@ -149,6 +153,8 @@ defmodule ArcadaWeb.RegisterLive do
       search_degraded: false,
       active_domain: domain,
       active_period: period,
+      # Scoped <h1> for the section (nil when unfiltered → the slogan shows).
+      section_heading: SEO.section_heading(domain, period),
       # Each axis's badges reflect the *other* axis's selection.
       domain_counts: Register.domain_counts(period: period),
       period_counts: period_counts,

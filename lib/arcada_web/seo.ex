@@ -114,6 +114,19 @@ defmodule ArcadaWeb.SEO do
     }
   end
 
+  @doc """
+  Visible on-page `<h1>` for a browse view: `nil` at the unfiltered front door
+  (the slogan stands in), else the scope with the life-domain capitalised —
+  `"Fiscal"`, `"Esta semana"`, `"Fiscal · Este mês"`. A per-section topical
+  signal that matches the page's `<title>`/canonical.
+  """
+  def section_heading(nil, nil), do: nil
+  def section_heading(domain, nil) when is_binary(domain), do: String.capitalize(domain)
+  def section_heading(nil, period), do: Register.period_label(period)
+
+  def section_heading(domain, period) when is_binary(domain),
+    do: "#{String.capitalize(domain)} · #{Register.period_label(period)}"
+
   # --- Browse / home ---------------------------------------------------------
 
   # nil title → the layout renders the bare "Arcada" masthead (no scope prefix).
