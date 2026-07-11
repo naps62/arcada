@@ -37,21 +37,22 @@ defmodule ArcadaWeb.UserRegistrationLiveTest do
   end
 
   describe "register user" do
-    test "creates account and logs the user in", %{conn: conn} do
+    test "creates account and redirects to login without logging in", %{conn: conn} do
       {:ok, lv, _html} = live(conn, ~p"/users/register")
 
       email = unique_user_email()
       form = form(lv, "#registration_form", user: valid_user_attributes(email: email))
-      render_submit(form)
-      conn = follow_trigger_action(form, conn)
 
-      assert redirected_to(conn) == ~p"/"
+      assert {:error, {:live_redirect, %{to: to}}} = render_submit(form)
+      assert to == ~p"/users/log_in"
 
-      # Now do a logged in request and assert on the masthead menu
+      # Account exists, but registration no longer auto-logs the user in — the
+      # session stays anonymous so a fresh signup and a duplicate look identical.
+      assert Arcada.Accounts.get_user_by_email(email)
+
       conn = get(conn, "/")
       response = html_response(conn, 200)
-      assert response =~ "Conta"
-      assert response =~ "Sair"
+      refute response =~ "Sair"
     end
 
     test "creates account with an optional username", %{conn: conn} do
@@ -64,9 +65,8 @@ defmodule ArcadaWeb.UserRegistrationLiveTest do
           user: valid_user_attributes(email: email, username: "handle")
         )
 
-      render_submit(form)
-      conn = follow_trigger_action(form, conn)
-      assert redirected_to(conn) == ~p"/"
+      assert {:error, {:live_redirect, %{to: to}}} = render_submit(form)
+      assert to == ~p"/users/log_in"
 
       assert Arcada.Accounts.get_user_by_email(email).username == "handle"
     end
@@ -85,19 +85,23 @@ defmodule ArcadaWeb.UserRegistrationLiveTest do
       refute Arcada.Accounts.get_user_by_email(email)
     end
 
-    test "renders errors for duplicated email", %{conn: conn} do
+    test "masks a duplicated email as a successful signup", %{conn: conn} do
       {:ok, lv, _html} = live(conn, ~p"/users/register")
 
       user = user_fixture(%{email: "test@email.com"})
 
-      result =
-        lv
-        |> form("#registration_form",
+      form =
+        form(lv, "#registration_form",
           user: %{"email" => user.email, "password" => "valid_password"}
         )
-        |> render_submit()
 
-      assert result =~ "has already been taken"
+      # Identical response to a fresh signup — no field error, same redirect —
+      # so submit can't be used to enumerate accounts (#63).
+      result = render_submit(form)
+
+      assert {:error, {:live_redirect, %{to: to}}} = result
+      assert to == ~p"/users/log_in"
+      refute inspect(result) =~ "has already been taken"
     end
   end
 

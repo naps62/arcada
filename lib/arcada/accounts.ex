@@ -65,10 +65,18 @@ defmodule Arcada.Accounts do
   @doc """
   Registers a user.
 
+  A duplicate email is *not* reported as an error. Surfacing "has already been
+  taken" on submit turns registration into an account-enumeration oracle, so a
+  taken email is masked as `{:ok, :exists}` and the caller must respond exactly
+  as it would to a genuine signup. Any other validation error still surfaces.
+
   ## Examples
 
       iex> register_user(%{field: value})
       {:ok, %User{}}
+
+      iex> register_user(%{email: already_registered})
+      {:ok, :exists}
 
       iex> register_user(%{field: bad_value})
       {:error, %Ecto.Changeset{}}
@@ -78,6 +86,38 @@ defmodule Arcada.Accounts do
     %User{}
     |> User.registration_changeset(attrs)
     |> Repo.insert()
+    |> case do
+      {:ok, user} ->
+        {:ok, user}
+
+      {:error, changeset} ->
+        stripped = strip_email_taken_error(changeset)
+
+        cond do
+          # Nothing was stripped -> the failure is unrelated to uniqueness.
+          stripped.errors == changeset.errors -> {:error, changeset}
+          # Email-taken was the only problem -> mask as a successful signup.
+          stripped.errors == [] -> {:ok, :exists}
+          # Other errors remain (bad format, short password); surface those but
+          # keep the taken-email error hidden.
+          true -> {:error, stripped}
+        end
+    end
+  end
+
+  # Drops the "already taken" email error (from unsafe_validate_unique or the
+  # unique_constraint), leaving any other email errors (format, required) intact.
+  defp strip_email_taken_error(changeset) do
+    errors =
+      Enum.reject(changeset.errors, fn
+        {:email, {_msg, opts}} ->
+          opts[:validation] == :unsafe_unique or opts[:constraint] == :unique
+
+        _ ->
+          false
+      end)
+
+    %{changeset | errors: errors, valid?: errors == []}
   end
 
   @doc """

@@ -37,9 +37,6 @@ defmodule ArcadaWeb.UserRegistrationLive do
         id="registration_form"
         phx-submit="save"
         phx-change="validate"
-        phx-trigger-action={@trigger_submit}
-        action={~p"/users/log_in?_action=registered"}
-        method="post"
       >
         <.error :if={@check_errors}>
           Algo correu mal. Verifique os erros abaixo.
@@ -79,7 +76,7 @@ defmodule ArcadaWeb.UserRegistrationLive do
 
     socket =
       socket
-      |> assign(trigger_submit: false, check_errors: false)
+      |> assign(check_errors: false)
       |> assign(signups_open: Accounts.signups_open?())
       |> assign(turnstile_site_key: Turnstile.site_key())
       |> assign(mounted_at: System.monotonic_time(:millisecond))
@@ -124,15 +121,20 @@ defmodule ArcadaWeb.UserRegistrationLive do
 
   defp register(socket, user_params) do
     case Accounts.register_user(user_params) do
-      {:ok, user} ->
+      {:ok, %User{} = user} ->
         {:ok, _} =
           Accounts.deliver_user_confirmation_instructions(
             user,
             &url(~p"/users/confirm/#{&1}")
           )
 
-        changeset = Accounts.change_user_registration(user)
-        {:noreply, socket |> assign(trigger_submit: true) |> assign_form(changeset)}
+        {:noreply, registration_submitted(socket)}
+
+      # Email already registered. Respond identically to a fresh signup — same
+      # flash, same redirect, no auto-login — so the submit endpoint can't be
+      # used to enumerate accounts. No email is sent.
+      {:ok, :exists} ->
+        {:noreply, registration_submitted(socket)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply,
@@ -141,6 +143,12 @@ defmodule ArcadaWeb.UserRegistrationLive do
          |> push_event("turnstile-reset", %{})
          |> assign_form(changeset)}
     end
+  end
+
+  defp registration_submitted(socket) do
+    socket
+    |> put_flash(:info, "Enviámos um email de confirmação. Verifica a tua caixa de entrada.")
+    |> push_navigate(to: ~p"/users/log_in")
   end
 
   defp bot_suspected?(params, socket) do

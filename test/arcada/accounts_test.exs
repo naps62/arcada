@@ -74,14 +74,28 @@ defmodule Arcada.AccountsTest do
       assert "should be at most 72 character(s)" in errors_on(changeset).password
     end
 
-    test "validates email uniqueness" do
+    test "masks a duplicate email as a successful signup" do
       %{email: email} = user_fixture()
-      {:error, changeset} = Accounts.register_user(%{email: email})
-      assert "has already been taken" in errors_on(changeset).email
 
-      # Now try with the upper cased email too, to check that email case is ignored.
-      {:error, changeset} = Accounts.register_user(%{email: String.upcase(email)})
-      assert "has already been taken" in errors_on(changeset).email
+      # An otherwise-valid submission whose only fault is the taken email must
+      # not error — it is masked as {:ok, :exists} so registration can't be used
+      # to enumerate accounts (#63).
+      assert {:ok, :exists} = Accounts.register_user(valid_user_attributes(email: email))
+
+      # Case-insensitive: the upper-cased duplicate is masked too.
+      assert {:ok, :exists} =
+               Accounts.register_user(valid_user_attributes(email: String.upcase(email)))
+    end
+
+    test "surfaces other errors on a taken email without leaking the duplicate" do
+      %{email: email} = user_fixture()
+
+      {:error, changeset} = Accounts.register_user(%{email: email, password: "short"})
+
+      # The unrelated problem surfaces...
+      assert errors_on(changeset).password != []
+      # ...but the taken-email signal stays hidden.
+      refute Map.has_key?(errors_on(changeset), :email)
     end
 
     test "registers users with a hashed password" do
