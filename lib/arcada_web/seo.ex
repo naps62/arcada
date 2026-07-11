@@ -229,6 +229,8 @@ defmodule ArcadaWeb.SEO do
       "isAccessibleForFree" => true,
       "image" => image,
       "mainEntityOfPage" => canonical,
+      # Arcada authors the plain-language summary that IS this article.
+      "author" => %{"@type" => "Organization", "name" => "Arcada", "url" => url(~p"/")},
       "publisher" => %{
         "@type" => "Organization",
         "name" => "Arcada",

@@ -107,6 +107,12 @@ defmodule ArcadaWeb.SEOTest do
       assert article["isBasedOn"] == "https://diariodarepublica.pt/x"
       assert article["publisher"]["logo"]["url"] == SEO.url("/icon-512.png")
 
+      assert article["author"] == %{
+               "@type" => "Organization",
+               "name" => "Arcada",
+               "url" => SEO.url("/")
+             }
+
       # og:image + Article image point at the per-act generated card
       og = SEO.url("/acts/84/og.png")
       assert m.page_og_image == og
