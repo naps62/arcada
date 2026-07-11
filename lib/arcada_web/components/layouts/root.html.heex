@@ -46,9 +46,14 @@
     <meta name="description" content={assigns[:page_description] || SEO.default_description()} />
     <meta name="robots" content={SEO.robots_meta(assigns[:page_noindex] || false)} />
     <link rel="canonical" href={assigns[:canonical_url] || SEO.url(~p"/")} />
-    <link rel="icon" href={~p"/favicon.svg"} type="image/svg+xml" />
-    <link rel="icon" href={~p"/favicon.ico"} sizes="any" />
-    <link rel="apple-touch-icon" href={~p"/apple-touch-icon.png"} />
+    <%!-- Plain (non-digested) paths: `~p` fingerprints these top-level files, but
+         Plug.Static's `only` allowlist matches the raw request segment, so a
+         digested top-level name (favicon-HASH.ico) fails the exact-filename match
+         and 404s. Dir-nested assets (images/…) are unaffected. Favicons are
+         well-known root URLs browsers request implicitly anyway. --%>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <%!-- Social cards. Title/description/url track the page; type is "website"
          except on act pages, which pass "article". --%>
     <meta property="og:site_name" content="Arcada" />
