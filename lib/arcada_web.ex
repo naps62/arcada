@@ -19,7 +19,9 @@ defmodule ArcadaWeb do
 
   # robots.txt + sitemap.xml are served dynamically by SeoController, not from
   # priv/static, so they can reflect the SEO indexing gate (see #36).
-  def static_paths, do: ~w(assets fonts images favicon.ico favicon.svg)
+  def static_paths,
+    do:
+      ~w(assets fonts images favicon.ico favicon.svg apple-touch-icon.png icon-192.png icon-512.png)
 
   def router do
     quote do

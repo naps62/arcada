@@ -28,6 +28,13 @@ defmodule ArcadaWeb.SEO do
   @doc "The site's default meta description (Portuguese)."
   def default_description, do: @default_description
 
+  @doc """
+  Absolute URL of the default 1200×630 social share card. Pages without their
+  own card (home, sections, faq, about) fall back to this; act pages can later
+  override with a per-act generated card via the `page_og_image` assign.
+  """
+  def default_og_image, do: url(~p"/images/og-default.png")
+
   @doc "Absolute URL for `path` (e.g. `/acts/12`), rooted at the endpoint host."
   def url(path), do: Endpoint.url() <> path
 
@@ -178,6 +185,7 @@ defmodule ArcadaWeb.SEO do
       "description" => description,
       "inLanguage" => "pt-PT",
       "isAccessibleForFree" => true,
+      "image" => default_og_image(),
       "mainEntityOfPage" => canonical,
       "publisher" => %{"@type" => "Organization", "name" => "Arcada"}
     }
