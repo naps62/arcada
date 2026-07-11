@@ -4,7 +4,7 @@ defmodule ArcadaWeb.Plugs.RequireMetricsHost do
   the endpoint (before the router), so unlike `/admin` it has no pipeline to
   protect it and would otherwise answer on **any** host — including the public
   `arcada.naps.pt` once it goes live. This plug 404s `/metrics` on any host other
-  than the configured private host, mirroring `RequireAdminHost` (issue #11).
+  than the configured private host (issue #11).
 
   Internal Prometheus/Alloy scrapes hit the container directly over the
   dokploy-network, addressed by container **IP** (e.g. `10.0.1.130:4000`), so

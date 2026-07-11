@@ -1,9 +1,9 @@
 defmodule ArcadaWeb.AdminLive do
   @moduledoc """
   Admin hub (`/admin`): pick the active summarizer provider + model (used by the
-  daily cron / auto-summarize) and manage provider instances. Served only on the
-  private VPN host (`RequireAdminHost`); the VPN is the access boundary. See
-  issues #19, #20.
+  daily cron / auto-summarize) and manage provider instances. No in-app auth —
+  gated at the edge (Authelia on the public host, VPN on the private one). See
+  issues #19, #20, #46.
   """
   use ArcadaWeb, :live_view_admin
 

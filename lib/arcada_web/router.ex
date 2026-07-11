@@ -20,14 +20,10 @@ defmodule ArcadaWeb.Router do
     plug :accepts, ["json"]
   end
 
-  # Admin (/admin) is served ONLY on the private VPN host (ADMIN_HOST, e.g.
-  # arcada.example.internal): RequireAdminHost 404s it on the public host so the surface
-  # doesn't exist there at all. The access boundary is the VPN itself — reaching
-  # the admin host means you're already on the network, so no extra in-app auth
-  # (issues #19, #37).
-  pipeline :admin do
-    plug ArcadaWeb.Plugs.RequireAdminHost
-  end
+  # Admin (/admin) has no in-app auth — the access boundary is the edge:
+  # Authelia forwardAuth on the public host (arcada.naps.pt), VPN IP-allowlist on
+  # the private host. Reaching /admin means the edge already authorized you, so
+  # there is no in-app host gate (issues #19, #37, #46).
 
   scope "/", ArcadaWeb do
     pipe_through :browser
@@ -54,7 +50,7 @@ defmodule ArcadaWeb.Router do
   end
 
   scope "/admin", ArcadaWeb do
-    pipe_through [:browser, :admin]
+    pipe_through :browser
 
     live "/", AdminLive, :index
     live "/summarizer", AdminLive, :index
@@ -66,17 +62,17 @@ defmodule ArcadaWeb.Router do
 
   # Oban Web: background-job dashboard (queues, states, retries, history) for the
   # scrape/summarize workers. Mounted at /admin/jobs behind the same edge gate
-  # (Authelia + VPN) and in-app :admin check. `oban_dashboard` sets up its own
-  # live_session, so it lives in a dedicated scope rather than the admin scope above.
+  # (Authelia on the public host, VPN on the private one). `oban_dashboard` sets up
+  # its own live_session, so it lives in a dedicated scope rather than the admin scope above.
   scope "/admin" do
-    pipe_through [:browser, :admin]
+    pipe_through :browser
 
     oban_dashboard("/jobs")
   end
 
   # Raw-DB admin (Kaffy): auto-generated CRUD over every Ecto schema, mounted at
-  # /admin/db behind the same edge gate (Authelia + VPN) and in-app :admin check.
-  use Kaffy.Routes, scope: "/admin/db", pipe_through: [:browser, :admin]
+  # /admin/db behind the same edge gate (Authelia on the public host, VPN on the private one).
+  use Kaffy.Routes, scope: "/admin/db", pipe_through: [:browser]
 
   # Other scopes may use custom stacks.
   # scope "/api", ArcadaWeb do

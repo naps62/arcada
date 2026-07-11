@@ -119,11 +119,8 @@ config :arcada, Oban,
      ]}
   ]
 
-# Admin area (/admin): served only on the private VPN host. `host` (set from
-# ADMIN_HOST in runtime.exs) makes RequireAdminHost 404 /admin on the public
-# host; `host: nil` (dev/test) leaves it reachable on any host. The VPN is the
-# access boundary — no in-app auth. See issues #19, #37.
-config :arcada, :admin, host: nil
+# Admin area (/admin) has no in-app auth — gated at the edge (Authelia on the
+# public host, VPN on the private one). No host config: see issues #19, #37, #46.
 
 # Prometheus /metrics: served by PromEx.Plug in the endpoint (no router
 # pipeline), so RequireMetricsHost host-guards it. `host: nil` (dev/test) leaves

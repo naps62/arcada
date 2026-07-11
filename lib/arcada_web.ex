@@ -69,7 +69,7 @@ defmodule ArcadaWeb do
   @doc """
   LiveViews for the back-of-house admin console. Same design tokens as the
   public broadsheet, but its own tool chrome (`:admin` layout) instead of the
-  public masthead. Served only on the VPN host; see `Plugs.RequireAdminHost`.
+  public masthead. Edge-gated (Authelia on the public host, VPN on the private one).
   """
   def live_view_admin do
     quote do

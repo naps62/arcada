@@ -20,16 +20,11 @@ if System.get_env("PHX_SERVER") do
   config :arcada, ArcadaWeb.Endpoint, server: true
 end
 
-# Host on which the /admin area is served. On a two-host deploy the public host
-# (arcada.naps.pt) must NOT expose /admin at all — only the private VPN host
-# (arcada.example.internal) does. RequireAdminHost 404s admin paths on any other host.
-# Unset (dev/test/single-host) → admin reachable on every host. Deep-merges the
-# host into the :admin keyword list from config.exs.
+# /metrics (Prometheus scrape) is served only on the private VPN host — it can't
+# be Authelia-gated (a scraper has no interactive SSO). RequireMetricsHost 404s it
+# on any other host. Reuse ADMIN_HOST as that private host; METRICS_HOST overrides
+# if they ever need to diverge. Unset (dev/test/single-host) → reachable anywhere.
 if admin_host = System.get_env("ADMIN_HOST") do
-  config :arcada, :admin, host: admin_host
-  # /metrics lives on the same private VPN host as /admin. Reuse ADMIN_HOST so
-  # RequireMetricsHost 404s it on the public host (issue #11); METRICS_HOST
-  # overrides if they ever need to diverge.
   config :arcada, :metrics, host: System.get_env("METRICS_HOST") || admin_host
 end
 
@@ -174,13 +169,15 @@ if config_env() == :prod do
 end
 
 if config_env() == :prod do
-  # Fail closed: RequireAdminHost is the only admin gate and passes everything when
-  # the host is unset, so require ADMIN_HOST in prod rather than default open (#55).
+  # Fail closed: RequireMetricsHost gates /metrics to the private host and
+  # fails open (reachable everywhere) when the host is unset, so require
+  # ADMIN_HOST in prod rather than default open (#55). /admin is edge-gated
+  # (Authelia) and does not depend on this.
   System.get_env("ADMIN_HOST") ||
     raise """
     environment variable ADMIN_HOST is missing.
-    /admin has no in-app auth — without it the admin + raw-DB surface is open on
-    every host. Set it to the private admin host (e.g. arcada.example.internal).
+    /metrics has no in-app auth — without it the Prometheus scrape endpoint is
+    open on every host. Set it to the private admin host (e.g. arcada.example.internal).
     """
 
   database_url =

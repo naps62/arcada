@@ -23,7 +23,7 @@ cron `{"0 9 * * 1-5", Arcada.Scraper.IngestWorker}` with queues
 | `DATABASE_URL` | `ecto://<user>:<pass>@<pg-host>/arcada_prod` (Dokploy-managed Postgres) |
 | `SECRET_KEY_BASE` | `mix phx.gen.secret` (64+ bytes) |
 | `PHX_HOST` | canonical public hostname for generated URLs (e.g. `arcada.naps.pt`) |
-| `ADMIN_HOST` | host on which `/admin*` is served (e.g. `arcada.example.internal`). On any other host admin paths 404. Unset → admin reachable on every host (single-host / dev). |
+| `ADMIN_HOST` | private host that serves `/metrics` (e.g. `arcada.example.internal`); `RequireMetricsHost` 404s the scrape endpoint on any other host, and it seeds `CHECK_ORIGIN_HOSTS`. Unset → `/metrics` reachable on every host (single-host / dev). No longer gates `/admin` (Authelia does, #46). |
 | `PHX_SERVER` | `true` |
 | `PORT` | `4000` |
 | `ANTHROPIC_API_KEY` | Claude API key — **secret**; enables the `:api` summarizer adapter |
@@ -90,7 +90,7 @@ Wiring steps:
 | Host | Audience | Entrypoint | Edge middlewares | `/admin*` |
 |---|---|---|---|---|
 | `arcada.example.internal` | private (VPN) | `websecure` (:443) | `vpn-allowlist` | served (VPN only) |
-| `arcada.naps.pt` | public | `websecure-public` (:8443) | `cloudflare-only` | **404** (host guard) |
+| `arcada.naps.pt` | public | `websecure-public` (:8443) | `cloudflare-only` (+ `authelia` on `/admin*`) | Authelia SSO (#46) |
 
 **How the public host works.** The Dokploy Traefik defines a dedicated
 `websecure-public` entrypoint on `:8443` that trusts Cloudflare forwarded headers
@@ -100,10 +100,12 @@ domain row is pointed at that entrypoint (`customEntrypoint: websecure-public`)
 with the `cloudflare-only@file` ipAllowList so only Cloudflare edge IPs can reach
 the origin (no direct-to-origin bypass). Cloudflare proxies `arcada.naps.pt`
 (orange-cloud A record → origin `:8443`). `PHX_HOST=arcada.naps.pt` so canonical
-URLs / OG tags / sitemap advertise the public host; `ADMIN_HOST=arcada.example.internal`
-keeps `/admin*` a 404 on the public host, and `CHECK_ORIGIN_HOSTS` lists both so
-LiveView upgrades work on either. `REMOTE_IP=true` (X-Forwarded-For) recovers the
-real visitor IP behind Cloudflare.
+URLs / OG tags / sitemap advertise the public host; on the public host `/admin*`
+is gated by Authelia SSO at the edge (see below), and `CHECK_ORIGIN_HOSTS` lists
+both hosts so LiveView upgrades work on either. `REMOTE_IP=true` (X-Forwarded-For)
+recovers the real visitor IP behind Cloudflare. `ADMIN_HOST=arcada.example.internal`
+no longer gates `/admin` — it now only pins `/metrics` to the private host (the
+Prometheus scrape endpoint can't do interactive SSO) and seeds `CHECK_ORIGIN_HOSTS`.
 
 **The one non-Dokploy gotcha:** a public app must live on the `:8443`
 `websecure-public` entrypoint. Left on the default `:443` entrypoint it inherits
@@ -115,32 +117,32 @@ per-domain-row via `customEntrypoint`, not an app env var.
   model), and is `PHX_HOST`. It is the only host where `/admin*` exists. The VPN
   IP-allowlist is the access boundary — `/admin` needs no further auth (see the
   Admin section below).
-- **`arcada.naps.pt`** is open to the public (no auth gate — the sign-in/up UI is
-  hidden, issue #53, but the register is world-readable). It is hardened by:
-  `ADMIN_HOST=arcada.example.internal` (RequireAdminHost 404s `/admin*` off the private
-  host), `cloudflare-only` origin lock, and a `noindex`-free but `/admin`-`/users`-
-  `/dev`-disallowing `robots.txt`.
+- **`arcada.naps.pt`** is open to the public for `/` (no auth gate — the sign-in/up
+  UI is hidden, issue #53, but the register is world-readable). `/admin*` on this
+  host is gated by Authelia SSO. It is hardened by: the `authelia` edge middleware
+  on `/admin*`, `cloudflare-only` origin lock, and a `noindex`-free but `/admin`-
+  `/users`-`/dev`-disallowing `robots.txt`.
 
-  **Why not Authelia (considered, not used):** the shared `authelia` middleware
-  forward-auths to Authelia at `192.0.2.20:9091`, which is configured only for
-  `*.example.internal` (→ `auth.example.internal`) and `*.example.internal`. For the bare `naps.pt`
-  cookie domain it returns **400**, so `authelia@file` cannot gate
-  `arcada.naps.pt`. Going public later needs, in order: (1) a Cloudflare
-  tunnel/origin route for `arcada.naps.pt` → the Traefik ingress; (2) a gate that
-  works for `naps.pt` — either add the `naps.pt` session domain + access rule to
-  Authelia, or just open it; (3) an `arcada.naps.pt` domain row on the app. Note
-  once traffic flows through Cloudflare the source IP becomes Cloudflare's, so an
-  IP-allowlist gate would block everyone — use an auth gate, not the VPN ACL.
+  **Authelia gate for `/admin` (#46):** the shared `authelia` middleware
+  forward-auths to Authelia at `192.0.2.20:9091`. Authelia picks its portal from
+  the request's cookie domain, so a `naps.pt` session-cookie entry was added
+  (`authelia_url` reuses the existing public portal `auth.example.com` — legal
+  because that host is itself under `naps.pt`, so it can set a `Domain=naps.pt`
+  cookie). An access-control rule scopes `arcada.naps.pt ^/admin` to
+  `group:admin` / two-factor, with an explicit `deny` so the `one_factor`
+  default policy can't admit any other authenticated user. The cookie is
+  `naps.pt`-wide (shared SSO across `*.naps.pt`, `HttpOnly`+`Secure`+`SameSite=Lax`).
 
 Dokploy domain rows (per host):
 
 | Host | Path | Middlewares |
 |---|---|---|
 | `arcada.example.internal` | `/` | `vpn-allowlist` |
-| `arcada.example.internal` | `/admin` | `authelia`, `vpn-allowlist` |
+| `arcada.example.internal` | `/admin` | `vpn-allowlist` |
+| `arcada.naps.pt` | `/` | `cloudflare-only` |
+| `arcada.naps.pt` | `/admin` | `cloudflare-only`, `authelia` |
 
-Set `ADMIN_HOST=arcada.example.internal` in the app environment so the in-app host guard
-matches the edge routing. `robots.txt` disallows `/admin*` (SEO issue).
+`robots.txt` disallows `/admin*` (SEO issue).
 
 ## VPN gating (no public exposure)
 
@@ -234,20 +236,19 @@ via `bin/arcada rpc` —
 `Arcada.Providers.create_provider/1` then `Arcada.Admin.update_settings/1`
 with `active_provider_id`/`active_model`.
 
-Admin lives **only** on the private host `arcada.example.internal` (see the two-host
-section above), and the VPN is the access boundary — no extra auth. Two layers:
+Admin has **no in-app auth** — the access boundary is the edge, and it differs
+per host (see the two-host section above):
 
-1. **Host (Traefik + app).** `/admin*` is not routed on the public host at all,
-   and `RequireAdminHost` 404s it in-app if `conn.host != ADMIN_HOST`. So the
-   surface simply doesn't exist off the VPN host.
-2. **Edge (Traefik).** The `arcada.example.internal` router carries the
-   `vpn-allowlist` IP-allowlist middleware, so only VPN clients
-   reach it. Anyone on the VPN reaching the admin host is trusted; `/admin` needs
-   no dedicated domain row or forwardAuth.
+1. **Public `arcada.naps.pt`.** The `/admin` domain row carries the `authelia`
+   forwardAuth middleware, so Authelia SSO (`group:admin` / two-factor) gates every
+   `/admin*` request before it reaches the app (#46).
+2. **Private `arcada.example.internal`.** The router carries only the
+   `vpn-allowlist` IP-allowlist, so any VPN client is trusted; `/admin` needs no
+   further auth there.
 
-There is no in-app group check and no Authelia dependency for `/admin`. If a
-future deploy needs per-user admin auth, that's a separate change (see the
-architecture review / issue tracker).
+There is no in-app host guard or group check — reaching `/admin` means the edge
+already authorized the request. `RequireAdminHost` was removed in #46. If a future
+deploy needs finer per-user admin auth, that's a separate change.
 
 ## Observability (Loki + Prometheus)
 
