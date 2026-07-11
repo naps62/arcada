@@ -51,6 +51,8 @@ defmodule ArcadaWeb.SeoControllerTest do
       assert body =~ "/sobre"
       assert body =~ "domain=fiscal"
       assert body =~ "/acts/#{act.dre_id}/#{Act.slug(act)}</loc>"
+      # root + sections carry a lastmod hint (newest act timestamp)
+      assert body =~ "<lastmod>"
     end
 
     test "omits acts without a published summary", %{conn: conn} do

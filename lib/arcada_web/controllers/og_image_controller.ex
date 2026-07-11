@@ -15,7 +15,8 @@ defmodule ArcadaWeb.OgImageController do
     case OgImage.png(act) do
       {:ok, png} ->
         conn
-        |> put_resp_content_type("image/png")
+        # nil charset — it's a binary image, not text.
+        |> put_resp_content_type("image/png", nil)
         |> put_resp_header("cache-control", "public, max-age=86400")
         |> send_resp(200, png)
 

@@ -107,6 +107,7 @@ defmodule ArcadaWeb.SEO do
       canonical_url: canonical,
       og_type: "article",
       page_og_image: og_image,
+      page_og_image_alt: "#{title} — Arcada",
       json_ld: [
         article_json_ld(act, title, description, canonical, og_image),
         breadcrumb_json_ld(act, summary, canonical)

@@ -30,8 +30,13 @@ defmodule ArcadaWeb.SeoController do
   end
 
   def sitemap(conn, _params) do
+    acts = Register.sitemap_acts()
+    # Newest act timestamp — a lastmod hint for the register root + sections,
+    # which are all views over the same act set.
+    latest = latest_lastmod(acts)
+
     urls =
-      static_urls() ++ section_urls() ++ act_urls()
+      static_urls(latest) ++ section_urls(latest) ++ act_urls(acts)
 
     body = """
     <?xml version="1.0" encoding="UTF-8"?>
@@ -45,22 +50,37 @@ defmodule ArcadaWeb.SeoController do
     |> send_resp(200, body)
   end
 
-  defp static_urls do
+  defp static_urls(latest) do
     [
-      %{loc: SEO.url(~p"/"), changefreq: "daily", priority: "1.0"},
+      %{loc: SEO.url(~p"/"), lastmod: latest, changefreq: "daily", priority: "1.0"},
       %{loc: SEO.url(~p"/faq"), changefreq: "monthly", priority: "0.3"},
       %{loc: SEO.url(~p"/sobre"), changefreq: "monthly", priority: "0.3"}
     ]
   end
 
-  defp section_urls do
+  defp section_urls(latest) do
     Enum.map(@section_domains, fn domain ->
-      %{loc: SEO.url(~p"/?#{[domain: domain]}"), changefreq: "daily", priority: "0.5"}
+      %{
+        loc: SEO.url(~p"/?#{[domain: domain]}"),
+        lastmod: latest,
+        changefreq: "daily",
+        priority: "0.5"
+      }
     end)
   end
 
-  defp act_urls do
-    Enum.map(Register.sitemap_acts(), fn act ->
+  defp latest_lastmod(acts) do
+    acts
+    |> Enum.map(& &1.updated_at)
+    |> Enum.reject(&is_nil/1)
+    |> case do
+      [] -> nil
+      stamps -> stamps |> Enum.max(DateTime) |> DateTime.to_iso8601()
+    end
+  end
+
+  defp act_urls(acts) do
+    Enum.map(acts, fn act ->
       %{
         loc: SEO.act_url(act),
         lastmod: act.updated_at && DateTime.to_iso8601(act.updated_at),

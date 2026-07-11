@@ -71,7 +71,10 @@
     <meta property="og:image" content={assigns[:page_og_image] || SEO.default_og_image()} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Arcada — onde a lei fala português" />
+    <meta
+      property="og:image:alt"
+      content={assigns[:page_og_image_alt] || "Arcada — onde a lei fala português"}
+    />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content={assigns[:page_og_image] || SEO.default_og_image()} />
     <meta

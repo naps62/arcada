@@ -111,6 +111,7 @@ defmodule ArcadaWeb.SEOTest do
       og = SEO.url("/acts/84/og.png")
       assert m.page_og_image == og
       assert article["image"] == og
+      assert m.page_og_image_alt == "Muda o IVA — Arcada"
 
       # Breadcrumb: Home > first life-domain (linked to its section) > act
       crumbs =
