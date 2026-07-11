@@ -180,8 +180,11 @@ defmodule ArcadaWeb.SEO do
   end
 
   # Square brand mark (the archway tile) — reused as the Organization logo and
-  # the Article publisher logo.
-  defp logo_url, do: url(~p"/icon-512.png")
+  # the Article publisher logo. Bare path, NOT `~p`: `~p` fingerprints this
+  # top-level static file into a digested URL that Plug.Static's `only`
+  # allowlist rejects (raw-segment match), so the digested logo would 404 and
+  # crawlers couldn't fetch it. See the favicon fix in #78.
+  defp logo_url, do: url("/icon-512.png")
 
   # --- Act -------------------------------------------------------------------
 
