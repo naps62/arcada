@@ -49,12 +49,9 @@ defmodule ArcadaWeb.Endpoint do
     param_key: "request_logger",
     cookie_key: "request_logger"
 
-  # Expose Prometheus metrics at /metrics. Placed before RequestId/Telemetry
-  # so scrapes don't generate request logs or skew request metrics.
-  # RequireMetricsHost 404s /metrics on any host but the private VPN one, since
-  # PromEx.Plug has no router pipeline to gate it (issue #11).
-  plug ArcadaWeb.Plugs.RequireMetricsHost
-  plug PromEx.Plug, prom_ex_module: Arcada.PromEx
+  # Prometheus metrics are NOT served on this public endpoint. They live on a
+  # dedicated internal Bandit listener (Arcada.Application, port :metrics_port),
+  # un-routed publicly and scraped by Alloy over the dokploy overlay (#11, #46).
 
   # Recover the real client IP from the Cloudflare → Traefik forwarded headers
   # (issue #43). Placed before RequestId/Telemetry so logs and request metrics

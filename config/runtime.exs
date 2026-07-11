@@ -20,14 +20,6 @@ if System.get_env("PHX_SERVER") do
   config :arcada, ArcadaWeb.Endpoint, server: true
 end
 
-# /metrics (Prometheus scrape) is served only on the private VPN host — it can't
-# be Authelia-gated (a scraper has no interactive SSO). RequireMetricsHost 404s it
-# on any other host. Reuse ADMIN_HOST as that private host; METRICS_HOST overrides
-# if they ever need to diverge. Unset (dev/test/single-host) → reachable anywhere.
-if admin_host = System.get_env("ADMIN_HOST") do
-  config :arcada, :metrics, host: System.get_env("METRICS_HOST") || admin_host
-end
-
 # Real client IP behind Cloudflare → Traefik (issue #43). Makes conn.remote_ip
 # the actual visitor instead of the Traefik container peer. Enabled by setting
 # REMOTE_IP=true (or any of the tuning vars below); unset → the plug is a no-op,
@@ -169,17 +161,6 @@ if config_env() == :prod do
 end
 
 if config_env() == :prod do
-  # Fail closed: RequireMetricsHost gates /metrics to the private host and
-  # fails open (reachable everywhere) when the host is unset, so require
-  # ADMIN_HOST in prod rather than default open (#55). /admin is edge-gated
-  # (Authelia) and does not depend on this.
-  System.get_env("ADMIN_HOST") ||
-    raise """
-    environment variable ADMIN_HOST is missing.
-    /metrics has no in-app auth — without it the Prometheus scrape endpoint is
-    open on every host. Set it to the private admin host (e.g. arcada.example.internal).
-    """
-
   database_url =
     System.get_env("DATABASE_URL") ||
       raise """

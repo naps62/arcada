@@ -90,9 +90,10 @@ RUN chown nobody /app
 # Opt this container into Grafana Alloy's Prometheus scraping. Alloy's
 # discovery.relabel "metrics" only keeps containers with these two labels and
 # scrapes `<addr>:<prometheus.port>/metrics` (see infra/alloy config.alloy).
-# PromEx exposes GET /metrics on PORT (4000) via PromEx.Plug.
+# Metrics live on a dedicated internal Bandit listener (port 9091), NOT the
+# public :4000 endpoint — un-routed publicly, so no host guard needed (#46).
 LABEL prometheus.scrape="true"
-LABEL prometheus.port="4000"
+LABEL prometheus.port="9091"
 
 # set runner ENV
 ENV MIX_ENV="prod"

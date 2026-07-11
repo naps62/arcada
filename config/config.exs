@@ -122,10 +122,11 @@ config :arcada, Oban,
 # Admin area (/admin) has no in-app auth — gated at the edge (Authelia on the
 # public host, VPN on the private one). No host config: see issues #19, #37, #46.
 
-# Prometheus /metrics: served by PromEx.Plug in the endpoint (no router
-# pipeline), so RequireMetricsHost host-guards it. `host: nil` (dev/test) leaves
-# it reachable on any host; prod sets it from ADMIN_HOST in runtime.exs. See #11.
-config :arcada, :metrics, host: nil
+# Prometheus /metrics: served on a dedicated internal Bandit listener (see
+# Arcada.Application), NOT the public :4000 endpoint. `metrics_port` is where
+# Alloy scrapes it over the dokploy overlay by container IP; never routed
+# publicly, so it needs no host guard (issues #11, #46).
+config :arcada, :metrics_port, 9091
 
 # Kaffy raw-DB admin (mounted at /admin/db, behind the same Authelia/VPN gate).
 # Schemas are auto-discovered from the Repo; see ArcadaWeb.Router.
@@ -185,9 +186,11 @@ config :logger, :console,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
 
-# Prometheus metrics (PromEx). Dashboards are not auto-uploaded; metrics are
-# exposed at /metrics via PromEx.Plug and scraped by Prometheus over the
-# dokploy-network.
+# Prometheus metrics (PromEx). Dashboards are not auto-uploaded. Metrics are
+# exposed on a dedicated internal Bandit listener (Arcada.Application, port
+# :metrics_port) — PromEx's own `metrics_server` is left `:disabled` because it
+# requires plug_cowboy and the app runs on Bandit. Scraped by Alloy over the
+# dokploy-network by container IP.
 config :arcada, Arcada.PromEx,
   manual_metrics_start_delay: :no_delay,
   drop_metrics_groups: [],

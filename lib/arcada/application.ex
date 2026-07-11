@@ -14,33 +14,53 @@ defmodule Arcada.Application do
     # formatter in prod) so job runs are visible in Loki.
     Oban.Telemetry.attach_default_logger(:info)
 
-    children = [
-      # PromEx first so it captures init-time telemetry from Ecto/Phoenix/Oban.
-      Arcada.PromEx,
-      ArcadaWeb.Telemetry,
-      Arcada.Repo,
-      {DNSCluster, query: Application.get_env(:arcada, :dns_cluster_query) || :ignore},
-      {Phoenix.PubSub, name: Arcada.PubSub},
-      # ETS-backed rate limiter (issue #32); caps semantic-search embedding per
-      # caller. Expired buckets are swept every 10 min.
-      {Arcada.RateLimit, [clean_period: :timer.minutes(10)]},
-      {Oban, Application.fetch_env!(:arcada, Oban)},
-      # Runs the semantic leg of a search unlinked (issue #69), so a crashing or
-      # killed embedding task degrades to FTS-only instead of taking the visitor
-      # LiveView down with it.
-      {Task.Supervisor, name: Arcada.Search.TaskSupervisor},
-      # Semantic-search index (issue #27): loads summary embeddings into ETS.
-      Arcada.Search.Index,
-      # Start a worker by calling: Arcada.Worker.start_link(arg)
-      # {Arcada.Worker, arg},
-      # Start to serve requests, typically the last entry
-      ArcadaWeb.Endpoint
-    ]
+    children =
+      [
+        # PromEx first so it captures init-time telemetry from Ecto/Phoenix/Oban.
+        Arcada.PromEx,
+        ArcadaWeb.Telemetry,
+        Arcada.Repo,
+        {DNSCluster, query: Application.get_env(:arcada, :dns_cluster_query) || :ignore},
+        {Phoenix.PubSub, name: Arcada.PubSub},
+        # ETS-backed rate limiter (issue #32); caps semantic-search embedding per
+        # caller. Expired buckets are swept every 10 min.
+        {Arcada.RateLimit, [clean_period: :timer.minutes(10)]},
+        {Oban, Application.fetch_env!(:arcada, Oban)},
+        # Runs the semantic leg of a search unlinked (issue #69), so a crashing or
+        # killed embedding task degrades to FTS-only instead of taking the visitor
+        # LiveView down with it.
+        {Task.Supervisor, name: Arcada.Search.TaskSupervisor},
+        # Semantic-search index (issue #27): loads summary embeddings into ETS.
+        Arcada.Search.Index,
+        # Start a worker by calling: Arcada.Worker.start_link(arg)
+        # {Arcada.Worker, arg},
+        # Start to serve requests, typically the last entry
+        ArcadaWeb.Endpoint
+      ] ++ metrics_server()
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Arcada.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  # Dedicated internal Prometheus metrics listener (#11, #46). Serves PromEx.Plug
+  # on its own Bandit port (`:metrics_port`), separate from the public :4000
+  # endpoint. Unauthenticated but never routed publicly — Traefik only maps :4000;
+  # Alloy scrapes this port over the dokploy overlay by container IP — so it needs
+  # no host guard. PromEx's built-in metrics_server isn't used (it needs
+  # plug_cowboy; the app runs on Bandit). Only started when the web server runs
+  # (prod / PHX_SERVER); dev/test skip the extra listener.
+  defp metrics_server do
+    if Application.get_env(:arcada, ArcadaWeb.Endpoint)[:server] do
+      port = Application.get_env(:arcada, :metrics_port, 9091)
+
+      [
+        {Bandit, plug: {PromEx.Plug, prom_ex_module: Arcada.PromEx}, scheme: :http, port: port}
+      ]
+    else
+      []
+    end
   end
 
   # Tell Phoenix to update the endpoint configuration

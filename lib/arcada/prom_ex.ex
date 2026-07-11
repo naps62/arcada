@@ -1,10 +1,12 @@
 defmodule Arcada.PromEx do
   @moduledoc """
-  PromEx wiring — exposes Prometheus metrics at `/metrics` (mounted via
-  `PromEx.Plug` in the endpoint).
+  PromEx wiring — exposes Prometheus metrics via `PromEx.Plug`, served on a
+  dedicated internal Bandit listener (see `Arcada.Application`, port
+  `:metrics_port`), separate from the public :4000 endpoint.
 
-  Prometheus scrapes `http://arcada-app:4000/metrics` over the `dokploy-network`.
-  Dashboards are not auto-uploaded (`grafana: :disabled`); the metrics line up
+  Alloy scrapes `http://<container-ip>:9091/metrics` over the `dokploy-network`;
+  the port is never routed publicly. Dashboards are not auto-uploaded
+  (`grafana: :disabled`); the metrics line up
   with the bundled PromEx dashboards which can be imported manually against the
   `prometheus` datasource if desired.
   """

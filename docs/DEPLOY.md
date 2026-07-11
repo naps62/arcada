@@ -23,7 +23,7 @@ cron `{"0 9 * * 1-5", Arcada.Scraper.IngestWorker}` with queues
 | `DATABASE_URL` | `ecto://<user>:<pass>@<pg-host>/arcada_prod` (Dokploy-managed Postgres) |
 | `SECRET_KEY_BASE` | `mix phx.gen.secret` (64+ bytes) |
 | `PHX_HOST` | canonical public hostname for generated URLs (e.g. `arcada.naps.pt`) |
-| `ADMIN_HOST` | private host that serves `/metrics` (e.g. `arcada.example.internal`); `RequireMetricsHost` 404s the scrape endpoint on any other host, and it seeds `CHECK_ORIGIN_HOSTS`. Unset → `/metrics` reachable on every host (single-host / dev). No longer gates `/admin` (Authelia does, #46). |
+| `ADMIN_HOST` | private VPN host still served (e.g. `arcada.example.internal`); now only seeds `CHECK_ORIGIN_HOSTS` for LiveView. Optional — gates nothing (`/admin` is Authelia-edge-gated, `/metrics` is on its own un-routed port; #46). Drop it once `n62.casa` is retired. |
 | `PHX_SERVER` | `true` |
 | `PORT` | `4000` |
 | `ANTHROPIC_API_KEY` | Claude API key — **secret**; enables the `:api` summarizer adapter |
@@ -104,8 +104,8 @@ URLs / OG tags / sitemap advertise the public host; on the public host `/admin*`
 is gated by Authelia SSO at the edge (see below), and `CHECK_ORIGIN_HOSTS` lists
 both hosts so LiveView upgrades work on either. `REMOTE_IP=true` (X-Forwarded-For)
 recovers the real visitor IP behind Cloudflare. `ADMIN_HOST=arcada.example.internal`
-no longer gates `/admin` — it now only pins `/metrics` to the private host (the
-Prometheus scrape endpoint can't do interactive SSO) and seeds `CHECK_ORIGIN_HOSTS`.
+gates nothing now — `/admin` is Authelia-edge-gated and `/metrics` lives on its own
+un-routed internal port (#46); `ADMIN_HOST` only seeds `CHECK_ORIGIN_HOSTS`.
 
 **The one non-Dokploy gotcha:** a public app must live on the `:8443`
 `websecure-public` entrypoint. Left on the default `:443` entrypoint it inherits
@@ -263,31 +263,36 @@ lifecycle is logged via `Oban.Telemetry.attach_default_logger/1`. `LOG_LEVEL`
 {service="arcada-app"} | json | severity="error"
 ```
 
-**Metrics (Prometheus).** PromEx (`Arcada.PromEx`) exposes
-`GET /metrics` via `PromEx.Plug` (mounted before `Plug.Telemetry`, so scrapes
-aren't logged). Plugins: Application, Beam, Phoenix, Ecto, Oban,
-PhoenixLiveView (~60 metric families, all prefixed `arcada_prom_ex_*`).
+**Metrics (Prometheus).** PromEx (`Arcada.PromEx`) exposes `GET /metrics` via
+`PromEx.Plug`, served on a **dedicated internal Bandit listener** on its own port
+(`config :arcada, :metrics_port`, default `9091`; started in `Arcada.Application`,
+only when the web server runs). It is **not** served on the public `:4000`
+endpoint — so it is un-routed publicly and needs no host guard. Plugins:
+Application, Beam, Phoenix, Ecto, Oban, PhoenixLiveView (~60 metric families, all
+prefixed `arcada_prom_ex_*`). (PromEx's own `metrics_server` isn't used — it needs
+`plug_cowboy` and the app runs on Bandit.)
 
 Scraping is **opt-in via container labels**, not a static target. Grafana
 Alloy (`infra/alloy` → `config.alloy`) discovers Docker containers and only
 scrapes ones carrying these labels, hitting `<container>:<prometheus.port>/metrics`
-over `dokploy-network` (bypasses Traefik — no ACL, no TLS):
+over `dokploy-network` by container IP (bypasses Traefik — no ACL, no TLS, no
+hostname). The scrape port **must** match the metrics listener:
 
 ```dockerfile
 # Dockerfile (runner stage) — already set:
 LABEL prometheus.scrape="true"
-LABEL prometheus.port="4000"
+LABEL prometheus.port="9091"
 ```
 
 This mirrors how other scraped services (e.g. `example-service`) opt in, so no edits to
 the shared Alloy config are needed when this app is redeployed. Metrics land in
 Prometheus prefixed `arcada_prom_ex_*` within ~15s of a deploy.
 
-`/metrics` is *also* reachable at `https://oqm.example.internal/metrics`, but it
-inherits the host's `vpn-allowlist@file` ipAllowList (the router
-rule is `Host()`-only, no path split) — so it's already restricted to the
-VPN/docker ranges, same as the rest of the app. No metrics-specific Traefik
-config is needed. Prefer the internal `dokploy-network` target above.
+Because the scrape addresses the container by IP over the overlay, there is no
+hostname in the request — this is why metrics must live on their own un-gated
+port (the old `/metrics` on `:4000` was host-gated to `ADMIN_HOST` and so the
+IP-addressed scrape always 404'd; issue #46). Nothing exposes this port
+publicly, and only the dokploy overlay can reach a container IP.
 
 Dashboards aren't auto-uploaded (`grafana: :disabled`); import the bundled
 PromEx dashboards manually against the `prometheus` datasource if wanted.
