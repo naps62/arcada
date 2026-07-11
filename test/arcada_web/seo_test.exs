@@ -18,12 +18,17 @@ defmodule ArcadaWeb.SEOTest do
       assert m.page_noindex == false
     end
 
-    test "front door ships WebSite + SearchAction JSON-LD" do
-      %{json_ld: ld} = SEO.metadata_for(:home)
+    test "front door ships WebSite + SearchAction and Organization JSON-LD" do
+      %{json_ld: nodes} = SEO.metadata_for(:home)
 
-      assert ld["@type"] == "WebSite"
-      assert ld["potentialAction"]["@type"] == "SearchAction"
-      assert ld["potentialAction"]["target"]["urlTemplate"] =~ "?q={search_term_string}"
+      website = Enum.find(nodes, &(&1["@type"] == "WebSite"))
+      assert website["potentialAction"]["@type"] == "SearchAction"
+      assert website["potentialAction"]["target"]["urlTemplate"] =~ "?q={search_term_string}"
+
+      org = Enum.find(nodes, &(&1["@type"] == "Organization"))
+      assert org["name"] == "Arcada"
+      assert org["logo"] == SEO.url("/icon-512.png")
+      assert org["url"] == SEO.url("/")
     end
   end
 
@@ -60,17 +65,22 @@ defmodule ArcadaWeb.SEOTest do
   end
 
   describe "metadata_for {:act, act, summary}" do
-    test "headline drives the title; ships an Article JSON-LD with source + date" do
+    test "headline drives the title; ships Article + Breadcrumb JSON-LD" do
       act = %Act{
         id: 42,
         dre_id: "84",
         tipo: "Decreto",
         title: "Decreto n.º 84/2026",
         source_url: "https://diariodarepublica.pt/x",
-        published_at: ~D[2026-06-24]
+        published_at: ~D[2026-06-24],
+        updated_at: ~U[2026-06-25 10:00:00Z]
       }
 
-      summary = %Summary{headline: "Muda o [[IVA]]", plain_text: "Em linguagem simples: muda X."}
+      summary = %Summary{
+        headline: "Muda o [[IVA]]",
+        plain_text: "Em linguagem simples: muda X.",
+        domains: [:fiscal, :trabalho]
+      }
 
       m = SEO.metadata_for({:act, act, summary})
 
@@ -81,18 +91,31 @@ defmodule ArcadaWeb.SEOTest do
       assert m.canonical_url == SEO.url("/acts/84/decreto-n-84-2026")
       assert m.og_type == "article"
 
-      ld = m.json_ld
-      assert ld["@type"] == "Article"
-      assert ld["headline"] == "Muda o IVA"
-      assert ld["mainEntityOfPage"] == SEO.url("/acts/84/decreto-n-84-2026")
-      assert ld["datePublished"] == "2026-06-24"
-      assert ld["articleSection"] == "Decreto"
-      assert ld["isBasedOn"] == "https://diariodarepublica.pt/x"
+      article = Enum.find(m.json_ld, &(&1["@type"] == "Article"))
+      assert article["headline"] == "Muda o IVA"
+      assert article["mainEntityOfPage"] == SEO.url("/acts/84/decreto-n-84-2026")
+      assert article["datePublished"] == "2026-06-24"
+      assert article["dateModified"] == "2026-06-25T10:00:00Z"
+      assert article["articleSection"] == "Decreto"
+      assert article["isBasedOn"] == "https://diariodarepublica.pt/x"
+      assert article["publisher"]["logo"]["url"] == SEO.url("/icon-512.png")
 
       # og:image + Article image point at the per-act generated card
       og = SEO.url("/acts/84/og.png")
       assert m.page_og_image == og
-      assert ld["image"] == og
+      assert article["image"] == og
+
+      # Breadcrumb: Home > first life-domain (linked to its section) > act
+      crumbs =
+        m.json_ld
+        |> Enum.find(&(&1["@type"] == "BreadcrumbList"))
+        |> Map.fetch!("itemListElement")
+
+      assert Enum.map(crumbs, &{&1["position"], &1["name"]}) ==
+               [{1, "Arcada"}, {2, "fiscal"}, {3, "Muda o IVA"}]
+
+      assert Enum.at(crumbs, 1)["item"] == SEO.url("/?domain=fiscal")
+      assert List.last(crumbs)["item"] == SEO.url("/acts/84/decreto-n-84-2026")
     end
 
     test "falls back to the act title/description when there's no summary" do
@@ -102,9 +125,19 @@ defmodule ArcadaWeb.SEOTest do
 
       assert m.page_title == "Portaria n.º 7/2026"
       assert m.page_description == "Portaria n.º 7/2026"
+
+      article = Enum.find(m.json_ld, &(&1["@type"] == "Article"))
       # optional Article fields absent when the act has no date/source
-      refute Map.has_key?(m.json_ld, "datePublished")
-      refute Map.has_key?(m.json_ld, "isBasedOn")
+      refute Map.has_key?(article, "datePublished")
+      refute Map.has_key?(article, "isBasedOn")
+
+      # No summary/domain → flat Home > act breadcrumb (2 items)
+      crumbs =
+        m.json_ld
+        |> Enum.find(&(&1["@type"] == "BreadcrumbList"))
+        |> Map.fetch!("itemListElement")
+
+      assert Enum.map(crumbs, & &1["name"]) == ["Arcada", "Portaria n.º 7/2026"]
     end
 
     test "long descriptions are truncated with an ellipsis" do

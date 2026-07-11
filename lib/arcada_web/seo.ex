@@ -107,7 +107,10 @@ defmodule ArcadaWeb.SEO do
       canonical_url: canonical,
       og_type: "article",
       page_og_image: og_image,
-      json_ld: article_json_ld(act, title, description, canonical, og_image)
+      json_ld: [
+        article_json_ld(act, title, description, canonical, og_image),
+        breadcrumb_json_ld(act, summary, canonical)
+      ]
     }
   end
 
@@ -139,10 +142,14 @@ defmodule ArcadaWeb.SEO do
     url(~p"/?#{params}")
   end
 
-  # The register root is the site's front door: describe the whole product and
-  # advertise the on-site search (WebSite + SearchAction) for rich results. On a
-  # filtered view we drop the SearchAction and just describe the slice.
-  defp browse_json_ld(nil, nil) do
+  # The register root is the site's front door: describe the whole product
+  # (WebSite + SearchAction for the sitelinks searchbox) and the publishing
+  # entity (Organization, for the knowledge graph). On a filtered view we drop
+  # both and just describe the slice.
+  defp browse_json_ld(nil, nil), do: [website_json_ld(), organization_json_ld()]
+  defp browse_json_ld(_domain, _period), do: nil
+
+  defp website_json_ld do
     %{
       "@context" => "https://schema.org",
       "@type" => "WebSite",
@@ -161,7 +168,20 @@ defmodule ArcadaWeb.SEO do
     }
   end
 
-  defp browse_json_ld(_domain, _period), do: nil
+  defp organization_json_ld do
+    %{
+      "@context" => "https://schema.org",
+      "@type" => "Organization",
+      "name" => "Arcada",
+      "url" => url(~p"/"),
+      "logo" => logo_url(),
+      "description" => @default_description
+    }
+  end
+
+  # Square brand mark (the archway tile) — reused as the Organization logo and
+  # the Article publisher logo.
+  defp logo_url, do: url(~p"/icon-512.png")
 
   # --- Act -------------------------------------------------------------------
 
@@ -192,11 +212,51 @@ defmodule ArcadaWeb.SEO do
       "isAccessibleForFree" => true,
       "image" => image,
       "mainEntityOfPage" => canonical,
-      "publisher" => %{"@type" => "Organization", "name" => "Arcada"}
+      "publisher" => %{
+        "@type" => "Organization",
+        "name" => "Arcada",
+        "logo" => %{"@type" => "ImageObject", "url" => logo_url()}
+      }
     }
     |> maybe_put("datePublished", act.published_at && Date.to_iso8601(act.published_at))
+    |> maybe_put("dateModified", act.updated_at && DateTime.to_iso8601(act.updated_at))
     |> maybe_put("articleSection", act.tipo)
     |> maybe_put("isBasedOn", act.source_url)
+  end
+
+  # Home › {life-domain section} › {act}. The middle crumb links the act's
+  # first life-domain to its browse-filter URL (a real, canonical section page);
+  # acts without a domain get a flat Home › {act} trail.
+  defp breadcrumb_json_ld(act, summary, canonical) do
+    %{
+      "@context" => "https://schema.org",
+      "@type" => "BreadcrumbList",
+      "itemListElement" => breadcrumb_items(act, summary, canonical)
+    }
+  end
+
+  defp breadcrumb_items(act, summary, canonical) do
+    home = crumb(1, "Arcada", url(~p"/"))
+    name = act_title(act, summary)
+
+    case section_domain(summary) do
+      nil ->
+        [home, crumb(2, name, canonical)]
+
+      domain ->
+        [
+          home,
+          crumb(2, to_string(domain), browse_canonical(domain, nil)),
+          crumb(3, name, canonical)
+        ]
+    end
+  end
+
+  defp section_domain(%{domains: [domain | _]}), do: domain
+  defp section_domain(_summary), do: nil
+
+  defp crumb(position, name, item) do
+    %{"@type" => "ListItem", "position" => position, "name" => name, "item" => item}
   end
 
   defp maybe_put(map, _key, nil), do: map
