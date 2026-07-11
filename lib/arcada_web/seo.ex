@@ -35,6 +35,9 @@ defmodule ArcadaWeb.SEO do
   """
   def default_og_image, do: url(~p"/images/og-default.png")
 
+  @doc "Absolute URL of an act's generated share card (`/acts/:dre_id/og.png`)."
+  def act_og_image(%{dre_id: dre_id}), do: url(~p"/acts/#{dre_id}/og.png")
+
   @doc "Absolute URL for `path` (e.g. `/acts/12`), rooted at the endpoint host."
   def url(path), do: Endpoint.url() <> path
 
@@ -96,13 +99,15 @@ defmodule ArcadaWeb.SEO do
     title = act_title(act, summary)
     description = act_description(act, summary)
     canonical = act_url(act)
+    og_image = act_og_image(act)
 
     %{
       page_title: title,
       page_description: description,
       canonical_url: canonical,
       og_type: "article",
-      json_ld: article_json_ld(act, title, description, canonical)
+      page_og_image: og_image,
+      json_ld: article_json_ld(act, title, description, canonical, og_image)
     }
   end
 
@@ -177,7 +182,7 @@ defmodule ArcadaWeb.SEO do
     if String.length(text) > max, do: String.slice(text, 0, max - 1) <> "…", else: text
   end
 
-  defp article_json_ld(act, title, description, canonical) do
+  defp article_json_ld(act, title, description, canonical, image) do
     %{
       "@context" => "https://schema.org",
       "@type" => "Article",
@@ -185,7 +190,7 @@ defmodule ArcadaWeb.SEO do
       "description" => description,
       "inLanguage" => "pt-PT",
       "isAccessibleForFree" => true,
-      "image" => default_og_image(),
+      "image" => image,
       "mainEntityOfPage" => canonical,
       "publisher" => %{"@type" => "Organization", "name" => "Arcada"}
     }

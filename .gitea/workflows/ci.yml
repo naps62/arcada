@@ -29,7 +29,9 @@ jobs:
       - name: Install system deps (Node.js, git, PostgreSQL)
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends ca-certificates curl gnupg git postgresql
+          # librsvg2-bin + fontconfig: exercise Arcada.OgImage's real SVG->PNG
+          # share-card rasterisation in tests (matches the runtime container).
+          apt-get install -y --no-install-recommends ca-certificates curl gnupg git postgresql librsvg2-bin fontconfig
           # Node.js 20 from the NodeSource apt repo via a pinned keyring — no
           # `curl | bash` (don't pipe a remote script into a root shell). The key
           # is fetched once and every nodejs package is signature-verified against
@@ -54,6 +56,11 @@ jobs:
           pg_isready -h localhost -p 5433 -U postgres
 
       - uses: actions/checkout@v4
+
+      - name: Install OG-card render fonts
+        run: |
+          cp priv/render_fonts/*.ttf /usr/share/fonts/
+          fc-cache -f
 
       - name: Install hex + rebar
         run: |

@@ -88,6 +88,11 @@ defmodule ArcadaWeb.SEOTest do
       assert ld["datePublished"] == "2026-06-24"
       assert ld["articleSection"] == "Decreto"
       assert ld["isBasedOn"] == "https://diariodarepublica.pt/x"
+
+      # og:image + Article image point at the per-act generated card
+      og = SEO.url("/acts/84/og.png")
+      assert m.page_og_image == og
+      assert ld["image"] == og
     end
 
     test "falls back to the act title/description when there's no summary" do

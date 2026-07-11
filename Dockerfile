@@ -69,7 +69,13 @@ FROM ${RUNNER_IMAGE}
 
 RUN apt-get update -y && \
   apt-get install -y libstdc++6 openssl libncurses6 locales ca-certificates openssh-client \
+  librsvg2-bin fontconfig \
   && apt-get clean && rm -f /var/lib/apt/lists/*_*
+
+# Fonts for on-demand OG share-card rendering (Arcada.OgImage rasterises SVG via
+# rsvg-convert, which resolves families through fontconfig — not @font-face).
+COPY priv/render_fonts/*.ttf /usr/share/fonts/truetype/arcada/
+RUN fc-cache -f
 
 # Set the locale
 RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen

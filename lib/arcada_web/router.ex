@@ -37,6 +37,11 @@ defmodule ArcadaWeb.Router do
     # canonical URL per act. Lives outside the live_session — it's a plain GET.
     get "/acts/:dre_id", ActRedirectController, :show
 
+    # Per-act social share card (og:image). Literal `og.png` segment, so this
+    # must precede the `/acts/:dre_id/:slug` live route below or the slug pattern
+    # would swallow it.
+    get "/acts/:dre_id/og.png", OgImageController, :show
+
     # Public pages mount the current user (nil when logged out) so the masthead
     # can show account/login links. Auth is optional here — gating (issue #27)
     # happens per-route with :require_authenticated_user, not on these.
