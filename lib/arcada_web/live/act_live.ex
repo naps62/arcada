@@ -145,11 +145,22 @@ defmodule ArcadaWeb.ActLive do
        when is_binary(r) and is_binary(model),
        do: "#{r} embeddings > #{model}"
 
+  # Extract/render (issue #90): the full chain — the embedder that coarse-trimmed,
+  # the strong model that extracted the changes, and the model that rendered them:
+  # "bge-m3 embeddings > GLM-5.2 > amalia-9b".
+  defp model_line(%{text_strategy: "extract", extractor_model: e, model: model} = s)
+       when is_binary(e) and is_binary(model) do
+    [ranker_prefix(s), e, model] |> Enum.reject(&is_nil/1) |> Enum.join(" > ")
+  end
+
   defp model_line(%{model: model} = s) when is_binary(model),
     do: join_meta([model, strategy_meta(s)])
 
   # Legacy rows may have no model recorded — show nothing rather than a label.
   defp model_line(_), do: nil
+
+  defp ranker_prefix(%{ranker_model: r}) when is_binary(r), do: "#{r} embeddings"
+  defp ranker_prefix(_), do: nil
 
   defp join_meta(parts), do: parts |> Enum.reject(&is_nil/1) |> Enum.join(" · ")
 

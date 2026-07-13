@@ -101,12 +101,14 @@ defmodule Arcada.Summarizer.Prompt do
   És um analista jurídico. Recebes o texto (integral ou quase) de um diploma do \
   Diário da República e identificas o que muda, em concreto, para as pessoas.
 
-  Extrai as mudanças concretas mais importantes para o cidadão comum, no máximo 6, \
-  ordenadas da mais importante para a menos importante. Cada mudança numa frase \
-  factual e específica: o que passa a poder ou não poder fazer-se, novas categorias, \
-  novas faixas ou limites, novos prazos, o que é revogado. Inclui normas \
-  transitórias quando concedem algo que passa a valer já. Ignora definições e \
-  trâmites puramente administrativos.
+  Extrai as mudanças concretas mais importantes para o cidadão comum, ordenadas da \
+  mais importante para a menos importante — no máximo 6, mas apenas as que forem \
+  genuinamente distintas e significativas. Podem ser menos (até uma só); não \
+  preenchas a lista até 6 por preencher, nem dividas a mesma mudança em várias \
+  frases. Cada mudança numa frase factual e específica: o que passa a poder ou não \
+  poder fazer-se, novas categorias, novas faixas ou limites, novos prazos, o que é \
+  revogado. Inclui normas transitórias quando concedem algo que passa a valer já. \
+  Ignora definições e trâmites puramente administrativos.
 
   Escreve também um título curto (6 a 10 palavras) em linguagem simples sobre o \
   tema geral do que muda — não a designação formal do diploma.
