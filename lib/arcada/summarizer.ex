@@ -11,7 +11,7 @@ defmodule Arcada.Summarizer do
   alias Arcada.Providers.Provider
   alias Arcada.Register.{Act, Summary}
   alias Arcada.Search.Index
-  alias Arcada.Summarizer.{Embeddings, SummarizeWorker, TextBudget}
+  alias Arcada.Summarizer.{Embeddings, PlainText, SummarizeWorker, TextBudget}
   alias Arcada.Summarizer.Adapters.{Api, OpenAI, Ssh}
 
   # Provider kind → adapter module.
@@ -47,7 +47,7 @@ defmodule Arcada.Summarizer do
   summarize job, not request paths.
   """
   def prepare_text(text, max_chars \\ nil),
-    do: TextBudget.prepare(text, max_chars || max_text_chars()) |> elem(0)
+    do: TextBudget.prepare(PlainText.from_html(text), max_chars || max_text_chars()) |> elem(0)
 
   @doc "The adapter module for a provider kind (`:anthropic | :openai | :ssh`)."
   def adapter_for(kind) when is_atom(kind), do: Map.fetch!(@adapters, kind)
@@ -138,7 +138,7 @@ defmodule Arcada.Summarizer do
 
     {text, strategy} =
       TextBudget.prepare(
-        act.full_text || act.title,
+        PlainText.from_html(act.full_text) || act.title,
         max_text_chars(model),
         requested,
         target_text_chars(model)
