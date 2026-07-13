@@ -417,6 +417,30 @@ defmodule Arcada.SummarizerTest do
       assert prompt =~ "muda B"
     end
 
+    test "extract/render runs even when the ranker (embeddings) is unavailable (#90)" do
+      {:ok, _} = Admin.update_settings(%{"max_text_chars" => "400"})
+      # No set_embeddings -> bge-m3 unavailable. The extractor's own budget is large,
+      # so the act fits it whole and extraction never needs the ranker. Before the
+      # fix this errored with :ranker_unavailable (the small-budget rank gated it).
+      ext = openai_provider()
+
+      {:ok, _} =
+        Admin.update_settings(%{"extractor_provider_id" => ext.id, "extractor_model" => "glm-x"})
+
+      stub_extractor(fn _ ->
+        {:ok, Jason.encode!(%{"headline" => "H", "changes" => ["muda A"]})}
+      end)
+
+      stub_ssh_runner(fn _ -> {:ok, claude_envelope("Muda A.", [])} end)
+
+      assert {:ok, summary} =
+               Summarizer.summarize(oversized_act(diploma(800)), ssh_provider(), "claude-cli")
+
+      assert summary.text_strategy == "extract"
+      # the embedder never ran — the act fit the extractor budget whole.
+      assert summary.ranker_model == nil
+    end
+
     test "extract/render falls back to the umbrella summary when the extractor fails (#90)" do
       {:ok, _} = Admin.update_settings(%{"max_text_chars" => "400"})
       set_embeddings(embed_fn: relevance_embed())

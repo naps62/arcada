@@ -152,30 +152,40 @@ defmodule Arcada.Summarizer do
     requested = opts |> Keyword.get(:text_strategy, :auto) |> normalize_strategy()
     clean = PlainText.from_html(act.full_text) || act.title
 
+    if requested == :auto and oversized?(clean, model) and extractor_configured?() do
+      # Omnibus act + an extractor configured: the strong model lists the concrete
+      # changes and amalia renders them (issue #90). This path is **independent of
+      # the renderer's small-budget ranking** — extraction trims with its own large
+      # budget and the renderer is fed the change list, not ranked act text — so it
+      # works even when bge-m3 can't rank the act. Explicit `:rank`/`:truncate`
+      # (A/B on the amalia path) skip it and take the prepared path below.
+      extract_render(act, clean, provider, model)
+    else
+      summarize_prepared(act, provider, model, clean, requested)
+    end
+  end
+
+  # An act whose cleaned text won't fit the renderer's cost target — i.e. it would
+  # be ranked/truncated rather than sent whole.
+  defp oversized?(clean, model), do: String.length(clean) > target_text_chars(model)
+
+  # The prepared path: cap/rank/truncate the text and hand it to the renderer.
+  defp summarize_prepared(act, provider, model, clean, requested) do
     {text, strategy} =
       TextBudget.prepare(clean, max_text_chars(model), requested, target_text_chars(model))
 
     # Only ranking actually uses the embedder; record which one preprocessed it.
     ranker_model = if strategy == :rank, do: Embeddings.model(Admin.embeddings_config())
 
-    cond do
+    if strategy == :truncate and requested != :truncate do
       # Force rank: never persist an auto head-truncated summary — its text is just
-      # the opening, which can't represent an oversized diploma (issue #89). This
-      # only fires when the ranker was unavailable for an over-cap act (typically a
-      # transient embeddings-server failure), so we error and let the Oban job
-      # retry. Explicit `:truncate` (the per-act A/B comparison) is still honoured.
-      strategy == :truncate and requested != :truncate ->
-        {:error, :ranker_unavailable}
-
-      # Omnibus act + an extractor configured: the strong model lists the concrete
-      # changes and amalia renders them (issue #90). Falls back to the umbrella
-      # summary if the extractor is unavailable or fails. Explicit `:truncate`
-      # (A/B) skips this and takes the plain path below.
-      strategy == :rank and requested != :truncate and extractor_configured?() ->
-        extract_render(act, clean, provider, model, ranker_model)
-
-      true ->
-        summarize_with(act, provider, model, text, strategy, ranker_model)
+      # the opening, which can't represent an oversized diploma (issue #89). Fires
+      # when the ranker was unavailable for an over-cap act (usually a transient
+      # embeddings-server failure), so we error and let the Oban job retry. Explicit
+      # `:truncate` (the per-act A/B comparison) is honoured by the branch above.
+      {:error, :ranker_unavailable}
+    else
+      summarize_with(act, provider, model, text, strategy, ranker_model)
     end
   end
 
@@ -196,11 +206,15 @@ defmodule Arcada.Summarizer do
   # generously-trimmed view (its own large budget, not the renderer cap) and
   # returns changes + a headline; amalia renders the changes into the house voice
   # (mode: :render) and the extractor's headline is used verbatim. Any extractor
-  # failure degrades to the umbrella summary so a big act always gets summarized.
-  defp extract_render(act, clean, renderer, renderer_model, ranker_model) do
+  # failure degrades to the prepared/umbrella summary so a big act always gets
+  # summarized (or retries, if that path can't rank either).
+  defp extract_render(act, clean, renderer, renderer_model) do
     {ext_provider, ext_model} = extractor_selection()
     budget = Admin.extractor_text_chars()
-    {ext_text, _} = TextBudget.prepare(clean, budget, :auto, budget)
+    {ext_text, ext_strategy} = TextBudget.prepare(clean, budget, :auto, budget)
+    # bge-m3 only ran if the extractor's own (large) budget still needed trimming
+    # (genuine giants); a doc that fits it whole never touches the embedder.
+    ext_ranker = if ext_strategy == :rank, do: Embeddings.model(Admin.embeddings_config())
 
     case Extractor.extract(act, ext_text, ext_provider, ext_model) do
       {:ok, %{headline: headline, changes: changes}} ->
@@ -219,9 +233,9 @@ defmodule Arcada.Summarizer do
               provider_id: renderer.id,
               # The extractor supplies the headline (amalia hallucinates short titles).
               headline: headline,
-              truncated: String.length(ext_text) < String.length(clean),
+              truncated: ext_strategy != :full,
               text_strategy: "extract",
-              ranker_model: ranker_model,
+              ranker_model: ext_ranker,
               extractor_model: ext_model
             })
           )
@@ -232,15 +246,7 @@ defmodule Arcada.Summarizer do
           "extractor unavailable (#{inspect(reason)}); umbrella fallback for act #{act.id}"
         )
 
-        {text, _} =
-          TextBudget.prepare(
-            clean,
-            max_text_chars(renderer_model),
-            :auto,
-            target_text_chars(renderer_model)
-          )
-
-        summarize_with(act, renderer, renderer_model, text, :rank, ranker_model)
+        summarize_prepared(act, renderer, renderer_model, clean, :auto)
     end
   end
 
