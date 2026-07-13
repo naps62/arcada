@@ -166,15 +166,11 @@ defmodule Arcada.Summarizer.Prompt do
   def extraction_system, do: @extraction_system
 
   @doc """
-  User prompt for the extractor — the act metadata plus its (coarse-trimmed) text,
-  wrapped with the JSON instruction so text-only backends comply.
+  User prompt for the extractor — the act metadata plus its (coarse-trimmed) text.
+  The instructions + JSON shape ride in `extraction_system/0` (sent as the system
+  role), so the user message is just the act body.
   """
-  def extraction_prompt(act, text) do
-    """
-    #{@extraction_system}---
-    #{act_body(act, text)}\
-    """
-  end
+  def extraction_prompt(act, text), do: act_body(act, text)
 
   @doc """
   The renderer's input: the extractor's changes formatted as a plain list, fed as
