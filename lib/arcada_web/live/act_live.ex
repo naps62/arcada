@@ -145,12 +145,13 @@ defmodule ArcadaWeb.ActLive do
        when is_binary(r) and is_binary(model),
        do: "#{r} embeddings > #{model}"
 
-  # Extract/render (issue #90): the full chain — the embedder that coarse-trimmed,
-  # the strong model that extracted the changes, and the model that rendered them:
-  # "bge-m3 embeddings > GLM-5.2 > amalia-9b".
-  defp model_line(%{text_strategy: "extract", extractor_model: e, model: model} = s)
+  # Extract/render (issue #90): the full chain with each model's role —
+  # "bge-m3 (embeddings) > GLM-5.2 (extração) > amalia-9b (apresentação)".
+  defp model_line(%{text_strategy: "extract", ranker_model: r, extractor_model: e, model: model})
        when is_binary(e) and is_binary(model) do
-    [ranker_prefix(s), e, model] |> Enum.reject(&is_nil/1) |> Enum.join(" > ")
+    [labeled(r, "embeddings"), labeled(e, "extração"), labeled(model, "apresentação")]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join(" > ")
   end
 
   defp model_line(%{model: model} = s) when is_binary(model),
@@ -159,8 +160,13 @@ defmodule ArcadaWeb.ActLive do
   # Legacy rows may have no model recorded — show nothing rather than a label.
   defp model_line(_), do: nil
 
-  defp ranker_prefix(%{ranker_model: r}) when is_binary(r), do: "#{r} embeddings"
-  defp ranker_prefix(_), do: nil
+  # "<model> (<role>)", or nil when that model isn't recorded (dropped from the chain).
+  defp labeled(model, role) when is_binary(model), do: "#{pretty_model(model)} (#{role})"
+  defp labeled(_, _), do: nil
+
+  # Display name: drop any "hf:owner/" style routing prefix (the model id sent to
+  # the API), keeping the last path segment — "hf:zai-org/GLM-5.2" → "GLM-5.2".
+  defp pretty_model(model), do: model |> String.split("/") |> List.last()
 
   defp join_meta(parts), do: parts |> Enum.reject(&is_nil/1) |> Enum.join(" · ")
 

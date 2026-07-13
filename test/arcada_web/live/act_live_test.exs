@@ -64,13 +64,14 @@ defmodule ArcadaWeb.ActLiveTest do
     |> Summary.changeset(%{
       text_strategy: "extract",
       ranker_model: "bge-m3",
-      extractor_model: "GLM-5.2",
+      extractor_model: "hf:zai-org/GLM-5.2",
       model: "amalia-9b"
     })
     |> Repo.update!()
 
     {:ok, _lv, html} = live(conn, ~p"/acts/#{act.dre_id}/#{Act.slug(act)}")
-    assert html =~ "bge-m3 embeddings &gt; GLM-5.2 &gt; amalia-9b"
+    # roles labelled + the hf:owner/ routing prefix stripped from the extractor id.
+    assert html =~ "bge-m3 (embeddings) &gt; GLM-5.2 (extração) &gt; amalia-9b (apresentação)"
   end
 
   test "sanitizes scraped full_text HTML before rendering (XSS)", %{conn: conn} do
