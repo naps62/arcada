@@ -34,6 +34,10 @@ defmodule Arcada.Register.Summary do
     # The embeddings model that ranked the sections (preprocessor), set only when
     # text_strategy = "rank". Distinct from `model` (the LLM that wrote the text).
     field :ranker_model, :string
+    # The strong model that extracted the concrete changes + headline (issue #90),
+    # set only when the extract/render path ran for an omnibus act. Distinct from
+    # `model` (the renderer) and `ranker_model` (the coarse-trim embedder).
+    field :extractor_model, :string
     # Token usage + cost for the run that produced this summary. `cost_source`:
     # "api" = exact tokens × price table; "subscription" = SSH CLI's notional
     # cost (covered by a Claude subscription, not real spend); null when the
@@ -56,7 +60,7 @@ defmodule Arcada.Register.Summary do
   end
 
   @required ~w(act_id plain_text)a
-  @optional ~w(headline domains model prompt_version truncated text_strategy ranker_model input_tokens output_tokens cost_usd cost_source duration_ms provider_id generated_at embedding)a
+  @optional ~w(headline domains model prompt_version truncated text_strategy ranker_model extractor_model input_tokens output_tokens cost_usd cost_source duration_ms provider_id generated_at embedding)a
 
   def changeset(summary, attrs) do
     summary

@@ -11,7 +11,9 @@ defmodule Arcada.Summarizer do
   alias Arcada.Providers.Provider
   alias Arcada.Register.{Act, Summary}
   alias Arcada.Search.Index
-  alias Arcada.Summarizer.{Embeddings, PlainText, SummarizeWorker, TextBudget}
+  alias Arcada.Summarizer.{Embeddings, Extractor, PlainText, Prompt, SummarizeWorker, TextBudget}
+
+  require Logger
   alias Arcada.Summarizer.Adapters.{Api, OpenAI, Ssh}
 
   # Provider kind → adapter module.
@@ -135,14 +137,10 @@ defmodule Arcada.Summarizer do
   def summarize(%Act{} = act, %Provider{} = provider, model, opts \\ []) do
     model = model || List.first(provider.models)
     requested = opts |> Keyword.get(:text_strategy, :auto) |> normalize_strategy()
+    clean = PlainText.from_html(act.full_text) || act.title
 
     {text, strategy} =
-      TextBudget.prepare(
-        PlainText.from_html(act.full_text) || act.title,
-        max_text_chars(model),
-        requested,
-        target_text_chars(model)
-      )
+      TextBudget.prepare(clean, max_text_chars(model), requested, target_text_chars(model))
 
     # Only ranking actually uses the embedder; record which one preprocessed it.
     ranker_model = if strategy == :rank, do: Embeddings.model(Admin.embeddings_config())
@@ -156,8 +154,80 @@ defmodule Arcada.Summarizer do
       strategy == :truncate and requested != :truncate ->
         {:error, :ranker_unavailable}
 
+      # Omnibus act + an extractor configured: the strong model lists the concrete
+      # changes and amalia renders them (issue #90). Falls back to the umbrella
+      # summary if the extractor is unavailable or fails. Explicit `:truncate`
+      # (A/B) skips this and takes the plain path below.
+      strategy == :rank and requested != :truncate and extractor_configured?() ->
+        extract_render(act, clean, provider, model, ranker_model)
+
       true ->
         summarize_with(act, provider, model, text, strategy, ranker_model)
+    end
+  end
+
+  # An extractor is usable when a provider is configured with a resolvable model.
+  defp extractor_configured?, do: extractor_selection() != nil
+
+  # `{provider, model}` for the configured extractor, or nil (feature off).
+  defp extractor_selection do
+    with %Provider{} = provider <- Admin.extractor_provider(),
+         model when is_binary(model) <- Admin.extractor_model() || List.first(provider.models) do
+      {provider, model}
+    else
+      _ -> nil
+    end
+  end
+
+  # Extract/render path for omnibus acts (issue #90). The extractor reads a
+  # generously-trimmed view (its own large budget, not the renderer cap) and
+  # returns changes + a headline; amalia renders the changes into the house voice
+  # (mode: :render) and the extractor's headline is used verbatim. Any extractor
+  # failure degrades to the umbrella summary so a big act always gets summarized.
+  defp extract_render(act, clean, renderer, renderer_model, ranker_model) do
+    {ext_provider, ext_model} = extractor_selection()
+    budget = Admin.extractor_text_chars()
+    {ext_text, _} = TextBudget.prepare(clean, budget, :auto, budget)
+
+    case Extractor.extract(act, ext_text, ext_provider, ext_model) do
+      {:ok, %{headline: headline, changes: changes}} ->
+        render_text = Prompt.render_changes(changes)
+
+        with {:ok, attrs} <-
+               adapter_for(renderer.kind).summarize(act, renderer, renderer_model, render_text,
+                 mode: :render,
+                 strategy: :rank
+               ) do
+          create_summary(
+            act,
+            attrs
+            |> Map.new()
+            |> Map.merge(%{
+              provider_id: renderer.id,
+              # The extractor supplies the headline (amalia hallucinates short titles).
+              headline: headline,
+              truncated: String.length(ext_text) < String.length(clean),
+              text_strategy: "extract",
+              ranker_model: ranker_model,
+              extractor_model: ext_model
+            })
+          )
+        end
+
+      {:error, reason} ->
+        Logger.info(
+          "extractor unavailable (#{inspect(reason)}); umbrella fallback for act #{act.id}"
+        )
+
+        {text, _} =
+          TextBudget.prepare(
+            clean,
+            max_text_chars(renderer_model),
+            :auto,
+            target_text_chars(renderer_model)
+          )
+
+        summarize_with(act, renderer, renderer_model, text, :rank, ranker_model)
     end
   end
 

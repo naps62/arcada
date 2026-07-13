@@ -303,6 +303,12 @@ defmodule ArcadaWeb.AdminActLive do
 
   defp strategy_label(%{text_strategy: "rank"}), do: "relevant sections"
   defp strategy_label(%{text_strategy: "truncate"}), do: "start"
+
+  # Extract/render (issue #90): a strong model listed the changes, amalia rendered.
+  defp strategy_label(%{text_strategy: "extract", extractor_model: m}) when is_binary(m),
+    do: "extracted changes · #{m}"
+
+  defp strategy_label(%{text_strategy: "extract"}), do: "extracted changes"
   defp strategy_label(_), do: nil
 
   # Prompt → completion token counts for the run (nil when the backend didn't

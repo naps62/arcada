@@ -9,10 +9,10 @@ defmodule Arcada.Admin do
   alias Arcada.Repo
   alias Arcada.Admin.Setting
 
-  @doc "The settings row (active provider preloaded), or an unpersisted default."
+  @doc "The settings row (providers preloaded), or an unpersisted default."
   def get_settings do
     (Repo.one(singleton_query()) || %Setting{})
-    |> Repo.preload(:active_provider)
+    |> Repo.preload([:active_provider, :extractor_provider])
   end
 
   @doc "Changeset for the active-selection form."
@@ -33,6 +33,28 @@ defmodule Arcada.Admin do
 
   @doc "The active model string (or nil)."
   def active_model, do: get_settings().active_model
+
+  @doc """
+  The strong-model provider that extracts changes + headline for omnibus (`:rank`)
+  acts (issue #90), or nil when the extract/render path is off — callers then fall
+  back to the umbrella summary. Providers are preloaded by `get_settings/0`.
+  """
+  def extractor_provider, do: get_settings().extractor_provider
+
+  @doc "The extractor model string (or nil), used with `extractor_provider/0`."
+  def extractor_model, do: get_settings().extractor_model
+
+  @doc """
+  Char budget the coarse trim fills for the extractor's input (issue #90).
+  DB setting ?? app config ?? `@default_extractor_text_chars`. Generous (the strong
+  model has a big context), so only genuine giants get trimmed before extraction.
+  """
+  @default_extractor_text_chars 120_000
+  def extractor_text_chars do
+    get_settings().extractor_text_chars ||
+      Application.get_env(:arcada, Arcada.Summarizer, [])[:extractor_text_chars] ||
+      @default_extractor_text_chars
+  end
 
   @doc """
   Effective cap (chars) on act text fed to the summarizer for `model`:

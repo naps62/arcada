@@ -214,6 +214,42 @@ defmodule ArcadaWeb.AdminLive do
             hint="e.g. nomic-embed-text"
           />
 
+          <div class="border-t border-border pt-5">
+            <h3 class="text-sm font-semibold text-ink">Omnibus extractor</h3>
+            <p class="mt-1 max-w-prose text-xs leading-relaxed text-muted">
+              For big multi-change acts (ranked), a
+              <span class="font-medium text-ink">strong model</span>
+              first lists the concrete changes
+              and a headline; the active provider above only renders them into plain language. Empty =
+              off (big acts get the theme-level summary instead).
+            </p>
+          </div>
+
+          <.admin_field field={@form[:extractor_provider_id]} type="select" label="Extractor provider">
+            <option value="">— none (theme-level summary) —</option>
+            <option
+              :for={p <- @providers}
+              value={p.id}
+              selected={to_string(@form[:extractor_provider_id].value) == to_string(p.id)}
+            >
+              {p.name} ({p.kind})
+            </option>
+          </.admin_field>
+
+          <.admin_field
+            field={@form[:extractor_model]}
+            type="text"
+            label="Extractor model"
+            hint="Model id on the extractor provider, e.g. hf:zai-org/GLM-5.2"
+          />
+
+          <.admin_field
+            field={@form[:extractor_text_chars]}
+            type="number"
+            label="Extractor budget (chars)"
+            hint={"Empty = #{fmt_int(Admin.extractor_text_chars())} (default). Coarse-trim budget for the extractor's input; generous, so only giants get trimmed."}
+          />
+
           <button
             type="submit"
             class="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-fg transition-colors duration-150 ease-out-quart hover:bg-primary-hover"

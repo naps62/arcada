@@ -57,6 +57,23 @@ defmodule ArcadaWeb.ActLiveTest do
     assert shown =~ "Texto integral do diploma"
   end
 
+  test "an extract/render summary shows the full model chain (#90)", %{conn: conn} do
+    %{act: act, summary: summary} = seed()
+
+    summary
+    |> Summary.changeset(%{
+      text_strategy: "extract",
+      ranker_model: "bge-m3",
+      extractor_model: "hf:zai-org/GLM-5.2",
+      model: "amalia-9b"
+    })
+    |> Repo.update!()
+
+    {:ok, _lv, html} = live(conn, ~p"/acts/#{act.dre_id}/#{Act.slug(act)}")
+    # roles labelled + the hf:owner/ routing prefix stripped from the extractor id.
+    assert html =~ "bge-m3 (embeddings) &gt; GLM-5.2 (extração) &gt; amalia-9b (apresentação)"
+  end
+
   test "sanitizes scraped full_text HTML before rendering (XSS)", %{conn: conn} do
     ed =
       %Edition{}

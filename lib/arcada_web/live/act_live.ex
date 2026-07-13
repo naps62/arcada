@@ -145,11 +145,28 @@ defmodule ArcadaWeb.ActLive do
        when is_binary(r) and is_binary(model),
        do: "#{r} embeddings > #{model}"
 
+  # Extract/render (issue #90): the full chain with each model's role —
+  # "bge-m3 (embeddings) > GLM-5.2 (extração) > amalia-9b (apresentação)".
+  defp model_line(%{text_strategy: "extract", ranker_model: r, extractor_model: e, model: model})
+       when is_binary(e) and is_binary(model) do
+    [labeled(r, "embeddings"), labeled(e, "extração"), labeled(model, "apresentação")]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join(" > ")
+  end
+
   defp model_line(%{model: model} = s) when is_binary(model),
     do: join_meta([model, strategy_meta(s)])
 
   # Legacy rows may have no model recorded — show nothing rather than a label.
   defp model_line(_), do: nil
+
+  # "<model> (<role>)", or nil when that model isn't recorded (dropped from the chain).
+  defp labeled(model, role) when is_binary(model), do: "#{pretty_model(model)} (#{role})"
+  defp labeled(_, _), do: nil
+
+  # Display name: drop any "hf:owner/" style routing prefix (the model id sent to
+  # the API), keeping the last path segment — "hf:zai-org/GLM-5.2" → "GLM-5.2".
+  defp pretty_model(model), do: model |> String.split("/") |> List.last()
 
   defp join_meta(parts), do: parts |> Enum.reject(&is_nil/1) |> Enum.join(" · ")
 
