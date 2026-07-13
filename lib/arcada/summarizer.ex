@@ -147,7 +147,22 @@ defmodule Arcada.Summarizer do
     # Only ranking actually uses the embedder; record which one preprocessed it.
     ranker_model = if strategy == :rank, do: Embeddings.model(Admin.embeddings_config())
 
-    case adapter_for(provider.kind).summarize(act, provider, model, text) do
+    cond do
+      # Force rank: never persist an auto head-truncated summary — its text is just
+      # the opening, which can't represent an oversized diploma (issue #89). This
+      # only fires when the ranker was unavailable for an over-cap act (typically a
+      # transient embeddings-server failure), so we error and let the Oban job
+      # retry. Explicit `:truncate` (the per-act A/B comparison) is still honoured.
+      strategy == :truncate and requested != :truncate ->
+        {:error, :ranker_unavailable}
+
+      true ->
+        summarize_with(act, provider, model, text, strategy, ranker_model)
+    end
+  end
+
+  defp summarize_with(act, provider, model, text, strategy, ranker_model) do
+    case adapter_for(provider.kind).summarize(act, provider, model, text, strategy: strategy) do
       {:ok, attrs} ->
         create_summary(
           act,

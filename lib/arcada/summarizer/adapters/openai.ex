@@ -22,11 +22,11 @@ defmodule Arcada.Summarizer.Adapters.OpenAI do
   @prompt_version "2026-07-01.openai.1"
 
   @impl true
-  def summarize(%Act{} = act, %Provider{} = provider, model, text) do
+  def summarize(%Act{} = act, %Provider{} = provider, model, text, opts \\ []) do
     started = System.monotonic_time(:millisecond)
 
     with {:ok, url} <- endpoint(provider),
-         body = request_body(act, model, text),
+         body = request_body(act, model, text, opts),
          {:ok, %{status: 200, body: resp}} <- post(url, provider.api_key, body),
          {:ok, content} <- content(resp),
          {:ok, parsed} <- Prompt.parse(content) do
@@ -44,11 +44,11 @@ defmodule Arcada.Summarizer.Adapters.OpenAI do
     end
   end
 
-  defp request_body(act, model, text) do
+  defp request_body(act, model, text, opts) do
     %{
       "model" => model,
       "messages" => [
-        %{"role" => "system", "content" => Prompt.system()},
+        %{"role" => "system", "content" => Prompt.system(opts)},
         %{"role" => "user", "content" => Prompt.instructed_prompt(act, text)}
       ],
       "response_format" => %{"type" => "json_object"},

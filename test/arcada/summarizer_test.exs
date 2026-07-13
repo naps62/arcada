@@ -346,6 +346,16 @@ defmodule Arcada.SummarizerTest do
                Summarizer.summarize(oversized_act(diploma(800)), ssh_provider(), "claude-cli")
     end
 
+    test "force rank: an auto run errors instead of persisting a head-truncated summary" do
+      {:ok, _} = Admin.update_settings(%{"max_text_chars" => "400"})
+      # No set_embeddings -> ranker unavailable, so an over-cap act would otherwise
+      # fall back to :truncate. Force-rank (#89) turns that into a retryable error.
+      stub_ssh_runner(fn _ -> {:ok, claude_envelope("resumo", [])} end)
+
+      assert {:error, :ranker_unavailable} =
+               Summarizer.summarize(oversized_act(diploma(800)), ssh_provider(), "claude-cli")
+    end
+
     test "honours a forced :truncate run" do
       {:ok, _} = Admin.update_settings(%{"max_text_chars" => "400"})
       set_embeddings(embed_fn: relevance_embed())
