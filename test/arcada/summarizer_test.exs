@@ -111,6 +111,44 @@ defmodule Arcada.SummarizerTest do
     end
   end
 
+  describe "auto-pin canonical (automated path)" do
+    setup do
+      stub_ssh_runner(fn _ -> {:ok, claude_envelope("x", [])} end)
+      provider = ssh_provider()
+
+      {:ok, _} =
+        Admin.update_settings(%{
+          "active_provider_id" => provider.id,
+          "active_model" => "claude-cli"
+        })
+
+      :ok
+    end
+
+    test "pins a new act's first summary as canonical" do
+      act = act_fixture()
+      assert {:ok, summary} = Summarizer.summarize(act)
+      assert Repo.get(Act, act.id).published_summary_id == summary.id
+    end
+
+    test "a later automated run does not move an existing pin" do
+      act = act_fixture()
+      {:ok, first} = Summarizer.summarize(act)
+      assert Repo.get(Act, act.id).published_summary_id == first.id
+
+      # regenerate via the automated path — the pin must stay on `first`.
+      assert {:ok, second} = Summarizer.summarize(Repo.get(Act, act.id))
+      assert second.id != first.id
+      assert Repo.get(Act, act.id).published_summary_id == first.id
+    end
+
+    test "a manual per-act run never pins" do
+      act = act_fixture()
+      assert {:ok, _} = Summarizer.summarize(act, ssh_provider(), "claude-cli")
+      assert Repo.get(Act, act.id).published_summary_id == nil
+    end
+  end
+
   describe "enqueue/2" do
     test "encodes a manual provider+model run into the job args" do
       act = act_fixture()
