@@ -422,4 +422,20 @@ defmodule Arcada.Register do
     |> Act.changeset(%{published_summary_id: summary && summary.id})
     |> Repo.update()
   end
+
+  @doc """
+  Pin `summary_id` as the act's canonical summary **only if none is set yet**.
+  Atomic (a conditional `UPDATE ... WHERE published_summary_id IS NULL`), so it's
+  race-safe against two summaries landing at once, and a no-op once an act is
+  already pinned — a later regeneration never silently replaces the canonical one.
+  Returns the number of rows pinned (`1` the first time, `0` after). Used by the
+  automated summarize path so a new act's first summary becomes canonical.
+  """
+  def pin_summary_if_unset(act_id, summary_id) do
+    {count, _} =
+      from(a in Act, where: a.id == ^act_id and is_nil(a.published_summary_id))
+      |> Repo.update_all(set: [published_summary_id: summary_id])
+
+    count
+  end
 end

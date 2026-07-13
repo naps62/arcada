@@ -9,6 +9,7 @@ defmodule Arcada.Summarizer do
   alias Arcada.Repo
   alias Arcada.Admin
   alias Arcada.Providers.Provider
+  alias Arcada.Register
   alias Arcada.Register.{Act, Summary}
   alias Arcada.Search.Index
   alias Arcada.Summarizer.{Embeddings, Extractor, PlainText, Prompt, SummarizeWorker, TextBudget}
@@ -123,10 +124,22 @@ defmodule Arcada.Summarizer do
   """
   def summarize(%Act{} = act) do
     case Admin.active_provider() do
-      %Provider{} = provider -> summarize(act, provider, Admin.active_model())
+      %Provider{} = provider -> pin_first(act, summarize(act, provider, Admin.active_model()))
       nil -> {:async, :no_active_provider}
     end
   end
+
+  # Automated path only: a new act's first summary becomes the canonical one so a
+  # later regeneration can't silently replace it (public pages otherwise show the
+  # newest generated). No-op once the act is already pinned — that's what lets a
+  # backfill create unpinned candidates for review. Manual per-act runs
+  # (`summarize/4`) don't pin; the admin publishes those explicitly.
+  defp pin_first(%Act{id: id}, {:ok, %Summary{id: sid}} = result) do
+    Register.pin_summary_if_unset(id, sid)
+    result
+  end
+
+  defp pin_first(_act, result), do: result
 
   @doc """
   Summarize `act` with a specific provider + model; persist linked to the
