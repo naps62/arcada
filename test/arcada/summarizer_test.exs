@@ -346,6 +346,71 @@ defmodule Arcada.SummarizerTest do
                Summarizer.summarize(oversized_act(diploma(800)), ssh_provider(), "claude-cli")
     end
 
+    test "extract/render: strong model lists changes, renderer writes them (#90)" do
+      {:ok, _} = Admin.update_settings(%{"max_text_chars" => "400"})
+      set_embeddings(embed_fn: relevance_embed())
+      ext = openai_provider()
+
+      {:ok, _} =
+        Admin.update_settings(%{"extractor_provider_id" => ext.id, "extractor_model" => "glm-x"})
+
+      stub_extractor(fn _ctx ->
+        {:ok,
+         Jason.encode!(%{"headline" => "Título do extractor", "changes" => ["muda A", "muda B"]})}
+      end)
+
+      # The renderer (ssh) writes from the change list; its headline is discarded.
+      stub_ssh_runner(fn prompt ->
+        send(self(), {:render_prompt, prompt})
+        {:ok, claude_envelope("Muda A. Muda B.", ["fiscal"], %{}, "headline-da-amalia")}
+      end)
+
+      assert {:ok, summary} =
+               Summarizer.summarize(oversized_act(diploma(800)), ssh_provider(), "claude-cli")
+
+      assert summary.text_strategy == "extract"
+      assert summary.extractor_model == "glm-x"
+      # headline comes from the extractor, body from the renderer.
+      assert summary.headline == "Título do extractor"
+      assert summary.plain_text == "Muda A. Muda B."
+      # the renderer was fed the extracted changes, in the render prompt.
+      assert_received {:render_prompt, prompt}
+      assert prompt =~ "muda A"
+      assert prompt =~ "muda B"
+    end
+
+    test "extract/render falls back to the umbrella summary when the extractor fails (#90)" do
+      {:ok, _} = Admin.update_settings(%{"max_text_chars" => "400"})
+      set_embeddings(embed_fn: relevance_embed())
+      ext = openai_provider()
+
+      {:ok, _} =
+        Admin.update_settings(%{"extractor_provider_id" => ext.id, "extractor_model" => "glm-x"})
+
+      stub_extractor(fn _ctx -> {:error, :boom} end)
+      stub_ssh_runner(fn _ -> {:ok, claude_envelope("resumo umbrella", [])} end)
+
+      assert {:ok, summary} =
+               Summarizer.summarize(oversized_act(diploma(800)), ssh_provider(), "claude-cli")
+
+      # degrades to the plain ranked path — no extractor provenance.
+      assert summary.text_strategy == "rank"
+      assert summary.extractor_model == nil
+      assert summary.plain_text == "resumo umbrella"
+    end
+
+    test "no extractor configured keeps the plain ranked path (#90)" do
+      {:ok, _} = Admin.update_settings(%{"max_text_chars" => "400"})
+      set_embeddings(embed_fn: relevance_embed())
+      stub_ssh_runner(fn _ -> {:ok, claude_envelope("resumo", [])} end)
+
+      assert {:ok, summary} =
+               Summarizer.summarize(oversized_act(diploma(800)), ssh_provider(), "claude-cli")
+
+      assert summary.text_strategy == "rank"
+      assert summary.extractor_model == nil
+    end
+
     test "force rank: an auto run errors instead of persisting a head-truncated summary" do
       {:ok, _} = Admin.update_settings(%{"max_text_chars" => "400"})
       # No set_embeddings -> ranker unavailable, so an over-cap act would otherwise

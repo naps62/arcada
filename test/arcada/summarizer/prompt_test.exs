@@ -138,6 +138,44 @@ defmodule Arcada.Summarizer.PromptTest do
       assert Prompt.system(strategy: :rank) =~ "jornalista"
     end
 
+    test "system/1 mode: :render returns the render prompt, not the summary prompt" do
+      render = Prompt.system(mode: :render)
+      assert render =~ "lista de mudanças concretas"
+      assert render =~ "Mantém TODAS as mudanças"
+      # mode wins over strategy
+      assert Prompt.system(mode: :render, strategy: :rank) == render
+    end
+
+    test "render_changes/1 formats the extracted changes as a plain list" do
+      out = Prompt.render_changes(["muda A", "muda B"])
+      assert out =~ "Mudanças concretas identificadas"
+      assert out =~ "- muda A"
+      assert out =~ "- muda B"
+    end
+
+    test "parse_extraction/1 accepts a headline + non-empty string changes list" do
+      raw = Jason.encode!(%{"headline" => "Título", "changes" => ["a", "b"]})
+      assert {:ok, %{headline: "Título", changes: ["a", "b"]}} = Prompt.parse_extraction(raw)
+    end
+
+    test "parse_extraction/1 tolerates code fences and trailing chatter" do
+      raw = "```json\n{\"headline\":\"T\",\"changes\":[\"a\"]}\n```\n**Nota:** extra"
+      assert {:ok, %{headline: "T", changes: ["a"]}} = Prompt.parse_extraction(raw)
+    end
+
+    test "parse_extraction/1 rejects missing headline, empty or non-list changes" do
+      assert {:error, :unparseable_extraction} =
+               Prompt.parse_extraction(Jason.encode!(%{"changes" => ["a"]}))
+
+      assert {:error, :unparseable_extraction} =
+               Prompt.parse_extraction(Jason.encode!(%{"headline" => "T", "changes" => []}))
+
+      assert {:error, :unparseable_extraction} =
+               Prompt.parse_extraction(Jason.encode!(%{"headline" => "T", "changes" => "nope"}))
+
+      assert {:error, :unparseable_extraction} = Prompt.parse_extraction("not json")
+    end
+
     test "act_body/2 lays out the metadata and the prepared text" do
       body = Prompt.act_body(act(), "TEXTO-XYZ")
       assert body =~ "Tipo: Decreto-Lei"

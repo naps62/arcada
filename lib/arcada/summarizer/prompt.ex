@@ -92,20 +92,118 @@ defmodule Arcada.Summarizer.Prompt do
   texto não tem. Mantém-te factual e geral; não precisas de listar tudo.\
   """
 
+  # System prompt for the **extractor** (issue #90): a strong model reads an
+  # omnibus act and lists its concrete changes + a plain headline. This is the
+  # judgment step amalia can't do — it surfaces buried operative changes (e.g. a
+  # frequency grant tucked in a "Norma transitória") that ranking + a small model
+  # both miss. Output is validated by `parse_extraction/1`.
+  @extraction_system """
+  És um analista jurídico. Recebes o texto (integral ou quase) de um diploma do \
+  Diário da República e identificas o que muda, em concreto, para as pessoas.
+
+  Extrai as mudanças concretas mais importantes para o cidadão comum, no máximo 6, \
+  ordenadas da mais importante para a menos importante. Cada mudança numa frase \
+  factual e específica: o que passa a poder ou não poder fazer-se, novas categorias, \
+  novas faixas ou limites, novos prazos, o que é revogado. Inclui normas \
+  transitórias quando concedem algo que passa a valer já. Ignora definições e \
+  trâmites puramente administrativos.
+
+  Escreve também um título curto (6 a 10 palavras) em linguagem simples sobre o \
+  tema geral do que muda — não a designação formal do diploma.
+
+  Responde APENAS com um objeto JSON válido, sem texto antes ou depois:
+  {"headline": "<título>", "changes": ["<mudança>", "<mudança>", ...]}
+  """
+
+  # System prompt for the **renderer** (issue #90): amalia turns the extractor's
+  # already-identified changes into the house voice. It only *writes* — no judging,
+  # no dropping. A slightly longer form (4-6 sentences, one change each) so every
+  # extracted change survives; markdown bullets are avoided (the small model can't
+  # format them). The headline comes from the extractor, not from here.
+  @render_system """
+  És um jornalista que explica diplomas do Diário da República a um amigo sem \
+  formação jurídica, em português do dia-a-dia.
+
+  Recebes uma lista de mudanças concretas já identificadas neste diploma. Reescreve-as \
+  num resumo de 4 a 6 frases curtas, uma mudança por frase. Mantém TODAS as mudanças \
+  da lista — não juntes duas numa só nem descartes nenhuma.
+
+  Regras de escrita:
+  - Linguagem comum, frases curtas e diretas, voz ativa. Evita jargão jurídico.
+  - Não cites números de diplomas nem de artigos no corpo do texto.
+  - Sê factual, sem opinião. Simplifica o vocabulário, nunca a substância: mantém \
+  prazos, categorias, faixas e limites tal como estão na lista.
+  - Se um termo técnico for mesmo inevitável, marca-o entre parênteses retos duplos \
+  assim [[termo]], no máximo 1 a 2 vezes.
+
+  Classifica também o diploma em um ou mais domínios de vida.
+  """
+
   @doc """
   Shared system prompt (writing + classification rules) for every adapter.
 
-  `opts[:strategy]` (`:full | :rank | :truncate`) tunes it: an omnibus act
-  (`:rank`/`:truncate`) gets the `@omnibus_note` appended so the model summarizes
-  at the theme level rather than guessing a single main point; `:full` (or no
-  strategy) gets the base prompt unchanged.
+  `opts` tunes it:
+
+    * `mode: :render` — the extract/render path (issue #90): return the renderer
+      prompt (`@render_system`), which rewrites already-extracted changes rather
+      than summarizing raw act text.
+    * `strategy:` (`:full | :rank | :truncate`) — otherwise, an omnibus act
+      (`:rank`/`:truncate`) gets the `@omnibus_note` appended so the model
+      summarizes at the theme level; `:full`/nil gets the base prompt unchanged.
   """
   def system(opts \\ []) do
-    if omnibus?(opts[:strategy]), do: @system <> @omnibus_note, else: @system
+    cond do
+      opts[:mode] == :render -> @render_system
+      omnibus?(opts[:strategy]) -> @system <> @omnibus_note
+      true -> @system
+    end
   end
 
   # Big acts (didn't fit whole) get the omnibus note; `:full`/nil don't.
   defp omnibus?(strategy), do: strategy in [:rank, :truncate]
+
+  @doc "System prompt for the extractor (strong model): lists concrete changes + headline."
+  def extraction_system, do: @extraction_system
+
+  @doc """
+  User prompt for the extractor — the act metadata plus its (coarse-trimmed) text,
+  wrapped with the JSON instruction so text-only backends comply.
+  """
+  def extraction_prompt(act, text) do
+    """
+    #{@extraction_system}---
+    #{act_body(act, text)}\
+    """
+  end
+
+  @doc """
+  The renderer's input: the extractor's changes formatted as a plain list, fed as
+  the act text so amalia rewrites them. `headline` is carried separately (the
+  extractor supplies it), so only `changes` appear here.
+  """
+  def render_changes(changes) when is_list(changes) do
+    "Mudanças concretas identificadas neste diploma:\n" <>
+      Enum.map_join(changes, "\n", &"- #{&1}")
+  end
+
+  @doc """
+  Parse the extractor reply into `%{headline, changes}`. Reuses the tolerant
+  `decode/1` (fenced JSON + trailing chatter). `{:error, :unparseable_extraction}`
+  when it isn't the object we asked for (no string `headline`, or `changes` not a
+  non-empty list of strings).
+  """
+  def parse_extraction(raw) when is_binary(raw) do
+    with {:ok, obj} <- decode(raw),
+         headline when is_binary(headline) <- obj["headline"],
+         changes when is_list(changes) <- obj["changes"],
+         [_ | _] = changes <- Enum.filter(changes, &is_binary/1) do
+      {:ok, %{headline: headline, changes: changes}}
+    else
+      _ -> {:error, :unparseable_extraction}
+    end
+  end
+
+  def parse_extraction(_), do: {:error, :unparseable_extraction}
 
   @doc """
   Plain-language JSON-output instruction for text-only backends. Structured-output

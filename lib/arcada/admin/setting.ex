@@ -19,7 +19,14 @@ defmodule Arcada.Admin.Setting do
 
   alias Arcada.Providers.Provider
 
-  @nilable_strings [:active_provider_id, :active_model, :embeddings_base_url, :embeddings_model]
+  @nilable_strings [
+    :active_provider_id,
+    :active_model,
+    :embeddings_base_url,
+    :embeddings_model,
+    :extractor_provider_id,
+    :extractor_model
+  ]
 
   schema "settings" do
     field :active_model, :string
@@ -30,6 +37,15 @@ defmodule Arcada.Admin.Setting do
     field :embeddings_base_url, :string
     field :embeddings_model, :string
 
+    # Extract/render path for omnibus (:rank) acts (issue #90): the strong model
+    # that extracts changes + headline. Null = feature off (fall back to the
+    # umbrella summary). `extractor_text_chars` is the (generous) char budget the
+    # coarse trim fills for the extractor's input — much larger than the renderer
+    # cap, since the strong model has a big context.
+    belongs_to :extractor_provider, Provider
+    field :extractor_model, :string
+    field :extractor_text_chars, :integer
+
     timestamps(type: :utc_datetime)
   end
 
@@ -38,12 +54,15 @@ defmodule Arcada.Admin.Setting do
     |> cast(
       blankify(attrs),
       [:active_provider_id, :active_model, :max_text_chars, :target_text_chars] ++
-        [:embeddings_base_url, :embeddings_model]
+        [:embeddings_base_url, :embeddings_model] ++
+        [:extractor_provider_id, :extractor_model, :extractor_text_chars]
     )
     |> blank_to_nil(@nilable_strings)
     |> validate_number(:max_text_chars, greater_than: 0)
     |> validate_number(:target_text_chars, greater_than: 0)
+    |> validate_number(:extractor_text_chars, greater_than: 0)
     |> assoc_constraint(:active_provider)
+    |> assoc_constraint(:extractor_provider)
   end
 
   # Turn "" into nil before casting so blank numeric/optional inputs from the
