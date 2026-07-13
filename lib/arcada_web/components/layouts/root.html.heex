@@ -46,6 +46,14 @@
     <meta name="description" content={assigns[:page_description] || SEO.default_description()} />
     <meta name="robots" content={SEO.robots_meta(assigns[:page_noindex] || false)} />
     <link rel="canonical" href={assigns[:canonical_url] || SEO.url(~p"/")} />
+    <%!-- RSS autodiscovery. `feed_url` tracks the active topic on the register
+         (a domain-filtered feed); every other page falls back to the global feed. --%>
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title="Arcada — Diário da República em linguagem simples"
+      href={assigns[:feed_url] || SEO.url(~p"/rss.xml")}
+    />
     <%!-- Plain (non-digested) paths: `~p` fingerprints these top-level files, but
          Plug.Static's `only` allowlist matches the raw request segment, so a
          digested top-level name (favicon-HASH.ico) fails the exact-filename match

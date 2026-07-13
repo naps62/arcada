@@ -119,6 +119,9 @@ defmodule ArcadaWeb.RegisterLive do
       browse_more?: false,
       # Search results aren't a section — clear any heading left by a prior browse.
       section_heading: nil,
+      # No feed for a search; fall back to the global feed (assigns persist across
+      # handle_params, so this must clear any topic feed a prior browse set).
+      feed_url: SEO.url(~p"/rss.xml"),
       search_token: socket.assigns.search_token + 1
     )
     |> assign(SEO.metadata_for({:search, query}))
@@ -155,6 +158,9 @@ defmodule ArcadaWeb.RegisterLive do
       active_period: period,
       # Scoped <h1> for the section (nil when unfiltered → the slogan shows).
       section_heading: SEO.section_heading(domain, period),
+      # RSS: a topic view points its feed link + autodiscovery at that topic's
+      # feed; the unfiltered front door uses the global feed. Period isn't fed.
+      feed_url: (domain && SEO.url(~p"/rss.xml?#{[domain: domain]}")) || SEO.url(~p"/rss.xml"),
       # Each axis's badges reflect the *other* axis's selection.
       domain_counts: Register.domain_counts(period: period),
       period_counts: period_counts,

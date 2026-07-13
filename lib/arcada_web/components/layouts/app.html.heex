@@ -59,6 +59,16 @@
           </.link>
           --%>
         <% end %>
+        <%!-- Feed link. Tracks the active topic (`feed_url`) so subscribing from a
+             section grabs that section's feed; global everywhere else. --%>
+        <a
+          href={assigns[:feed_url] || ~p"/rss.xml"}
+          title="Subscrever por RSS"
+          aria-label="Subscrever por RSS"
+          class="rounded-sm px-1 py-2 transition-colors duration-150 ease-out-quart hover:text-primary sm:px-1.5"
+        >
+          <.icon name="hero-rss" class="h-4 w-4" />
+        </a>
         <.theme_toggle class="ml-0.5 sm:ml-1" />
       </div>
     </nav>

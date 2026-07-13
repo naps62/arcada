@@ -32,6 +32,9 @@ defmodule ArcadaWeb.Router do
     get "/robots.txt", SeoController, :robots
     get "/sitemap.xml", SeoController, :sitemap
 
+    # RSS 2.0 feed. Global at `/rss.xml`; per-topic via `?domain=fiscal`.
+    get "/rss.xml", SeoController, :feed
+
     # Bare `/acts/:dre_id` (no slug) 301s to the canonical `/acts/:dre_id/:slug`
     # via a real HTTP redirect (not a LiveView client nav) so crawlers see one
     # canonical URL per act. Lives outside the live_session — it's a plain GET.

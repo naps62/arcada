@@ -1,14 +1,16 @@
 defmodule ArcadaWeb.SeoController do
   @moduledoc """
-  Dynamically-served `robots.txt` and `sitemap.xml`.
+  Dynamically-served `robots.txt`, `sitemap.xml`, and the `rss.xml` feed.
 
   Crawling is allowed except for `/admin`, `/users`, and `/dev`. The sitemap
-  lists the public section pages plus every act with a published summary. Both
-  are dynamic (not static files) so URLs track the configured host. See #36.
+  lists the public section pages plus every act with a published summary. The
+  feed is the newest acts (global, or per life-domain via `?domain=`). All are
+  dynamic (not static files) so URLs track the configured host. See #36.
   """
   use ArcadaWeb, :controller
 
   alias Arcada.Register
+  alias Arcada.Register.Summary
   alias ArcadaWeb.SEO
 
   # Domains that get their own browse/section URL in the sitemap.
@@ -48,6 +50,92 @@ defmodule ArcadaWeb.SeoController do
     conn
     |> put_resp_content_type("application/xml")
     |> send_resp(200, body)
+  end
+
+  @doc """
+  RSS 2.0 feed of the latest acts. The global feed lives at `/rss.xml`; a
+  per-topic feed is the same route with `?domain=fiscal` (topics are query-param
+  views of `/`, so the feed mirrors them). Cached at the edge like the OG images,
+  so a feed reader polling every few minutes costs the origin ~nothing.
+  """
+  def feed(conn, params) do
+    domain =
+      case Register.fetch_domain(params["domain"] || "") do
+        {:ok, atom} -> Atom.to_string(atom)
+        :error -> nil
+      end
+
+    acts = Register.feed_acts(domain: domain)
+
+    title = if domain, do: "Arcada — #{SEO.section_heading(domain, nil)}", else: "Arcada"
+    site_link = if domain, do: SEO.url(~p"/?#{[domain: domain]}"), else: SEO.url(~p"/")
+
+    self_link =
+      if domain, do: SEO.url(~p"/rss.xml?#{[domain: domain]}"), else: SEO.url(~p"/rss.xml")
+
+    build_date = acts |> List.first() |> item_date()
+
+    body = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+    <channel>
+    <title>#{escape(title)}</title>
+    <link>#{escape(site_link)}</link>
+    <description>#{escape(SEO.default_description())}</description>
+    <language>pt-PT</language>
+    <atom:link href="#{escape(self_link)}" rel="self" type="application/rss+xml" />
+    #{build_date && "<lastBuildDate>#{build_date}</lastBuildDate>"}
+    #{Enum.map_join(acts, "\n", &item_node/1)}
+    </channel>
+    </rss>
+    """
+
+    conn
+    |> put_resp_content_type("application/rss+xml")
+    |> put_resp_header("cache-control", "public, max-age=1800")
+    |> send_resp(200, body)
+  end
+
+  defp item_node(act) do
+    summary = Register.published_summary(act)
+    url = SEO.act_url(act)
+    title = Summary.strip_terms(summary && summary.headline) || act.title || act.tipo
+    body = Summary.strip_terms(summary && summary.plain_text) || ""
+    domains = (summary && summary.domains) || []
+    pub_date = item_date(act)
+
+    [
+      "<item>",
+      "<title>#{escape(title)}</title>",
+      "<link>#{escape(url)}</link>",
+      "<guid isPermaLink=\"true\">#{escape(url)}</guid>",
+      pub_date && "<pubDate>#{pub_date}</pubDate>",
+      "<description>#{cdata(body)}</description>",
+      act.source_url && "<source url=\"#{escape(act.source_url)}\">Diário da República</source>",
+      Enum.map_join(domains, "\n", &"<category>#{escape(to_string(&1))}</category>"),
+      "</item>"
+    ]
+    |> Enum.reject(&(is_nil(&1) || &1 == ""))
+    |> Enum.join("\n")
+  end
+
+  # RSS pubDate is RFC-822 (not the sitemap's ISO-8601). Acts carry a `:date`
+  # (`published_at`, fallback edition date), so anchor at midnight GMT. The
+  # default Calendar locale yields the English day/month names RFC-822 wants.
+  defp item_date(nil), do: nil
+
+  defp item_date(act) do
+    case act.published_at || (act.edition && act.edition.date) do
+      %Date{} = d -> Calendar.strftime(d, "%a, %d %b %Y 00:00:00 +0000")
+      _ -> nil
+    end
+  end
+
+  # Wrap free text in CDATA so `<`/`&`/quotes in a summary can't break the XML.
+  # Guard the one sequence CDATA itself can't contain.
+  defp cdata(text) do
+    safe = String.replace(text, "]]>", "]]]]><![CDATA[>")
+    "<![CDATA[#{safe}]]>"
   end
 
   defp static_urls(latest) do

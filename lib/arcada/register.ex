@@ -363,6 +363,25 @@ defmodule Arcada.Register do
     |> Repo.all()
   end
 
+  @doc """
+  Newest-first acts for the RSS feed: only those with a published summary (a
+  stub with no summary has nothing to show), optionally filtered by life-domain.
+  Returns listing structs with `:edition` + summaries preloaded, so the feed can
+  call `published_summary/1` per act. Capped small (`opts[:limit]`, default 50) —
+  a feed is a rolling window of the latest items, not the whole archive.
+  """
+  def feed_acts(opts \\ []) do
+    from(a in Act,
+      where: not is_nil(a.published_summary_id),
+      order_by: [desc: a.published_at, desc: a.id],
+      select: struct(a, ^act_listing_fields()),
+      preload: [:edition, summaries: ^summaries_listing_preload()]
+    )
+    |> filter_domain(opts[:domain])
+    |> maybe_limit(opts[:limit] || 50)
+    |> Repo.all()
+  end
+
   @doc "Fetch one act by its internal DB id, with edition + summaries preloaded."
   def get_act!(id) do
     Act
