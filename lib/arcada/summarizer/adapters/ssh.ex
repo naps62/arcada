@@ -44,16 +44,16 @@ defmodule Arcada.Summarizer.Adapters.Ssh do
   ]
 
   @impl true
-  def summarize(%Act{} = act, %Provider{} = provider, model, text) do
-    with {:ok, stdout} <- run(build_prompt(act, text), provider, model),
+  def summarize(%Act{} = act, %Provider{} = provider, model, text, opts \\ []) do
+    with {:ok, stdout} <- run(build_prompt(act, text, opts), provider, model),
          {:ok, attrs} <- parse(stdout, model || @default_model) do
       {:ok, attrs}
     end
   end
 
-  defp build_prompt(act, text) do
+  defp build_prompt(act, text, opts) do
     """
-    #{Prompt.system()}
+    #{Prompt.system(opts)}
     #{Prompt.instructed_prompt(act, text)}\
     """
   end

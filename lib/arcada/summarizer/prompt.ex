@@ -74,8 +74,38 @@ defmodule Arcada.Summarizer.Prompt do
   Os domínios válidos são EXATAMENTE: #{Enum.join(Register.life_domains(), ", ")}.
   """
 
-  @doc "Shared system prompt (writing + classification rules) for every adapter."
-  def system, do: @system
+  # Appended to the system prompt for **omnibus** diplomas — ones too big to fit
+  # whole, so the text was section-ranked (`:rank`) or head-truncated (`:truncate`,
+  # A/B only). These change many things at once with no single dominant point, and
+  # a small model, forced to pick one, confidently surfaces the wrong one (issue
+  # #88). The note tells it to summarize at the theme level instead. Deliberately
+  # conditional ("se nenhuma mudança se destacar") so a genuinely single-topic long
+  # act still gets a specific summary; it does NOT force enumeration (that made the
+  # model go vague-wrong). Never appended to `:full` acts — they stay specific.
+  @omnibus_note """
+
+
+  Este diploma é extenso e altera várias coisas ao mesmo tempo. Se nenhuma mudança \
+  se destacar claramente como a principal, resume ao nível do tema — diz que mudam \
+  várias regras sobre o assunto e para quem — em vez de escolheres uma só mudança e \
+  a apresentares como a mais importante. Não inventes um "ponto principal" que o \
+  texto não tem. Mantém-te factual e geral; não precisas de listar tudo.\
+  """
+
+  @doc """
+  Shared system prompt (writing + classification rules) for every adapter.
+
+  `opts[:strategy]` (`:full | :rank | :truncate`) tunes it: an omnibus act
+  (`:rank`/`:truncate`) gets the `@omnibus_note` appended so the model summarizes
+  at the theme level rather than guessing a single main point; `:full` (or no
+  strategy) gets the base prompt unchanged.
+  """
+  def system(opts \\ []) do
+    if omnibus?(opts[:strategy]), do: @system <> @omnibus_note, else: @system
+  end
+
+  # Big acts (didn't fit whole) get the omnibus note; `:full`/nil don't.
+  defp omnibus?(strategy), do: strategy in [:rank, :truncate]
 
   @doc """
   Plain-language JSON-output instruction for text-only backends. Structured-output

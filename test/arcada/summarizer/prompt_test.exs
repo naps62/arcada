@@ -126,6 +126,18 @@ defmodule Arcada.Summarizer.PromptTest do
       assert Prompt.system() =~ "jornalista"
     end
 
+    test "system/1 appends the omnibus note for :rank and :truncate, not :full" do
+      base = Prompt.system()
+      note = "altera várias coisas ao mesmo tempo"
+
+      refute base =~ note
+      refute Prompt.system(strategy: :full) =~ note
+      assert Prompt.system(strategy: :rank) =~ note
+      assert Prompt.system(strategy: :truncate) =~ note
+      # still carries the base rules, just extended
+      assert Prompt.system(strategy: :rank) =~ "jornalista"
+    end
+
     test "act_body/2 lays out the metadata and the prepared text" do
       body = Prompt.act_body(act(), "TEXTO-XYZ")
       assert body =~ "Tipo: Decreto-Lei"

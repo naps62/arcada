@@ -34,12 +34,12 @@ defmodule Arcada.Summarizer.Adapters.Api do
   }
 
   @impl true
-  def summarize(%Act{} = act, %Provider{} = provider, model, text) do
+  def summarize(%Act{} = act, %Provider{} = provider, model, text, opts \\ []) do
     model = model || @default_model
     started = System.monotonic_time(:millisecond)
 
     with {:ok, key} <- api_key(provider),
-         body = request_body(act, model, text),
+         body = request_body(act, model, text, opts),
          {:ok, %{status: 200} = resp} <- post(key, body),
          {:ok, raw} <- text_block(resp.body),
          {:ok, parsed} <- Prompt.parse(raw) do
@@ -57,11 +57,11 @@ defmodule Arcada.Summarizer.Adapters.Api do
     end
   end
 
-  defp request_body(act, model, text) do
+  defp request_body(act, model, text, opts) do
     %{
       "model" => model,
       "max_tokens" => 1024,
-      "system" => Prompt.system(),
+      "system" => Prompt.system(opts),
       "messages" => [%{"role" => "user", "content" => Prompt.act_body(act, text)}],
       "output_config" => %{"format" => %{"type" => "json_schema", "schema" => Prompt.schema()}}
     }

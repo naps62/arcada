@@ -37,7 +37,11 @@ defmodule Arcada.Summarizer.Adapter do
   ranked by `Arcada.Summarizer` — adapters don't re-prepare it); the adapter
   builds its prompt from `act`'s metadata plus this text. Truncation/strategy
   bookkeeping is handled by the caller, so the result need not include it.
+
+  `opts` carries prompt-shaping context — currently `:strategy` (`:full | :rank |
+  :truncate`), forwarded to `Arcada.Summarizer.Prompt.system/1` so omnibus acts
+  get the theme-level note. Adapters default it to `[]`.
   """
-  @callback summarize(Act.t(), Provider.t(), String.t(), text :: String.t()) ::
+  @callback summarize(Act.t(), Provider.t(), String.t(), text :: String.t(), opts :: keyword) ::
               {:ok, result} | {:async, term} | {:error, term}
 end
