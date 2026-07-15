@@ -28,18 +28,25 @@ cron `{"0 9 * * 1-5", Arcada.Scraper.IngestWorker}` with queues
 | `PORT` | `4000` |
 | `ANTHROPIC_API_KEY` | Claude API key — **secret**; enables the `:api` summarizer adapter |
 | `SUMMARIZER_ADAPTER` | optional; `manual` (default) · `api` · `ssh` · `local`. With an API key present, defaults to `api`. |
-| `RESEND_API_KEY` | **secret**; enables real delivery of account emails (verification + password reset) via Resend. Without it the mailer no-ops. |
-| `MAILER_FROM_EMAIL` | sender for account emails — must be on a Resend-verified domain (e.g. `nao-responder@oqm.example`) |
-| `MAILER_FROM_NAME` | optional; display name for the sender (defaults to `Arcada`) |
-| `MAILER_REPLY_TO` | optional; a real monitored inbox (e.g. a SimpleLogin alias) that replies to account emails are directed to. Unset = plain no-reply. |
+| `SCALEWAY_PROJECT_ID` | Scaleway project holding the TEM domain; enables real mail delivery. Without it both mailers no-op. |
+| `SCALEWAY_SECRET_KEY` | **secret**; Scaleway API secret key. Required whenever `SCALEWAY_PROJECT_ID` is set — boot fails loudly if missing. |
+| `SCALEWAY_REGION` | optional; TEM region (defaults to `fr-par`). |
+| `MAILER_AUTH_FROM_EMAIL` | sender for account emails — must be on a TEM-verified domain (e.g. `auth@arcada.naps.pt`) |
+| `MAILER_NEWS_FROM_EMAIL` | sender for act digests — same verified domain, distinct local part (e.g. `noticias@arcada.naps.pt`) |
+| `MAILER_FROM_NAME` | optional; display name shared by both senders (defaults to `Arcada`) |
+| `MAILER_REPLY_TO` | optional; a real monitored inbox (e.g. a SimpleLogin alias) that replies to account emails are directed to. Unset = no Reply-To. |
+| `MAILER_FROM_EMAIL` | **deprecated**; pre-split name for the auth sender. Still read as a fallback when `MAILER_AUTH_FROM_EMAIL` is unset. Drop it once every environment sets the new name. |
 
 > Without a configured summarizer the app stays on the `manual` adapter
 > (no external calls); ingestion still runs and acts appear unsummarized.
 
-> Public-user email uses Swoosh's Resend adapter in prod (over Req; no extra
-> HTTP client dep). In dev, mail is captured at `/dev/mailbox`; in tests it's
-> collected in-process. Without `RESEND_API_KEY` in prod, delivery no-ops
-> safely — registration still works but no confirmation email is sent.
+> Public-user email uses Swoosh's Scaleway adapter in prod (over Req; no extra
+> HTTP client dep). Two mailers share it: `Arcada.Mailer` for account mail and
+> `Arcada.DigestMailer` for act digests — separate so a spam-flagged digest
+> can't drag signup/reset mail down with it, and so either can move provider
+> alone. In dev, mail is captured at `/dev/mailbox`; in tests it's collected
+> in-process. Without `SCALEWAY_PROJECT_ID` in prod, delivery no-ops safely —
+> registration still works but no confirmation email is sent.
 
 ### Summarizer adapter options
 

@@ -447,15 +447,20 @@ defmodule Arcada.AccountsTest do
 
     test "omits Reply-To by default", %{user: user} do
       {:ok, email} = Accounts.deliver_user_confirmation_instructions(user, & &1)
+      refute Map.has_key?(email.headers, "Reply-To")
       assert email.reply_to == nil
     end
 
-    test "sets Reply-To when :mailer_reply_to is configured", %{user: user} do
+    # Asserted as a raw header rather than `email.reply_to`: the Scaleway
+    # adapter discards the struct's reply_to field and forwards only `headers`
+    # (as `additional_headers`), so the struct field would pass this test while
+    # the sent mail carried no Reply-To at all. Assert what reaches the wire.
+    test "sets Reply-To as a header when :mailer_reply_to is configured", %{user: user} do
       Application.put_env(:arcada, :mailer_reply_to, "arcada@example.com")
       on_exit(fn -> Application.delete_env(:arcada, :mailer_reply_to) end)
 
       {:ok, email} = Accounts.deliver_user_confirmation_instructions(user, & &1)
-      assert {_name, "arcada@example.com"} = email.reply_to
+      assert email.headers["Reply-To"] == "arcada@example.com"
     end
   end
 

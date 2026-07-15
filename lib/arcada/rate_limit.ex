@@ -41,8 +41,8 @@ defmodule Arcada.RateLimit do
 
   # Account emails (password reset + confirmation resend, issue #61). Two
   # dimensions: the *caller* (visitor id — a soft valve against a loop) and the
-  # *target inbox* (the real anti-bombing / Resend-quota ceiling, since bombing a
-  # victim must reuse their address regardless of cookie resets).
+  # *target inbox* (the real anti-bombing ceiling, since bombing a victim must
+  # reuse their address regardless of cookie resets).
   @email_defaults [
     visitor: [per_minute: 5, per_day: 50],
     email: [per_hour: 3, per_day: 6]

@@ -6,6 +6,7 @@ config :bcrypt_elixir, :log_rounds, 1
 # Public-user email in tests: collect into the process mailbox so specs can
 # assert with Swoosh.TestAssertions. No real delivery, no API client.
 config :arcada, Arcada.Mailer, adapter: Swoosh.Adapters.Test
+config :arcada, Arcada.DigestMailer, adapter: Swoosh.Adapters.Test
 config :swoosh, :api_client, false
 
 # Disable the signup timing gate — tests submit the form instantly.

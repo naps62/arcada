@@ -123,9 +123,9 @@ defmodule Arcada.Accounts do
   @doc """
   Whether new signups are still under the global daily cap.
 
-  Every registration sends a confirmation email, so this guards the Resend
-  free-tier quota. Counts users created since the start of the current UTC day
-  against `:daily_signup_cap`.
+  Every registration sends a confirmation email to an unverified address, so
+  this caps how much of that a bot run can generate in a day. Counts users
+  created since the start of the current UTC day against `:daily_signup_cap`.
   """
   def signups_open? do
     cap = Application.get_env(:arcada, :daily_signup_cap, 80)

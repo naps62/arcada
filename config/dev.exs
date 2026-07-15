@@ -68,6 +68,7 @@ config :arcada, dev_routes: true
 # Public-user email in dev: capture into the Swoosh mailbox preview
 # (visit /dev/mailbox); nothing is sent and no API client is needed.
 config :arcada, Arcada.Mailer, adapter: Swoosh.Adapters.Local
+config :arcada, Arcada.DigestMailer, adapter: Swoosh.Adapters.Local
 config :swoosh, :api_client, false
 
 # Do not include metadata nor timestamps in development logs

@@ -207,8 +207,8 @@ config :arcada, Arcada.RateLimit,
   user: [per_minute: 120, per_day: 2_000],
   # Account emails (reset + confirmation resend, issue #61). `visitor` caps a
   # single caller (a valve against a loop); `email` caps a single inbox — the
-  # real anti-bombing / Resend-quota ceiling. Over budget the send is skipped
-  # behind the same generic message. Tune here without a code change.
+  # real anti-bombing ceiling. Over budget the send is skipped behind the same
+  # generic message. Tune here without a code change.
   email: [
     visitor: [per_minute: 5, per_day: 50],
     email: [per_hour: 3, per_day: 6]
@@ -237,21 +237,28 @@ config :arcada, Arcada.Search,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
-# Public-user email (account verification + password reset), sent via the
-# Arcada.Mailer / Swoosh. Swoosh's HTTP calls go through Req (already a dep)
-# rather than pulling in hackney/Finch. The per-environment adapter is set in
-# dev/test/prod: Local mailbox preview in dev, Test collector in test, Resend
-# in prod (API key via env — see config/runtime.exs).
+# Public-user email. Two mailers, both on Swoosh, split by kind:
+#
+#   * Arcada.Mailer       — transactional (verification, password reset).
+#   * Arcada.DigestMailer — bulk (act digests). Kept apart so its adapter,
+#     sender and failure handling can move independently of account mail; a
+#     digest that gets spam-flagged must never take signup/reset mail with it.
+#
+# Swoosh's HTTP calls go through Req (already a dep) rather than pulling in
+# hackney/Finch. Per-environment adapters are set in dev/test/prod: Local
+# mailbox preview in dev, Test collector in test, Scaleway TEM in prod
+# (credentials via env — see config/runtime.exs).
 config :swoosh, api_client: Swoosh.ApiClient.Req
 
-# From address for account emails. Overridden at runtime in prod
-# (MAILER_FROM_EMAIL / MAILER_FROM_NAME) — the Resend sender must be on a
-# verified domain. The dev/test default is only ever seen in the mailbox preview.
-config :arcada, :mailer_from, {"Arcada", "nao-responder@arcada.local"}
+# From addresses. Overridden at runtime in prod (MAILER_AUTH_FROM_EMAIL /
+# MAILER_NEWS_FROM_EMAIL, both named by MAILER_FROM_NAME) — senders must be on
+# a domain verified with the provider. The dev/test defaults are only ever seen
+# in the mailbox preview.
+config :arcada, :mailer_from, {"Arcada", "auth@arcada.local"}
+config :arcada, :digest_mailer_from, {"Arcada", "noticias@arcada.local"}
 
-# Global cap on new signups per UTC day. Protects the Resend free quota
-# (100 emails/day) since every registration sends a confirmation email.
-# Kept below 100 to leave headroom for password-reset / re-confirm mails.
+# Global cap on new signups per UTC day — abuse control, since every
+# registration sends a confirmation email to an unverified address.
 config :arcada, :daily_signup_cap, 80
 
 # Cloudflare Turnstile bot check on the signup form. Disabled by default

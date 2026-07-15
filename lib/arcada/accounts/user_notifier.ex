@@ -1,8 +1,8 @@
 defmodule Arcada.Accounts.UserNotifier do
   @moduledoc """
   Account emails for public users — verification and password reset — in plain
-  Portuguese. Delivered via `Arcada.Mailer` (Resend in prod, mailbox preview
-  in dev). The `from` address comes from the `:mailer_from` app config.
+  Portuguese. Delivered via `Arcada.Mailer` (Scaleway TEM in prod, mailbox
+  preview in dev). The `from` address comes from the `:mailer_from` app config.
   """
   import Swoosh.Email
 
@@ -33,9 +33,15 @@ defmodule Arcada.Accounts.UserNotifier do
   # We send from a no-reply address. When `:mailer_reply_to` is configured
   # (MAILER_REPLY_TO env), point replies at a real, monitored inbox so people
   # who reply anyway are heard. Unset → no Reply-To (plain no-reply).
+  #
+  # Set as a raw header, not via Swoosh's `reply_to/2`: the Scaleway adapter
+  # drops the struct's `reply_to` field on the floor (`prepare_reply_to/2` is a
+  # no-op) and only forwards `headers` as `additional_headers`. Using
+  # `reply_to/2` here fails silently — the mail sends, the header just isn't
+  # there.
   defp maybe_reply_to(email) do
     case Application.get_env(:arcada, :mailer_reply_to) do
-      addr when is_binary(addr) and addr != "" -> reply_to(email, addr)
+      addr when is_binary(addr) and addr != "" -> header(email, "Reply-To", addr)
       _ -> email
     end
   end

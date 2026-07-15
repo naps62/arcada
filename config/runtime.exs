@@ -122,11 +122,6 @@ summarize_concurrency =
 # Deep-merges into the Oban queues list from config.exs (keeps default/scrape).
 config :arcada, Oban, queues: [summarize: summarize_concurrency]
 
-# Public-user email via Resend (verification + password reset). Set RESEND_API_KEY
-# to send for real; without it the mailer stays on the compile-time adapter and
-# delivery no-ops (safe default). MAILER_FROM_EMAIL must be on a Resend-verified
-# domain. Read at runtime so it works for releases; guarded so dev/test keep the
-# Local/Test adapters from config/*.exs.
 # Reply-To for account emails. We send from a no-reply address; set this to a
 # real monitored inbox (e.g. a SimpleLogin alias) so replies reach you. Read in
 # every env so it also shows in the dev mailbox preview. Unset → plain no-reply.
@@ -147,16 +142,43 @@ if turnstile_site_key && turnstile_secret_key do
 end
 
 if config_env() == :prod do
-  if resend_key = System.get_env("RESEND_API_KEY") do
-    config :arcada, Arcada.Mailer,
-      adapter: Swoosh.Adapters.Resend,
-      api_key: resend_key
+  # Scaleway TEM backs both mailers. Region defaults to fr-par (the adapter's
+  # built-in base_url); SCALEWAY_REGION overrides it if we ever move. Without
+  # credentials the mailers no-op — the app still boots and serves.
+  if project_id = System.get_env("SCALEWAY_PROJECT_ID") do
+    secret_key = System.fetch_env!("SCALEWAY_SECRET_KEY")
+
+    scaleway =
+      [
+        adapter: Swoosh.Adapters.Scaleway,
+        project_id: project_id,
+        secret_key: secret_key
+      ] ++
+        if region = System.get_env("SCALEWAY_REGION") do
+          [
+            base_url: "https://api.scaleway.com/transactional-email/v1alpha1/regions/#{region}"
+          ]
+        else
+          []
+        end
+
+    config :arcada, Arcada.Mailer, scaleway
+    config :arcada, Arcada.DigestMailer, scaleway
   end
 
-  if from_email = System.get_env("MAILER_FROM_EMAIL") do
-    config :arcada,
-           :mailer_from,
-           {System.get_env("MAILER_FROM_NAME") || "Arcada", from_email}
+  # Both senders share a display name; only the local part differs.
+  # MAILER_FROM_EMAIL is the pre-split name for the auth sender, kept as a
+  # fallback so an environment that predates MAILER_AUTH_FROM_EMAIL still boots
+  # with working account mail.
+  from_name = System.get_env("MAILER_FROM_NAME") || "Arcada"
+  auth_from = System.get_env("MAILER_AUTH_FROM_EMAIL") || System.get_env("MAILER_FROM_EMAIL")
+
+  if auth_from do
+    config :arcada, :mailer_from, {from_name, auth_from}
+  end
+
+  if news_from = System.get_env("MAILER_NEWS_FROM_EMAIL") do
+    config :arcada, :digest_mailer_from, {from_name, news_from}
   end
 end
 
