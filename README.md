@@ -31,4 +31,11 @@ Requires Elixir/OTP (see `mix.exs`) and PostgreSQL.
 
 ## License
 
-TBD.
+[GNU AGPL-3.0-only](LICENSE). Copyright © 2026 Miguel Palhas.
+
+You may use, modify, and self-host Arcada freely. If you run a modified version as a network
+service, the AGPL requires you to offer that version's source to its users.
+
+Summaries published by Arcada are derived from the *Diário da República*, whose official text is
+the sole authoritative source. Arcada is a signpost, not an authority, and is provided without
+warranty of any kind.
