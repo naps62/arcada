@@ -8,79 +8,79 @@ defmodule ArcadaWeb.UserConfirmationLiveTest do
   alias Arcada.Repo
 
   setup do
-    %{user: user_fixture()}
+    %{user: unconfirmed_user_fixture()}
+  end
+
+  defp confirmation_token(user) do
+    extract_user_token(fn url ->
+      Accounts.deliver_user_confirmation_instructions(user, url)
+    end)
   end
 
   describe "Confirm user" do
-    test "renders confirmation page", %{conn: conn} do
-      {:ok, _lv, html} = live(conn, ~p"/users/confirm/some-token")
-      assert html =~ "Confirmar conta"
+    # The security property behind confirming on connect rather than on click:
+    # a mail scanner prefetching the link performs a plain GET, never opens the
+    # socket, and so must not confirm anything.
+    test "dead render does not confirm the account", %{conn: conn, user: user} do
+      token = confirmation_token(user)
+
+      conn = get(conn, ~p"/users/confirm/#{token}")
+
+      assert html_response(conn, 200) =~ "A confirmar a sua conta"
+      refute Accounts.get_user!(user.id).confirmed_at
     end
 
-    test "confirms the given token once", %{conn: conn, user: user} do
-      token =
-        extract_user_token(fn url ->
-          Accounts.deliver_user_confirmation_instructions(user, url)
-        end)
+    test "confirms on connect and sends the user to log in", %{conn: conn, user: user} do
+      token = confirmation_token(user)
 
-      {:ok, lv, _html} = live(conn, ~p"/users/confirm/#{token}")
+      {:ok, redirected} =
+        conn
+        |> live(~p"/users/confirm/#{token}")
+        |> follow_redirect(conn, ~p"/users/log_in")
 
-      result =
-        lv
-        |> form("#confirmation_form")
-        |> render_submit()
-        |> follow_redirect(conn, "/")
-
-      assert {:ok, conn} = result
-
-      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~
-               "Conta confirmada com sucesso"
-
+      assert Phoenix.Flash.get(redirected.assigns.flash, :info) =~ "Conta confirmada"
       assert Accounts.get_user!(user.id).confirmed_at
-      refute get_session(conn, :user_token)
+
+      # No session is handed out — a leaked token confirms, it does not log in.
+      refute get_session(redirected, :user_token)
       assert Repo.all(Accounts.UserToken) == []
-
-      # when not logged in
-      {:ok, lv, _html} = live(conn, ~p"/users/confirm/#{token}")
-
-      result =
-        lv
-        |> form("#confirmation_form")
-        |> render_submit()
-        |> follow_redirect(conn, "/")
-
-      assert {:ok, conn} = result
-
-      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~
-               "O endereço de confirmação é inválido ou expirou"
-
-      # when logged in
-      conn =
-        build_conn()
-        |> log_in_user(user)
-
-      {:ok, lv, _html} = live(conn, ~p"/users/confirm/#{token}")
-
-      result =
-        lv
-        |> form("#confirmation_form")
-        |> render_submit()
-        |> follow_redirect(conn, "/")
-
-      assert {:ok, conn} = result
-      refute Phoenix.Flash.get(conn.assigns.flash, :error)
     end
 
-    test "does not confirm email with invalid token", %{conn: conn, user: user} do
-      {:ok, lv, _html} = live(conn, ~p"/users/confirm/invalid-token")
+    test "a spent token reports an error when nobody is logged in", %{conn: conn, user: user} do
+      token = confirmation_token(user)
 
-      {:ok, conn} =
-        lv
-        |> form("#confirmation_form")
-        |> render_submit()
-        |> follow_redirect(conn, ~p"/")
+      assert {:error, {:redirect, %{to: "/users/log_in"}}} =
+               live(conn, ~p"/users/confirm/#{token}")
 
-      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~
+      {:ok, redirected} =
+        conn
+        |> live(~p"/users/confirm/#{token}")
+        |> follow_redirect(conn, ~p"/users/confirm")
+
+      assert Phoenix.Flash.get(redirected.assigns.flash, :error) =~
+               "O endereço de confirmação é inválido ou expirou"
+    end
+
+    test "a spent token is quiet when the account is already confirmed", %{conn: conn, user: user} do
+      token = confirmation_token(user)
+
+      assert {:error, {:redirect, %{to: "/users/log_in"}}} =
+               live(conn, ~p"/users/confirm/#{token}")
+
+      conn = build_conn() |> log_in_user(Accounts.get_user!(user.id))
+
+      assert {:error, {:redirect, redirect}} = live(conn, ~p"/users/confirm/#{token}")
+      assert redirect.to == "/"
+      refute Map.has_key?(redirect, :flash)
+    end
+
+    test "does not confirm with an invalid token", %{conn: conn, user: user} do
+      {:ok, redirected} =
+        conn
+        |> live(~p"/users/confirm/invalid-token")
+        |> follow_redirect(conn, ~p"/users/confirm")
+
+      assert Phoenix.Flash.get(redirected.assigns.flash, :error) =~
                "O endereço de confirmação é inválido ou expirou"
 
       refute Accounts.get_user!(user.id).confirmed_at

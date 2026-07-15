@@ -260,7 +260,20 @@ defmodule Arcada.AccountsTest do
 
   describe "update_user_email/2" do
     setup do
+      # Backdate the existing confirmation. Only a confirmed user can reach
+      # settings to change their email, so a confirmed fixture is the realistic
+      # one — but confirmed_at has second precision, so a fresh confirmation
+      # would land in the same second as the update and make "the new address
+      # got re-confirmed" indistinguishable from "the old stamp carried over".
       user = user_fixture()
+
+      {:ok, user} =
+        user
+        |> Ecto.Changeset.change(
+          confirmed_at: DateTime.utc_now() |> DateTime.add(-1, :day) |> DateTime.truncate(:second)
+        )
+        |> Repo.update()
+
       email = unique_user_email()
 
       token =
@@ -429,7 +442,7 @@ defmodule Arcada.AccountsTest do
 
   describe "deliver_user_confirmation_instructions/2" do
     setup do
-      %{user: user_fixture()}
+      %{user: unconfirmed_user_fixture()}
     end
 
     test "sends token through notification", %{user: user} do
@@ -466,7 +479,7 @@ defmodule Arcada.AccountsTest do
 
   describe "confirm_user/1" do
     setup do
-      user = user_fixture()
+      user = unconfirmed_user_fixture()
 
       token =
         extract_user_token(fn url ->

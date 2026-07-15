@@ -5,53 +5,51 @@ defmodule ArcadaWeb.UserConfirmationLive do
 
   def render(%{live_action: :edit} = assigns) do
     ~H"""
-    <div class="mx-auto max-w-sm">
-      <.header class="text-center">Confirmar conta</.header>
-
-      <.simple_form for={@form} id="confirmation_form" phx-submit="confirm_account">
-        <input type="hidden" name={@form[:token].name} value={@form[:token].value} />
-        <:actions>
-          <.button phx-disable-with="A confirmar..." class="w-full">Confirmar a minha conta</.button>
-        </:actions>
-      </.simple_form>
-
-      <p class="text-center mt-4">
-        <.link href={~p"/users/register"}>Criar conta</.link>
-        | <.link href={~p"/users/log_in"}>Entrar</.link>
-      </p>
+    <div class="mx-auto max-w-sm text-center">
+      <.header class="text-center">A confirmar a sua conta</.header>
+      <p class="mt-4 text-sm text-muted">Um momento — já o encaminhamos.</p>
     </div>
     """
   end
 
+  # Confirm as soon as the socket connects, rather than behind a button.
+  # `connected?/1` is false on the initial dead render, so a mail scanner that
+  # prefetches the link gets HTML and confirms nothing. That is the same
+  # guarantee the button gave: the form was `phx-submit` with no `action`, so
+  # confirming already required a live socket — the click protected nothing and
+  # only cost the user a step.
   def mount(%{"token" => token}, _session, socket) do
-    form = to_form(%{"token" => token}, as: "user")
-    {:ok, assign(socket, form: form), temporary_assigns: [form: nil]}
+    if connected?(socket) do
+      confirm(socket, token)
+    else
+      {:ok, socket}
+    end
   end
 
-  # Do not log in the user after confirmation to avoid a
-  # leaked token giving the user access to the account.
-  def handle_event("confirm_account", %{"user" => %{"token" => token}}, socket) do
+  # Deliberately no auto-login. A leaked token — forwarded mail, a shared link,
+  # a mail server log — must confirm the address without also handing over a
+  # session. Confirming an address is a low-stakes claim; a session is not.
+  defp confirm(socket, token) do
     case Accounts.confirm_user(token) do
       {:ok, _} ->
-        {:noreply,
+        {:ok,
          socket
-         |> put_flash(:info, "Conta confirmada com sucesso.")
-         |> redirect(to: ~p"/")}
+         |> put_flash(:info, "Conta confirmada. Já pode entrar.")
+         |> redirect(to: ~p"/users/log_in")}
 
       :error ->
-        # If there is a current user and the account was already confirmed,
-        # then odds are that the confirmation link was already visited, either
-        # by some automation or by the user themselves, so we redirect without
-        # a warning message.
+        # An already-confirmed account means the link was visited twice (by the
+        # user, or by something automated). Not worth alarming anyone about —
+        # send them on quietly.
         case socket.assigns do
           %{current_user: %{confirmed_at: confirmed_at}} when not is_nil(confirmed_at) ->
-            {:noreply, redirect(socket, to: ~p"/")}
+            {:ok, redirect(socket, to: ~p"/")}
 
           %{} ->
-            {:noreply,
+            {:ok,
              socket
              |> put_flash(:error, "O endereço de confirmação é inválido ou expirou.")
-             |> redirect(to: ~p"/")}
+             |> redirect(to: ~p"/users/confirm")}
         end
     end
   end

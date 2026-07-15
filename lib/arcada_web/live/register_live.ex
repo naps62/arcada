@@ -131,6 +131,11 @@ defmodule ArcadaWeb.RegisterLive do
   # the generous `:user` tier; anonymous visitors and signed-in-but-unverified
   # accounts (only verified may enjoy full search, per #31) share the loose
   # `:anon` tier keyed by the session visitor id minted in `Plugs.VisitorId`.
+  #
+  # Login now rejects unverified accounts outright, so in normal flow a
+  # signed-in user is always verified. The check stays anyway: sessions minted
+  # before that gate existed outlive it in the cookie, and this is the wrong
+  # place to assume an invariant enforced somewhere else.
   defp search_identity(socket, session) do
     case socket.assigns[:current_user] do
       %{id: id, confirmed_at: %DateTime{}} -> {:user, id}

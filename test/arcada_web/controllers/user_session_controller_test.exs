@@ -3,8 +3,55 @@ defmodule ArcadaWeb.UserSessionControllerTest do
 
   import Arcada.AccountsFixtures
 
+  alias Arcada.Accounts
+  alias Arcada.Repo
+
   setup do
     %{user: user_fixture()}
+  end
+
+  describe "POST /users/log_in confirmation gate" do
+    test "refuses an unconfirmed account even with the right password", %{conn: conn} do
+      user = unconfirmed_user_fixture()
+
+      conn =
+        post(conn, ~p"/users/log_in", %{
+          "user" => %{"email" => user.email, "password" => valid_user_password()}
+        })
+
+      refute get_session(conn, :user_token)
+      assert redirected_to(conn) == ~p"/users/confirm"
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "ainda não está confirmada"
+    end
+
+    test "lets the same account in once confirmed", %{conn: conn} do
+      user = unconfirmed_user_fixture()
+      {:ok, user} = Repo.update(Accounts.User.confirm_changeset(user))
+
+      conn =
+        post(conn, ~p"/users/log_in", %{
+          "user" => %{"email" => user.email, "password" => valid_user_password()}
+        })
+
+      assert get_session(conn, :user_token)
+      assert redirected_to(conn) == ~p"/"
+    end
+
+    # The unconfirmed branch names its reason, which would be an enumeration
+    # oracle if it were reachable without the password. It must not be.
+    test "a wrong password on an unconfirmed account is indistinguishable", %{conn: conn} do
+      user = unconfirmed_user_fixture()
+
+      conn =
+        post(conn, ~p"/users/log_in", %{
+          "user" => %{"email" => user.email, "password" => "wrong"}
+        })
+
+      refute get_session(conn, :user_token)
+      assert redirected_to(conn) == ~p"/users/log_in"
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "Email ou palavra-passe inválidos"
+      refute Phoenix.Flash.get(conn.assigns.flash, :error) =~ "confirmada"
+    end
   end
 
   describe "POST /users/log_in" do
