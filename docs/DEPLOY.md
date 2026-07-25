@@ -36,6 +36,8 @@ cron `{"0 9 * * 1-5", Arcada.Scraper.IngestWorker}` with queues
 | `MAILER_FROM_NAME` | optional; display name shared by both senders (defaults to `Arcada`) |
 | `MAILER_REPLY_TO` | optional; a real monitored inbox (e.g. a SimpleLogin alias) that replies to account emails are directed to. Unset = no Reply-To. |
 | `MAILER_FROM_EMAIL` | **deprecated**; pre-split name for the auth sender. Still read as a fallback when `MAILER_AUTH_FROM_EMAIL` is unset. Drop it once every environment sets the new name. |
+| `TURNSTILE_SITE_KEY` | Cloudflare Turnstile public site key for the signup bot check. Both keys must be set or the widget stays off (`daily_signup_cap` is the only backstop). |
+| `TURNSTILE_SECRET_KEY` | **secret**; Cloudflare Turnstile secret key, server-side verify. Required whenever `TURNSTILE_SITE_KEY` is set. |
 
 > Without a configured summarizer the app stays on the `manual` adapter
 > (no external calls); ingestion still runs and acts appear unsummarized.

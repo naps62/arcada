@@ -47,17 +47,12 @@
             Sair
           </.link>
         <% else %>
-          <%!-- Sign-in/sign-up hidden for launch — we don't want to advertise
-               sign-ups yet (accounts still work if people find the routes).
-               Restore this link when signups are opened. See issue #53. --%>
-          <%!--
           <.link
             navigate={~p"/users/log_in"}
             class="rounded-sm px-1 py-2 transition-colors duration-150 ease-out-quart hover:text-primary sm:px-1.5"
           >
             Entrar
           </.link>
-          --%>
         <% end %>
         <%!-- Feed link. Tracks the active topic (`feed_url`) so subscribing from a
              section grabs that section's feed; global everywhere else. --%>
