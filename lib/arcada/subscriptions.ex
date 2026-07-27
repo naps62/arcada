@@ -22,11 +22,6 @@ defmodule Arcada.Subscriptions do
   alias Arcada.Repo
   alias Arcada.Subscriptions.Subscription
 
-  # Ceiling on how many standing subscriptions one account can hold. Each one is
-  # a recurring search + email, so this bounds both the GPU spend and the mail
-  # volume a single signup can generate.
-  @max_per_user 10
-
   # How far back a dormant subscription may reach on its first run back, in
   # periods. See `window/2`.
   @catch_up_periods 3
@@ -36,8 +31,21 @@ defmodule Arcada.Subscriptions do
   defdelegate period_label(period), to: Subscription
   defdelegate period_days(period), to: Subscription
 
-  @doc "Maximum standing subscriptions per account."
-  def max_per_user, do: @max_per_user
+  @doc """
+  Maximum standing subscriptions per account, from
+  `config :arcada, :max_subscriptions_per_user` (see `config/config.exs`).
+
+  Read at call time, never cached in a module attribute, so the cap can be
+  changed by config alone.
+  """
+  def max_per_user, do: Application.get_env(:arcada, :max_subscriptions_per_user, 1)
+
+  @doc """
+  `n` subscriptions in Portuguese, with the noun agreeing: `1 subscrição`,
+  `3 subscrições`. Single source for every place the cap is shown to a user.
+  """
+  def subscription_count_label(1), do: "1 subscrição"
+  def subscription_count_label(n) when is_integer(n), do: "#{n} subscrições"
 
   @doc "Validate a period string/atom against the fixed set. Returns the atom, or `nil`."
   def fetch_period(nil), do: nil
@@ -84,12 +92,14 @@ defmodule Arcada.Subscriptions do
       %Subscription{user_id: user.id}
       |> Subscription.changeset(attrs)
 
-    if count_for_user(user) >= @max_per_user do
+    max = max_per_user()
+
+    if count_for_user(user) >= max do
       {:error,
        Ecto.Changeset.add_error(
          changeset,
          :query,
-         "atingiu o limite de #{@max_per_user} subscrições"
+         "atingiu o limite de #{subscription_count_label(max)}"
        )}
     else
       Repo.insert(changeset)
