@@ -75,8 +75,9 @@ actually go out".
 ## 3. What is NOT measured, and why
 
 - **Provenance ladder counts** (unreviewed / community / verified). DESIGN.md describes
-  the ladder but no review state exists in the DB yet — every summary is unreviewed.
-  Nothing to count. Add when the column lands.
+  the ladder, but `docs/PLAN.md` defers the 👥 and ✓ rungs out of the MVP — only 🤖
+  unreviewed ships. No review state exists in the DB, so every summary is unreviewed and
+  there is nothing to count. Add when the column lands, not before.
 - **Per-user or per-act series.** Unbounded cardinality. See §4.
 - **`emitter` breakdown.** Hundreds of distinct issuing bodies. Query Postgres for that,
   not Prometheus.
