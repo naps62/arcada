@@ -100,7 +100,7 @@
           "type": "prometheus",
           "uid": "dfc1f2qerumf4f"
         },
-        "description": "Utilizadores distintos com pelo menos uma subscrição. Compara com «Subscrições activas»: quanto mais perto, menos subscrições por pessoa.",
+        "description": "Utilizadores distintos com pelo menos uma subscrição **activa**. A tag `active` conta quem tem subscrição naquele estado, logo as duas séries nunca se somam — por isso este painel filtra `active=\"true\"` em vez de agregar.",
         "fieldConfig": {
           "defaults": {
             "color": {
@@ -148,7 +148,7 @@
               "uid": "dfc1f2qerumf4f"
             },
             "editorMode": "code",
-            "expr": "max(arcada_business_subscribers_count{service=\"oqm-app\"})",
+            "expr": "max(arcada_business_subscribers_count{service=\"oqm-app\",active=\"true\"})",
             "instant": true,
             "range": false,
             "refId": "A"
@@ -162,7 +162,7 @@
           "type": "prometheus",
           "uid": "dfc1f2qerumf4f"
         },
-        "description": "Variação da contagem de utilizadores dentro do intervalo de tempo escolhido no topo. Gauge, logo `delta` — nunca `rate`/`increase`.",
+        "description": "Utilizadores acrescentados no intervalo escolhido no topo: máximo menos mínimo do **total**, amostrado a 5m. Repare que o intervalo é tirado do total já somado, não de cada estado — a série `unconfirmed` sobe no registo e desce na confirmação, por isso somar o intervalo de cada estado contaria esse vaivém como crescimento. Não é `delta`: `delta` extrapola até às bordas da janela e devolve fracções onde a contagem é de pessoas inteiras (medido: 14,0016).",
         "fieldConfig": {
           "defaults": {
             "color": {
@@ -210,7 +210,7 @@
               "uid": "dfc1f2qerumf4f"
             },
             "editorMode": "code",
-            "expr": "sum(max by (state) (delta(arcada_business_users_count{service=\"oqm-app\"}[$__range])))",
+            "expr": "max_over_time((sum(max by (state) (arcada_business_users_count{service=\"oqm-app\"})))[$__range:5m]) - min_over_time((sum(max by (state) (arcada_business_users_count{service=\"oqm-app\"})))[$__range:5m])",
             "instant": true,
             "range": false,
             "refId": "A"
@@ -224,14 +224,13 @@
           "type": "prometheus",
           "uid": "dfc1f2qerumf4f"
         },
-        "description": "Percentagem de contas com email confirmado. Queda persistente = email de confirmação a falhar.",
+        "description": "Percentagem de contas com email confirmado. Sem dados fica «No data», não 0% — um zero real e o plugin por instalar não podem ler-se da mesma maneira.",
         "fieldConfig": {
           "defaults": {
             "color": {
               "mode": "thresholds"
             },
             "decimals": 1,
-            "noValue": "0",
             "thresholds": {
               "mode": "absolute",
               "steps": [
@@ -487,7 +486,7 @@
           "type": "prometheus",
           "uid": "dfc1f2qerumf4f"
         },
-        "description": "Subscrições activas a dividir por subscritores distintos. Com o limite de 1 por utilizador (#97) este valor converge para 1,00; acima disso há sobras por migrar.",
+        "description": "Subscrições activas a dividir por subscritores activos distintos. Com o limite de 1 por utilizador (#97) converge para 1,00; acima disso há sobras por migrar.",
         "fieldConfig": {
           "defaults": {
             "color": {
@@ -535,7 +534,7 @@
               "uid": "dfc1f2qerumf4f"
             },
             "editorMode": "code",
-            "expr": "sum(max by (period, kind) (arcada_business_subscriptions_count{service=\"oqm-app\",active=\"true\"})) / clamp_min(max(arcada_business_subscribers_count{service=\"oqm-app\"}), 1)",
+            "expr": "sum(max by (period, kind) (arcada_business_subscriptions_count{service=\"oqm-app\",active=\"true\"})) / clamp_min(max(arcada_business_subscribers_count{service=\"oqm-app\",active=\"true\"}), 1)",
             "instant": true,
             "range": false,
             "refId": "A"
@@ -738,7 +737,7 @@
           "type": "prometheus",
           "uid": "dfc1f2qerumf4f"
         },
-        "description": "Utilizadores distintos com subscrição. Ler ao lado do painel da esquerda: se divergirem, há gente com várias subscrições.",
+        "description": "Utilizadores distintos com subscrição, por estado. As duas linhas **não somam** a um total de utilizadores: quem tem uma activa e uma pausada conta nas duas.",
         "fieldConfig": {
           "defaults": {
             "custom": {
@@ -788,11 +787,23 @@
               "uid": "dfc1f2qerumf4f"
             },
             "editorMode": "code",
-            "expr": "max(arcada_business_subscribers_count{service=\"oqm-app\"})",
+            "expr": "max(arcada_business_subscribers_count{service=\"oqm-app\",active=\"true\"})",
             "instant": false,
-            "legendFormat": "subscritores",
+            "legendFormat": "activos",
             "range": true,
             "refId": "A"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "max(arcada_business_subscribers_count{service=\"oqm-app\",active=\"false\"})",
+            "instant": false,
+            "legendFormat": "inactivos",
+            "range": true,
+            "refId": "B"
           }
         ],
         "title": "Subscritores ao longo do tempo",
@@ -800,14 +811,15 @@
       },
       {
         "collapsed": false,
+        "description": "O único fluxo do painel. Responde a «o envio de hoje saiu, e foi truncado?» — nenhuma métrica de stock consegue mostrar isso.",
         "gridPos": {
           "h": 1,
           "w": 24,
           "x": 0,
           "y": 24
         },
-        "id": 15,
-        "title": "Registo (conteúdo)",
+        "id": 32,
+        "title": "Email de subscrições",
         "type": "row"
       },
       {
@@ -815,7 +827,204 @@
           "type": "prometheus",
           "uid": "dfc1f2qerumf4f"
         },
-        "description": "Total de actos ingeridos do DRE, com e sem resumo.",
+        "description": "Emails entregues com sucesso nas últimas 24 horas. Tecto: o `DispatchWorker` pára nos 80 por execução e a Scaleway TEM corta aos 100/dia partilhados com o mail da conta. Âmbar aos 80 = a lista está a ser truncada. Este tile conta só os sucessos — para julgar a folga até ao tecto leia-o com «Falhas (24h)» ao lado, porque as tentativas falhadas também consomem a quota do dia. Contador por nó, não uma contagem global da BD: aqui `sum` é o agregador correcto e `max` seria o errado — o inverso do resto deste painel.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 0,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                },
+                {
+                  "color": "yellow",
+                  "value": 80
+                },
+                {
+                  "color": "red",
+                  "value": 100
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 25
+        },
+        "id": 33,
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum(increase(arcada_business_emails_total{service=\"oqm-app\",result=\"sent\"}[24h]))",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Envios (24h)",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Tentativas de envio recusadas nas últimas 24 horas. Qualquer valor acima de zero é vermelho: uma falha de envio é uma subscrição que não foi cumprida. **Conta tentativas de entrega, não pessoas.** O Oban repete um job falhado até `max_attempts: 3`, por isso uma única subscrição impossível de entregar soma até 3 a `failed`. Serve para responder «o envio de hoje saiu?»; não leia o número como «subscritores que ficaram sem email», que sobrestima até 3x. Contador por nó, não uma contagem global da BD: aqui `sum` é o agregador correcto e `max` seria o errado — o inverso do resto deste painel.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 0,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                },
+                {
+                  "color": "red",
+                  "value": 1
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 6,
+          "y": 25
+        },
+        "id": 34,
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum(increase(arcada_business_emails_total{service=\"oqm-app\",result=\"failed\"}[24h]))",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Falhas (24h)",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Tentativas falhadas sobre o total de tentativas no intervalo escolhido no topo. Numerador e denominador contam ambos tentativas, não subscritores — com as repetições do Oban a percentagem é «que fatia do trabalho de envio se perdeu», não «que fatia dos subscritores ficou sem email». Sem envios nenhuns fica «No data», não 0%.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 1,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "percent"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 25
+        },
+        "id": 35,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "100 * sum(increase(arcada_business_emails_total{service=\"oqm-app\",result=\"failed\"}[$__range])) / clamp_min(sum(increase(arcada_business_emails_total{service=\"oqm-app\"}[$__range])), 1)",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Taxa de falha (período)",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Total de emails enviados com sucesso no intervalo escolhido no topo.",
         "fieldConfig": {
           "defaults": {
             "color": {
@@ -837,14 +1046,14 @@
         },
         "gridPos": {
           "h": 4,
-          "w": 4,
-          "x": 0,
+          "w": 6,
+          "x": 18,
           "y": 25
         },
-        "id": 16,
+        "id": 36,
         "options": {
           "colorMode": "value",
-          "graphMode": "none",
+          "graphMode": "area",
           "justifyMode": "auto",
           "orientation": "auto",
           "reduceOptions": {
@@ -863,13 +1072,13 @@
               "uid": "dfc1f2qerumf4f"
             },
             "editorMode": "code",
-            "expr": "sum(max by (summarized) (arcada_business_acts_count{service=\"oqm-app\"}))",
+            "expr": "sum(increase(arcada_business_emails_total{service=\"oqm-app\",result=\"sent\"}[$__range]))",
             "instant": true,
             "range": false,
             "refId": "A"
           }
         ],
-        "title": "Actos",
+        "title": "Envios (período)",
         "type": "stat"
       },
       {
@@ -877,46 +1086,71 @@
           "type": "prometheus",
           "uid": "dfc1f2qerumf4f"
         },
-        "description": "Percentagem de actos que já têm resumo gerado. Deve subir e estabilizar; a cair = fila `summarize` atrasada.",
+        "description": "Envios com sucesso por janela de 24h. As duas linhas tracejadas são os tectos: 80 (auto-limite do `DispatchWorker`) e 100 (limite diário da Scaleway TEM). Uma barra que encosta ao tracejado âmbar significa que houve subscritores que não receberam. O eixo vai sempre até 110 para os tectos estarem à vista mesmo com pouco volume.",
         "fieldConfig": {
           "defaults": {
             "color": {
               "mode": "thresholds"
             },
-            "decimals": 1,
-            "noValue": "0",
+            "custom": {
+              "axisCenteredZero": false,
+              "axisSoftMax": 110,
+              "drawStyle": "bars",
+              "fillOpacity": 60,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "dashed"
+              }
+            },
+            "decimals": 0,
+            "min": 0,
             "thresholds": {
               "mode": "absolute",
               "steps": [
                 {
                   "color": "green"
+                },
+                {
+                  "color": "yellow",
+                  "value": 80
+                },
+                {
+                  "color": "red",
+                  "value": 100
                 }
               ]
             },
-            "unit": "percent"
+            "unit": "short"
           },
           "overrides": []
         },
         "gridPos": {
-          "h": 4,
-          "w": 4,
-          "x": 4,
-          "y": 25
+          "h": 7,
+          "w": 12,
+          "x": 0,
+          "y": 29
         },
-        "id": 17,
+        "id": 37,
         "options": {
-          "colorMode": "value",
-          "graphMode": "none",
-          "justifyMode": "auto",
-          "orientation": "auto",
-          "reduceOptions": {
+          "legend": {
             "calcs": [
               "lastNotNull"
             ],
-            "fields": "",
-            "values": false
+            "displayMode": "list",
+            "placement": "bottom"
           },
-          "textMode": "auto"
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
         },
         "targets": [
           {
@@ -925,21 +1159,99 @@
               "uid": "dfc1f2qerumf4f"
             },
             "editorMode": "code",
-            "expr": "100 * max(arcada_business_acts_count{service=\"oqm-app\",summarized=\"true\"}) / clamp_min(sum(max by (summarized) (arcada_business_acts_count{service=\"oqm-app\"})), 1)",
-            "instant": true,
-            "range": false,
+            "expr": "sum(increase(arcada_business_emails_total{service=\"oqm-app\",result=\"sent\"}[1d]))",
+            "instant": false,
+            "legendFormat": "enviados/dia",
+            "range": true,
             "refId": "A"
           }
         ],
-        "title": "Com resumo",
-        "type": "stat"
+        "title": "Envios por dia vs tecto",
+        "type": "timeseries"
       },
       {
         "datasource": {
           "type": "prometheus",
           "uid": "dfc1f2qerumf4f"
         },
-        "description": "Dias desde o `published_at` do acto mais recente na BD. É o sinal de que o scraper parou. Verde < 2 dias, âmbar < 4, vermelho >= 4. Fins-de-semana e feriados sobem naturalmente para ~3.",
+        "description": "Reparte as tentativas por `kind` (tema/digest) e `result` (sent/failed). É aqui que se vê se só um dos dois tipos de email está a falhar. As séries `failed` são tentativas com repetições incluídas (até 3 por subscrição), as séries `sent` são entregas efectivas — as duas não estão na mesma unidade e não se subtraem.",
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              }
+            },
+            "decimals": 0,
+            "min": 0,
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 7,
+          "w": 12,
+          "x": 12,
+          "y": 29
+        },
+        "id": 38,
+        "options": {
+          "legend": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum by (kind, result) (increase(arcada_business_emails_total{service=\"oqm-app\"}[1d]))",
+            "instant": false,
+            "legendFormat": "{{kind}} / {{result}}",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Envios e falhas por tipo (por dia)",
+        "type": "timeseries"
+      },
+      {
+        "collapsed": false,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 36
+        },
+        "id": 15,
+        "title": "Registo (conteúdo)",
+        "type": "row"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Dias desde o `published_at` do acto mais recente na BD: o scraper está vivo? Verde < 2 dias, âmbar < 4, vermelho >= 4 (fins-de-semana e feriados sobem naturalmente para ~3). **Não chega ver só este** — leia-o com «Atraso dos resumos» ao lado.",
         "fieldConfig": {
           "defaults": {
             "color": {
@@ -968,9 +1280,9 @@
         },
         "gridPos": {
           "h": 4,
-          "w": 4,
-          "x": 8,
-          "y": 25
+          "w": 6,
+          "x": 0,
+          "y": 37
         },
         "id": 18,
         "options": {
@@ -1008,6 +1320,260 @@
           "type": "prometheus",
           "uid": "dfc1f2qerumf4f"
         },
+        "description": "Dias desde o `published_at` do acto sumarizado mais recente: o sumarizador está vivo? Mesmas cores do painel ao lado. **A armadilha é ver só o atraso do registo**: com o sumarizador morto os actos continuam a entrar, o atraso do registo fica em 0, e o que cresce em silêncio é a fila por resumir. Ver os dois ou nenhum.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 1,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                },
+                {
+                  "color": "yellow",
+                  "value": 2
+                },
+                {
+                  "color": "red",
+                  "value": 4
+                }
+              ]
+            },
+            "unit": "d"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 6,
+          "y": 37
+        },
+        "id": 39,
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "max(arcada_business_summaries_lag_days{service=\"oqm-app\"})",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Atraso dos resumos",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Total de actos ingeridos do DRE, com e sem resumo.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 0,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 3,
+          "x": 12,
+          "y": 37
+        },
+        "id": 16,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum(max by (summarized) (arcada_business_acts_count{service=\"oqm-app\"}))",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Actos",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Percentagem de actos ingeridos que já têm resumo. A cair = a fila `summarize` não acompanha a ingestão. Sem dados fica «No data», não 0%.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 1,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "percent"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 3,
+          "x": 15,
+          "y": 37
+        },
+        "id": 17,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "100 * max(arcada_business_acts_count{service=\"oqm-app\",summarized=\"true\"}) / clamp_min(sum(max by (summarized) (arcada_business_acts_count{service=\"oqm-app\"})), 1)",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Com resumo",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Actos acrescentados no intervalo escolhido no topo, pela mesma construção do painel dos utilizadores novos: o intervalo é tirado do total. A série `summarized=\"false\"` é a fila por resumir, que sobe e desce — somar intervalos por tag contaria essa fila como actos novos. Zero em dia útil = ingestão parada.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 0,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 3,
+          "x": 18,
+          "y": 37
+        },
+        "id": 21,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "max_over_time((sum(max by (summarized) (arcada_business_acts_count{service=\"oqm-app\"})))[$__range:5m]) - min_over_time((sum(max by (summarized) (arcada_business_acts_count{service=\"oqm-app\"})))[$__range:5m])",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Novos actos (período)",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
         "description": "Edições do Diário da República já raspadas (uma por dia publicado).",
         "fieldConfig": {
           "defaults": {
@@ -1030,9 +1596,9 @@
         },
         "gridPos": {
           "h": 4,
-          "w": 4,
-          "x": 12,
-          "y": 25
+          "w": 3,
+          "x": 21,
+          "y": 37
         },
         "id": 19,
         "options": {
@@ -1070,130 +1636,6 @@
           "type": "prometheus",
           "uid": "dfc1f2qerumf4f"
         },
-        "description": "Resumos gerados no total. Cresce mais depressa que «Actos» se houver regeneração.",
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "thresholds"
-            },
-            "decimals": 0,
-            "noValue": "0",
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green"
-                }
-              ]
-            },
-            "unit": "short"
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 4,
-          "w": 4,
-          "x": 16,
-          "y": 25
-        },
-        "id": 20,
-        "options": {
-          "colorMode": "value",
-          "graphMode": "none",
-          "justifyMode": "auto",
-          "orientation": "auto",
-          "reduceOptions": {
-            "calcs": [
-              "lastNotNull"
-            ],
-            "fields": "",
-            "values": false
-          },
-          "textMode": "auto"
-        },
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "dfc1f2qerumf4f"
-            },
-            "editorMode": "code",
-            "expr": "max(arcada_business_summaries_count{service=\"oqm-app\"})",
-            "instant": true,
-            "range": false,
-            "refId": "A"
-          }
-        ],
-        "title": "Resumos",
-        "type": "stat"
-      },
-      {
-        "datasource": {
-          "type": "prometheus",
-          "uid": "dfc1f2qerumf4f"
-        },
-        "description": "Actos acrescentados dentro do intervalo escolhido no topo. Zero em dia útil = ingestão parada.",
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "thresholds"
-            },
-            "decimals": 0,
-            "noValue": "0",
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green"
-                }
-              ]
-            },
-            "unit": "short"
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 4,
-          "w": 4,
-          "x": 20,
-          "y": 25
-        },
-        "id": 21,
-        "options": {
-          "colorMode": "value",
-          "graphMode": "area",
-          "justifyMode": "auto",
-          "orientation": "auto",
-          "reduceOptions": {
-            "calcs": [
-              "lastNotNull"
-            ],
-            "fields": "",
-            "values": false
-          },
-          "textMode": "auto"
-        },
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "dfc1f2qerumf4f"
-            },
-            "editorMode": "code",
-            "expr": "sum(max by (summarized) (delta(arcada_business_acts_count{service=\"oqm-app\"}[$__range])))",
-            "instant": true,
-            "range": false,
-            "refId": "A"
-          }
-        ],
-        "title": "Novos actos (período)",
-        "type": "stat"
-      },
-      {
-        "datasource": {
-          "type": "prometheus",
-          "uid": "dfc1f2qerumf4f"
-        },
         "description": "Contagem absoluta empilhada por `summarized`. A faixa `false` a engordar significa que a sumarização não acompanha a ingestão.",
         "fieldConfig": {
           "defaults": {
@@ -1221,7 +1663,7 @@
           "h": 7,
           "w": 12,
           "x": 0,
-          "y": 29
+          "y": 41
         },
         "id": 22,
         "options": {
@@ -1259,7 +1701,7 @@
           "type": "prometheus",
           "uid": "dfc1f2qerumf4f"
         },
-        "description": "O mesmo sinal do painel de cima, em série temporal: um dente de serra diário é normal, um degrau que só sobe é o scraper em baixo.",
+        "description": "Os dois sinais de vida lado a lado. Dente de serra diário é normal. As linhas a divergirem — registo em baixo, resumos a subir — é o sumarizador em baixo com a ingestão a funcionar, que é o modo de falha que nenhuma das duas métricas apanha sozinha.",
         "fieldConfig": {
           "defaults": {
             "custom": {
@@ -1286,7 +1728,7 @@
           "h": 7,
           "w": 12,
           "x": 12,
-          "y": 29
+          "y": 41
         },
         "id": 23,
         "options": {
@@ -1311,12 +1753,24 @@
             "editorMode": "code",
             "expr": "max(arcada_business_register_lag_days{service=\"oqm-app\"})",
             "instant": false,
-            "legendFormat": "atraso",
+            "legendFormat": "registo",
             "range": true,
             "refId": "A"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "max(arcada_business_summaries_lag_days{service=\"oqm-app\"})",
+            "instant": false,
+            "legendFormat": "resumos",
+            "range": true,
+            "refId": "B"
           }
         ],
-        "title": "Atraso do registo (dias)",
+        "title": "Atrasos: registo vs resumos (dias)",
         "type": "timeseries"
       },
       {
@@ -1324,7 +1778,7 @@
           "type": "prometheus",
           "uid": "dfc1f2qerumf4f"
         },
-        "description": "Actos publicados por domínio de vida (10 domínios). Mostra onde o conteúdo se concentra.",
+        "description": "Actos **com resumo publicado**, por domínio de vida. Não reconcilia com «Actos» e não é suposto: os domínios só existem num resumo, e um acto com dois domínios conta nos dois. Ler como repartição, nunca como total.",
         "fieldConfig": {
           "defaults": {
             "color": {
@@ -1349,7 +1803,7 @@
           "h": 9,
           "w": 12,
           "x": 0,
-          "y": 36
+          "y": 48
         },
         "id": 24,
         "options": {
@@ -1411,7 +1865,7 @@
           "h": 9,
           "w": 12,
           "x": 12,
-          "y": 36
+          "y": 48
         },
         "id": 25,
         "options": {
@@ -1445,14 +1899,15 @@
       },
       {
         "collapsed": false,
+        "description": "Sem painéis de dinheiro por agora: `cost_usd` está NULL nas 2350 linhas de summaries em produção e nada na app o escreve, logo um tile de custo leria 0 para sempre e ensinaria a desconfiar do painel todo. Voltam quando a captura de custo aterrar (issue de seguimento). Até lá os tokens carregam o sinal.",
         "gridPos": {
           "h": 1,
           "w": 24,
           "x": 0,
-          "y": 45
+          "y": 57
         },
         "id": 26,
-        "title": "Custo LLM",
+        "title": "Consumo LLM (tokens)",
         "type": "row"
       },
       {
@@ -1460,13 +1915,13 @@
           "type": "prometheus",
           "uid": "dfc1f2qerumf4f"
         },
-        "description": "Gasto acumulado em dólares desde sempre. Mistura `cost_source=api` (dinheiro real) com `subscription` (custo imputado de mensalidade) — ver «Custo acumulado por origem» para separar.",
+        "description": "Resumos gerados no total. Cresce mais depressa que «Actos» se houver regeneração.",
         "fieldConfig": {
           "defaults": {
             "color": {
               "mode": "thresholds"
             },
-            "decimals": 2,
+            "decimals": 0,
             "noValue": "0",
             "thresholds": {
               "mode": "absolute",
@@ -1476,7 +1931,7 @@
                 }
               ]
             },
-            "unit": "currencyUSD"
+            "unit": "short"
           },
           "overrides": []
         },
@@ -1484,9 +1939,9 @@
           "h": 4,
           "w": 6,
           "x": 0,
-          "y": 46
+          "y": 58
         },
-        "id": 27,
+        "id": 20,
         "options": {
           "colorMode": "value",
           "graphMode": "none",
@@ -1508,13 +1963,13 @@
               "uid": "dfc1f2qerumf4f"
             },
             "editorMode": "code",
-            "expr": "sum(max by (cost_source) (arcada_business_summaries_cost_usd{service=\"oqm-app\"}))",
+            "expr": "max(arcada_business_summaries_count{service=\"oqm-app\"})",
             "instant": true,
             "range": false,
             "refId": "A"
           }
         ],
-        "title": "Custo LLM acumulado",
+        "title": "Resumos",
         "type": "stat"
       },
       {
@@ -1522,13 +1977,13 @@
           "type": "prometheus",
           "uid": "dfc1f2qerumf4f"
         },
-        "description": "Custo acumulado a dividir pelo número de resumos. Salto para cima = mudança de modelo ou actos maiores.",
+        "description": "Resumos gerados no intervalo escolhido no topo. Sem tags, logo o intervalo sai directamente da série. Ler com «Tokens (período)» ao lado: a divisão dos dois é o custo marginal em tokens por resumo recente.",
         "fieldConfig": {
           "defaults": {
             "color": {
               "mode": "thresholds"
             },
-            "decimals": 4,
+            "decimals": 0,
             "noValue": "0",
             "thresholds": {
               "mode": "absolute",
@@ -1538,7 +1993,7 @@
                 }
               ]
             },
-            "unit": "currencyUSD"
+            "unit": "short"
           },
           "overrides": []
         },
@@ -1546,9 +2001,133 @@
           "h": 4,
           "w": 6,
           "x": 6,
-          "y": 46
+          "y": 58
         },
-        "id": 28,
+        "id": 43,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "max(max_over_time(arcada_business_summaries_count{service=\"oqm-app\"}[$__range]) - min_over_time(arcada_business_summaries_count{service=\"oqm-app\"}[$__range]))",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Novos resumos (período)",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Tokens consumidos no intervalo escolhido no topo, entrada e saída somadas. Mesma construção dos outros painéis de crescimento: intervalo sobre o total.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 0,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 58
+        },
+        "id": 41,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "max_over_time((sum(max by (direction) (arcada_business_summaries_tokens{service=\"oqm-app\"})))[$__range:5m]) - min_over_time((sum(max by (direction) (arcada_business_summaries_tokens{service=\"oqm-app\"})))[$__range:5m])",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Tokens (período)",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Tokens acumulados (entrada + saída) a dividir pelo número de resumos. É o indicador de custo enquanto `cost_usd` não for preenchido: um salto para cima significa modelo novo ou actos maiores.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 0,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 18,
+          "y": 58
+        },
+        "id": 40,
         "options": {
           "colorMode": "value",
           "graphMode": "none",
@@ -1570,13 +2149,13 @@
               "uid": "dfc1f2qerumf4f"
             },
             "editorMode": "code",
-            "expr": "sum(max by (cost_source) (arcada_business_summaries_cost_usd{service=\"oqm-app\"})) / clamp_min(max(arcada_business_summaries_count{service=\"oqm-app\"}), 1)",
+            "expr": "sum(max by (direction) (arcada_business_summaries_tokens{service=\"oqm-app\"})) / clamp_min(max(arcada_business_summaries_count{service=\"oqm-app\"}), 1)",
             "instant": true,
             "range": false,
             "refId": "A"
           }
         ],
-        "title": "Custo por resumo",
+        "title": "Tokens por resumo",
         "type": "stat"
       },
       {
@@ -1584,7 +2163,7 @@
           "type": "prometheus",
           "uid": "dfc1f2qerumf4f"
         },
-        "description": "Tokens acumulados de entrada (`input`, o texto do acto) e de saída (`output`, o resumo).",
+        "description": "Tokens acumulados de entrada (`input`, o texto do acto) e de saída (`output`, o resumo). Em produção a entrada domina por ~40x — é o texto do DRE que custa, não o resumo.",
         "fieldConfig": {
           "defaults": {
             "color": {
@@ -1606,10 +2185,10 @@
           "overrides": []
         },
         "gridPos": {
-          "h": 4,
+          "h": 7,
           "w": 12,
-          "x": 12,
-          "y": 46
+          "x": 0,
+          "y": 62
         },
         "id": 29,
         "options": {
@@ -1646,72 +2225,7 @@
           "type": "prometheus",
           "uid": "dfc1f2qerumf4f"
         },
-        "description": "`delta` do custo acumulado numa janela de 24h. É a leitura de «quanto custa por dia», não um `rate` — a métrica é um gauge cumulativo.",
-        "fieldConfig": {
-          "defaults": {
-            "custom": {
-              "axisCenteredZero": false,
-              "drawStyle": "bars",
-              "fillOpacity": 40,
-              "gradientMode": "opacity",
-              "lineInterpolation": "smooth",
-              "lineWidth": 2,
-              "showPoints": "never",
-              "spanNulls": true,
-              "stacking": {
-                "group": "A",
-                "mode": "none"
-              }
-            },
-            "decimals": 2,
-            "min": 0,
-            "unit": "currencyUSD"
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 7,
-          "w": 12,
-          "x": 0,
-          "y": 50
-        },
-        "id": 30,
-        "options": {
-          "legend": {
-            "calcs": [
-              "lastNotNull"
-            ],
-            "displayMode": "list",
-            "placement": "bottom"
-          },
-          "tooltip": {
-            "mode": "multi",
-            "sort": "desc"
-          }
-        },
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "dfc1f2qerumf4f"
-            },
-            "editorMode": "code",
-            "expr": "sum(max by (cost_source) (delta(arcada_business_summaries_cost_usd{service=\"oqm-app\"}[1d])))",
-            "instant": false,
-            "legendFormat": "USD/dia",
-            "range": true,
-            "refId": "A"
-          }
-        ],
-        "title": "Ritmo de gasto (USD por dia)",
-        "type": "timeseries"
-      },
-      {
-        "datasource": {
-          "type": "prometheus",
-          "uid": "dfc1f2qerumf4f"
-        },
-        "description": "Separa `api` (facturado ao uso) de `subscription` (mensalidade repartida) e `unknown`. Só a linha `api` é dinheiro que sai marginalmente.",
+        "description": "Tokens acumulados por direcção. A inclinação é o ritmo de consumo; um patamar plano em dia útil quer dizer que a sumarização parou.",
         "fieldConfig": {
           "defaults": {
             "custom": {
@@ -1728,9 +2242,9 @@
                 "mode": "none"
               }
             },
-            "decimals": 2,
+            "decimals": 0,
             "min": 0,
-            "unit": "currencyUSD"
+            "unit": "short"
           },
           "overrides": []
         },
@@ -1738,9 +2252,9 @@
           "h": 7,
           "w": 12,
           "x": 12,
-          "y": 50
+          "y": 62
         },
-        "id": 31,
+        "id": 44,
         "options": {
           "legend": {
             "calcs": [
@@ -1761,14 +2275,14 @@
               "uid": "dfc1f2qerumf4f"
             },
             "editorMode": "code",
-            "expr": "max by (cost_source) (arcada_business_summaries_cost_usd{service=\"oqm-app\"})",
+            "expr": "max by (direction) (arcada_business_summaries_tokens{service=\"oqm-app\"})",
             "instant": false,
-            "legendFormat": "{{cost_source}}",
+            "legendFormat": "{{direction}}",
             "range": true,
             "refId": "A"
           }
         ],
-        "title": "Custo acumulado por origem",
+        "title": "Tokens ao longo do tempo",
         "type": "timeseries"
       }
     ],
@@ -1789,7 +2303,7 @@
     "timezone": "browser",
     "title": "Arcada — Negócio",
     "uid": "arcada-business",
-    "version": 1,
+    "version": 3,
     "weekStart": ""
   },
   "folderUid": "o-que-mudou"
