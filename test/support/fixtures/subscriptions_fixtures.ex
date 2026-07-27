@@ -15,6 +15,26 @@ defmodule Arcada.SubscriptionsFixtures do
     subscription
   end
 
+  @doc """
+  Override the per-account subscription cap for one test, restored on exit.
+
+  MUST only be called from an `async: false` module: `Application.put_env` is
+  global, so an async test asserting the shipped default would see this value.
+  """
+  def set_max_per_user(max) when is_integer(max) do
+    previous = Application.fetch_env(:arcada, :max_subscriptions_per_user)
+    Application.put_env(:arcada, :max_subscriptions_per_user, max)
+
+    ExUnit.Callbacks.on_exit(fn ->
+      case previous do
+        {:ok, value} -> Application.put_env(:arcada, :max_subscriptions_per_user, value)
+        :error -> Application.delete_env(:arcada, :max_subscriptions_per_user)
+      end
+    end)
+
+    max
+  end
+
   @doc "Move a subscription's cadence clock, e.g. to make it due (or not)."
   def with_last_sent(subscription, %Date{} = date) do
     {:ok, subscription} =
