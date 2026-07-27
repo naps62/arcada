@@ -51,12 +51,35 @@ subscription panel silently goes blank, which reads as a deploy failure.
 
 ### Growth over a range
 
-Use `max_over_time(m[$__range]) - min_over_time(m[$__range])`.
+Take the range of the **aggregate**, never the sum of per-series ranges:
 
-**NOT `delta()`.** `delta` extrapolates to the window edges, which on a young series is
-wildly wrong — measured against a live gauge sitting at `10`, `delta(m[30d])` returned
-`3232.5`. That is exactly the first month after deploy, the month anyone actually watches.
-`rate`/`increase` are also wrong here: these are gauges, not counters.
+```promql
+max_over_time((sum(max by (state) (arcada_business_users_count)))[$__range:5m])
+  - min_over_time((sum(max by (state) (arcada_business_users_count)))[$__range:5m])
+```
+
+**Why the subquery.** Summing each tag's own peak-to-trough range counts oscillation as
+growth. `users_count{state="unconfirmed"}` rises on signup and falls again on confirmation;
+`acts_count{summarized="false"}` is the summarizer backlog and swings both ways. A backlog
+going 0 -> 3 -> 0 adds `+3` to "new users", so 12 real signups report as 15. The aggregate
+is monotone, so 5m sampling loses nothing — max and min of a monotone series are its
+endpoints.
+
+**NOT `delta()`.** Two reasons, both measured against a real gauge:
+
+- It is last-minus-first, so it goes **negative** when the gauge dips — an observed `-25`
+  over 7d. A negative "new users" is a bug, not a signal.
+- It interpolates, returning fractions where the count is whole people: `14.0017` new
+  users reads as broken.
+
+`delta` does **not** extrapolate past the series edges — Prometheus clamps, and it returns
+the identical value at 30d, 90d and 365d against 15 days of history. An earlier revision of
+this doc claimed it did and cited `3232.5`, a measurement taken against a *counter* that
+resets on deploy, not a gauge. The conclusion survived; the evidence for it did not. Left
+here because the false version was more persuasive than the true one.
+
+`rate`/`increase` are wrong on every gauge here — and **required** on `emails_total`, which
+is a counter. See §4.
 
 ### 2.1 Why email is in a business dashboard
 
@@ -94,6 +117,16 @@ query text, or anything a stranger can create.
 **Multi-node aggregation.** These gauges are global DB counts, so every node reports the
 same number. Dashboard queries MUST use `max by (...)` and never `sum by (...)` — with N
 replicas `sum` reports N times the truth. Single node today; the query survives scaling.
+
+**`emails_total` inverts that rule.** It is a counter incremented on whichever node ran the
+Oban job, so each node holds a genuinely partial count: `sum` is correct and `max` silently
+undercounts on scale-out — the exact opposite of every other metric here. Anyone auditing
+the email panels against the paragraph above will read them as violations. They are not.
+
+**`emails_total` counts attempts, not people.** Oban retries up to `max_attempts: 3`, so one
+undeliverable subscription contributes up to 3 to `result="failed"`. Right for "did the send
+go out"; wrong by up to 3x if read as "subscribers who missed their mail". Failed attempts
+also consume the daily quota, so headroom must be read alongside failures.
 
 **A raising poll function is dropped forever, silently.** `telemetry_poller` catches the
 exception and permanently removes that MFA for the life of the node
