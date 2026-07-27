@@ -303,8 +303,30 @@ port (the old `/metrics` on `:4000` was host-gated to `ADMIN_HOST` and so the
 IP-addressed scrape always 404'd; issue #46). Nothing exposes this port
 publicly, and only the dokploy overlay can reach a container IP.
 
-Dashboards aren't auto-uploaded (`grafana: :disabled`); import the bundled
-PromEx dashboards manually against the `prometheus` datasource if wanted.
+**Dashboards.** They live in the repo, not only in Grafana: `priv/grafana/*.json`
+is the source of truth and `mix arcada.grafana` syncs it against a live instance.
+What each dashboard measures is in [docs/OBSERVABILITY.md](OBSERVABILITY.md) § 5.
+
+```
+mix arcada.grafana list [--live]   # what's on disk, and whether Grafana has moved on
+mix arcada.grafana pull <uid>      # Grafana -> priv/grafana/<uid>.json
+mix arcada.grafana push [uid]      # priv/grafana -> Grafana (every file if uid omitted)
+```
+
+Needs `GRAFANA_URL` and `GRAFANA_SERVICE_ACCOUNT_TOKEN` (service-account token with
+Editor rights on the dashboard folder) in the environment. Never commit the token.
+
+`pull` drops the per-instance `id` and `meta` block and re-encodes with sorted keys,
+so pulling an unchanged dashboard produces no diff. `push` sends the stored `version`
+with `overwrite: false`, so a dashboard edited in the Grafana UI since the last pull
+rejects the push (HTTP 412) instead of losing that edit; `--force` overrides on
+purpose. Each file also stores its `folderUid`, so a push can't relocate a dashboard
+into General.
+
+PromEx auto-upload stays off (`grafana: :disabled`) deliberately — it would overwrite
+`oqm-overview` (41 hand-tuned panels, including Loki and Traefik queries PromEx knows
+nothing about) on every deploy. Bundled PromEx dashboards can still be imported by
+hand against the `prometheus` datasource if wanted.
 
 ## Local verification (what was run before shipping)
 
