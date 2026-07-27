@@ -1,13 +1,38 @@
+defmodule Arcada.Subscriptions.DeliverWorkerTest.RejectingAdapter do
+  @moduledoc false
+  @behaviour Swoosh.Adapter
+
+  @impl true
+  def deliver(_email, _config), do: {:error, {:tem, "quota exceeded"}}
+
+  @impl true
+  def validate_config(_config), do: :ok
+end
+
+defmodule Arcada.Subscriptions.DeliverWorkerTest.RaisingAdapter do
+  @moduledoc false
+  @behaviour Swoosh.Adapter
+
+  @impl true
+  def deliver(_email, _config), do: raise("connection reset")
+
+  @impl true
+  def validate_config(_config), do: :ok
+end
+
 defmodule Arcada.Subscriptions.DeliverWorkerTest do
   # async: false — a process-wide embeddings stub and the in-memory search index.
   use Arcada.DataCase, async: false
   use Oban.Testing, repo: Arcada.Repo
+
+  import ExUnit.CaptureLog
 
   import Arcada.AccountsFixtures
   import Arcada.RegisterFixtures
   import Arcada.SubscriptionsFixtures
   import Swoosh.TestAssertions
 
+  alias Arcada.PromEx.BusinessMetrics
   alias Arcada.Search.Index
   alias Arcada.Subscriptions
   alias Arcada.Subscriptions.DeliverWorker
@@ -112,5 +137,76 @@ defmodule Arcada.Subscriptions.DeliverWorkerTest do
 
     assert :ok = run(subscription)
     assert_no_email_sent()
+  end
+
+  # arcada_business_emails_total is the contract's only flow metric: it is what
+  # answers "did today's send actually go out". Taking the event name from the
+  # plugin rather than a literal is the point — a drift between emitter and
+  # metric definition would otherwise pass both files' own tests.
+  describe "email counter (#98)" do
+    setup do
+      %{metrics: [emails]} = BusinessMetrics.event_metrics([])
+      :telemetry_test.attach_event_handlers(self(), [emails.event_name])
+      %{event: emails.event_name}
+    end
+
+    defp with_digest_adapter(adapter) do
+      prev = Application.get_env(:arcada, Arcada.DigestMailer)
+      Application.put_env(:arcada, Arcada.DigestMailer, adapter: adapter)
+      on_exit(fn -> Application.put_env(:arcada, Arcada.DigestMailer, prev) end)
+    end
+
+    test "counts a delivered digest as sent", %{event: event} do
+      subscription = subscription_fixture(user_fixture(), %{query: nil, period: :semanal})
+      act_in_window()
+
+      assert :ok = run(subscription)
+
+      assert_receive {^event, _ref, %{count: 1}, %{kind: :digest, result: :sent}}
+    end
+
+    test "counts a rejected send as failed", %{event: event} do
+      with_digest_adapter(Arcada.Subscriptions.DeliverWorkerTest.RejectingAdapter)
+
+      subscription = subscription_fixture(user_fixture(), %{query: nil, period: :semanal})
+      act_in_window()
+
+      assert capture_log(fn ->
+               assert {:error, _reason} = run(subscription)
+             end) =~ "delivery failed"
+
+      assert_receive {^event, _ref, %{count: 1}, %{kind: :digest, result: :failed}}
+      # The clock must not advance on a failure, or the window is lost.
+      refute reload(subscription).last_sent_at
+    end
+
+    test "counts a raising adapter as failed and still lets Oban retry", %{event: event} do
+      with_digest_adapter(Arcada.Subscriptions.DeliverWorkerTest.RaisingAdapter)
+
+      subscription = subscription_fixture(user_fixture(), %{query: nil, period: :semanal})
+      act_in_window()
+
+      assert_raise RuntimeError, "connection reset", fn -> run(subscription) end
+
+      assert_receive {^event, _ref, %{count: 1}, %{kind: :digest, result: :failed}}
+    end
+
+    test "tags a topic subscription as tema", %{event: event} do
+      subscription = subscription_fixture(user_fixture(), %{query: "arrendamento"})
+      hit = act_in_window(%{title: "Lei do arrendamento"})
+      summary_fixture(hit, %{headline: "Novas regras", embedding: [1.0, 0.0]})
+
+      assert :ok = run(subscription)
+
+      assert_receive {^event, _ref, %{count: 1}, %{kind: :tema, result: :sent}}
+    end
+
+    test "a run with no matches attempts nothing and counts nothing", %{event: event} do
+      subscription = subscription_fixture(user_fixture(), %{query: "arrendamento"})
+
+      assert :ok = run(subscription)
+
+      refute_receive {^event, _ref, _measurements, _metadata}
+    end
   end
 end
