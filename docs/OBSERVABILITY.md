@@ -30,18 +30,40 @@ both.
 |---|---|---|---|
 | `[:arcada, :business, :users, :count]` | `arcada_business_users_count` | `state` = `confirmed` \| `unconfirmed` | registered users |
 | `[:arcada, :business, :subscribers, :count]` | `arcada_business_subscribers_count` | — | distinct users with >=1 subscription |
-| `[:arcada, :business, :subscriptions, :count]` | `arcada_business_subscriptions_count` | `period`, `kind` = `tema` \| `digest`, `active` | subscriptions |
+| `[:arcada, :business, :subscriptions, :count]` | `arcada_business_subscriptions_count` | `period`, `kind` = `tema` \| `digest`, `active` = `true` \| `false` | subscriptions |
 | `[:arcada, :business, :acts, :count]` | `arcada_business_acts_count` | `summarized` = `true` \| `false` | acts ingested |
 | `[:arcada, :business, :acts, :by_tipo, :count]` | `arcada_business_acts_by_tipo_count` | `tipo` (bucketed, see §4) | acts by diploma type |
-| `[:arcada, :business, :acts, :by_domain, :count]` | `arcada_business_acts_by_domain_count` | `domain` (10 life domains) | published acts per domain |
+| `[:arcada, :business, :acts, :by_domain, :count]` | `arcada_business_acts_by_domain_count` | `domain` (10 life domains) | **acts that have a published summary**, per domain — see §4 |
 | `[:arcada, :business, :editions, :count]` | `arcada_business_editions_count` | — | editions scraped |
 | `[:arcada, :business, :register, :lag_days]` | `arcada_business_register_lag_days` | — | days since newest act's `published_at` |
 | `[:arcada, :business, :summaries, :count]` | `arcada_business_summaries_count` | — | summaries generated |
 | `[:arcada, :business, :summaries, :cost_usd]` | `arcada_business_summaries_cost_usd` | `cost_source` = `api` \| `subscription` \| `unknown` | cumulative LLM spend |
 | `[:arcada, :business, :summaries, :tokens]` | `arcada_business_summaries_tokens` | `direction` = `input` \| `output` | cumulative tokens |
+| `[:arcada, :business, :emails, :total]` | `arcada_business_emails_total` | `kind` = `tema` \| `digest`, `result` = `sent` \| `failed` | subscription emails attempted — see §2.1 |
 
-All are `last_value` gauges. All are **cumulative absolute counts**, not rates — growth
-is `delta(metric[7d])` in the dashboard, never a counter reset.
+All except `emails` are `last_value` gauges holding **cumulative absolute counts**, not
+rates. `emails` is a `counter` (a flow, not a stock).
+
+**Tag values are strings.** `active` and `summarized` emit `"true"`/`"false"`, not
+booleans or 1/0 — dashboards match on `active="true"`. Get this wrong and every
+subscription panel silently goes blank, which reads as a deploy failure.
+
+### Growth over a range
+
+Use `max_over_time(m[$__range]) - min_over_time(m[$__range])`.
+
+**NOT `delta()`.** `delta` extrapolates to the window edges, which on a young series is
+wildly wrong — measured against a live gauge sitting at `10`, `delta(m[30d])` returned
+`3232.5`. That is exactly the first month after deploy, the month anyone actually watches.
+`rate`/`increase` are also wrong here: these are gauges, not counters.
+
+### 2.1 Why email is in a business dashboard
+
+Subscriptions are only real when the mail lands. Scaleway TEM caps at 100 messages/day
+shared with account mail, and `DispatchWorker` caps itself at 80 sends per run — so a
+growing list silently truncates, and no stock metric can show that. Every other metric
+here is a stock; this is the one flow, and it is the one that answers "did today's send
+actually go out".
 
 ### Poll groups
 
@@ -75,6 +97,16 @@ replicas `sum` reports N times the truth. Single node today; the query survives 
 metrics with it, infra included. Wrap DB access and emit nothing on failure.
 
 **`cost_usd` is `Decimal` and often nil.** Convert to float, treat nil as 0.
+
+**`cost_source=api` is cash; `subscription` is imputed.** `api` is money that left the
+account. `subscription` is a flat fee apportioned per call — it does not change if you
+summarize twice as much. Summing them yields a number that is neither, so the headline
+cost panel charts `api` only and the total is broken out by source beside it.
+
+**`acts_count` and `acts_by_domain_count` do not reconcile, by design.** `acts_count` is
+everything ingested; domains only exist on a summary, so `acts_by_domain_count` covers
+only acts that have one. An act with two domains counts in both. Never present the two
+side by side as if they should add up.
 
 ## 5. Dashboards as code
 
