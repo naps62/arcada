@@ -682,11 +682,8 @@ defmodule ArcadaWeb.CoreComponents do
       "placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
   end
 
-  @pt_months ~w(janeiro fevereiro março abril maio junho julho agosto setembro outubro novembro dezembro)
-
   @doc ~S(Portuguese long date, e.g. `~D[2026-06-27]` → "27 de junho de 2026".)
-  def format_pt_date(%Date{} = d),
-    do: "#{d.day} de #{Enum.at(@pt_months, d.month - 1)} de #{d.year}"
+  defdelegate format_pt_date(date), to: Arcada.Register, as: :long_date
 
   @doc "A life-domain tag — quiet, neutral, never a status color."
   attr :label, :string, required: true

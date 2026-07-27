@@ -10,7 +10,14 @@ defmodule ArcadaWeb.UserSettingsLive do
       <:subtitle>Faça a gestão do email, nome de utilizador e palavra-passe.</:subtitle>
     </.header>
 
-    <div class="space-y-12 divide-y">
+    <p class="mt-6 text-center text-sm text-muted">
+      Procura os emails que recebe?
+      <.link navigate={~p"/users/subscriptions"} class="font-medium text-ink hover:text-primary">
+        Gerir subscrições
+      </.link>
+    </p>
+
+    <div class="mt-10 space-y-12 divide-y">
       <div>
         <.simple_form
           for={@email_form}

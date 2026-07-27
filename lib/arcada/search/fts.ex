@@ -29,18 +29,40 @@ defmodule Arcada.Search.FTS do
   Act ids whose header or summary text matches `query`, best match first, capped
   at the configured limit (default #{@default_limit}).
 
+  `opts[:from]` / `opts[:to]` (both `Date`, inclusive) restrict the result to
+  acts published in that window — how a subscription searches only what is new
+  since its last run (issue #95). Acts with no `published_at` fall outside any
+  window and so are invisible to a bounded search.
+
   Empty for a blank query or one that reduces to only stopwords/punctuation
   (`websearch_to_tsquery` yields an empty query, which matches nothing). User
   input is passed straight to `websearch_to_tsquery`, which never raises on junk.
   """
-  def ranked_ids(query) when is_binary(query) do
+  def ranked_ids(query, opts \\ [])
+
+  def ranked_ids(query, opts) when is_binary(query) do
     case String.trim(query) do
       "" -> []
-      q -> Repo.all(ranked_query(q, limit()))
+      q -> q |> ranked_query(limit()) |> filter_window(opts[:from], opts[:to]) |> Repo.all()
     end
   end
 
-  def ranked_ids(_), do: []
+  def ranked_ids(_query, _opts), do: []
+
+  # Applied to the outer ranking query, not to `candidate_ids/1`: the candidate
+  # halves must each stay a single-table tsvector scan so their GIN indexes are
+  # usable. Narrowing here also keeps the LIMIT a true top-N *within* the window.
+  defp filter_window(query, nil, nil), do: query
+
+  defp filter_window(query, window_from, window_to) do
+    query
+    |> then(fn q ->
+      if window_from, do: from(a in q, where: a.published_at >= ^window_from), else: q
+    end)
+    |> then(fn q ->
+      if window_to, do: from(a in q, where: a.published_at <= ^window_to), else: q
+    end)
+  end
 
   defp limit do
     Application.get_env(:arcada, __MODULE__, [])[:limit] || @default_limit

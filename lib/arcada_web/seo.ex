@@ -51,6 +51,19 @@ defmodule ArcadaWeb.SEO do
   def act_url(act), do: url(act_path(act))
 
   @doc """
+  Absolute URL of the login-free unsubscribe page for a subscription token.
+  Lives here so the mail built in `Arcada.Subscriptions.Notifier` still gets a
+  compile-checked route.
+  """
+  def unsubscribe_url(token), do: url(~p"/subscricoes/cancelar/#{token}")
+
+  @doc "Absolute URL of the logged-in subscription management page."
+  def subscriptions_url, do: url(~p"/users/subscriptions")
+
+  @doc "Absolute URL of the register's front page."
+  def home_url, do: url(~p"/")
+
+  @doc """
   The `robots` meta content for a page. Indexable by default; a page opts out of
   indexing (but not link-following) by passing `page_noindex: true`.
   """

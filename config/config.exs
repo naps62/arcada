@@ -115,9 +115,21 @@ config :arcada, Oban,
        # Drain the backlog of un-summarized acts (historical backfill + any daily
        # summary whose job failed out) a batch at a time. Cheap no-op query once
        # everything is summarized. See Arcada.Summarizer.SummarySweeper.
-       {"*/5 * * * *", Arcada.Summarizer.SummarySweeper}
+       {"*/5 * * * *", Arcada.Summarizer.SummarySweeper},
+       # Email subscriptions (issue #95). Once a day: the worker picks only the
+       # rows whose cadence has come round, so daily/weekly/monthly all ride
+       # this one tick. 09:00 UTC lands after the morning ingest+summarize pass,
+       # so the day's acts are already summarized and searchable.
+       {"0 9 * * *", Arcada.Subscriptions.DispatchWorker}
      ]}
   ]
+
+# Email subscriptions (issue #95).
+#
+# `max_sends_per_run` caps deliveries per daily tick — Scaleway TEM allows 100
+# messages/day, and account mail (verification, password reset) shares that
+# quota, so the digest must leave headroom rather than starve logins.
+config :arcada, Arcada.Subscriptions, max_sends_per_run: 80
 
 # Admin area (/admin) has no in-app auth — gated at the edge (Authelia on the
 # public host, VPN on the private one). No host config: see issues #19, #37, #46.
@@ -232,7 +244,13 @@ config :arcada, Arcada.Search,
   # (nothing clears it → no results). FTS/exact-term matches are never dropped (they
   # re-enter via the FTS list). `relevance_ratio: 0.0` disables the floor.
   relevance_ratio: 0.90,
-  min_relevance_score: 0.33
+  min_relevance_score: 0.33,
+  # Absolute cosine a *standing* match must clear (`window_matches/2`, issue #95).
+  # Nothing relative works for a subscription: ranked inside one week's acts,
+  # something always clears a ratio-of-top floor, so every subscription would mail
+  # every week. This is the "worth an email" line, well above the nonsense-query
+  # backstop above. Raise it if subscriptions feel noisy, lower it if they go quiet.
+  min_match_score: 0.5
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
