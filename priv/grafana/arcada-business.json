@@ -1,1792 +1,1796 @@
 {
-  "annotations": {
-    "list": [
+  "dashboard": {
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": {
+            "type": "grafana",
+            "uid": "-- Grafana --"
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 1,
+    "links": [],
+    "panels": [
       {
-        "builtIn": 1,
+        "collapsed": false,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 0
+        },
+        "id": 1,
+        "title": "Pessoas",
+        "type": "row"
+      },
+      {
         "datasource": {
-          "type": "grafana",
-          "uid": "-- Grafana --"
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
         },
-        "enable": true,
-        "hide": true,
-        "iconColor": "rgba(0, 211, 255, 1)",
-        "name": "Annotations & Alerts",
-        "type": "dashboard"
+        "description": "Contas registadas (confirmadas + por confirmar). `max by (state)` colapsa as réplicas — cada nó reporta a mesma contagem global da BD, `sum` multiplicaria pelo nº de nós.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 0,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 0,
+          "y": 1
+        },
+        "id": 2,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum(max by (state) (arcada_business_users_count{service=\"oqm-app\"}))",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Utilizadores",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Utilizadores distintos com pelo menos uma subscrição. Compara com «Subscrições activas»: quanto mais perto, menos subscrições por pessoa.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 0,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 4,
+          "y": 1
+        },
+        "id": 3,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "max(arcada_business_subscribers_count{service=\"oqm-app\"})",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Subscritores",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Variação da contagem de utilizadores dentro do intervalo de tempo escolhido no topo. Gauge, logo `delta` — nunca `rate`/`increase`.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 0,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 8,
+          "y": 1
+        },
+        "id": 4,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum(max by (state) (delta(arcada_business_users_count{service=\"oqm-app\"}[$__range])))",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Novos utilizadores (período)",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Percentagem de contas com email confirmado. Queda persistente = email de confirmação a falhar.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 1,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "percent"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 12,
+          "y": 1
+        },
+        "id": 5,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "100 * max(arcada_business_users_count{service=\"oqm-app\",state=\"confirmed\"}) / clamp_min(sum(max by (state) (arcada_business_users_count{service=\"oqm-app\"})), 1)",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Taxa de confirmação",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Confirmados vs por confirmar, valor actual.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "continuous-GrYlRd"
+            },
+            "decimals": 0,
+            "min": 0,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 8,
+          "x": 16,
+          "y": 1
+        },
+        "id": 6,
+        "options": {
+          "displayMode": "gradient",
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showUnfilled": true
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "max by (state) (arcada_business_users_count{service=\"oqm-app\"})",
+            "instant": true,
+            "legendFormat": "{{state}}",
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Utilizadores por estado",
+        "type": "bargauge"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Contagem absoluta ao longo do tempo, empilhada por estado. Linha plana = sem registos novos.",
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "line",
+              "fillOpacity": 40,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "normal"
+              }
+            },
+            "decimals": 0,
+            "min": 0,
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 7,
+          "w": 24,
+          "x": 0,
+          "y": 5
+        },
+        "id": 7,
+        "options": {
+          "legend": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "max by (state) (arcada_business_users_count{service=\"oqm-app\"})",
+            "instant": false,
+            "legendFormat": "{{state}}",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Crescimento de utilizadores",
+        "type": "timeseries"
+      },
+      {
+        "collapsed": false,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 12
+        },
+        "id": 8,
+        "title": "Subscrições",
+        "type": "row"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Total de subscrições activas. O `max by (period, kind)` interior colapsa réplicas; o `sum` exterior soma as combinações reais de periodicidade e tipo.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 0,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 0,
+          "y": 13
+        },
+        "id": 9,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum(max by (period, kind) (arcada_business_subscriptions_count{service=\"oqm-app\",active=\"true\"}))",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Subscrições activas",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Subscrições activas a dividir por subscritores distintos. Com o limite de 1 por utilizador (#97) este valor converge para 1,00; acima disso há sobras por migrar.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 2,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 4,
+          "y": 13
+        },
+        "id": 10,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum(max by (period, kind) (arcada_business_subscriptions_count{service=\"oqm-app\",active=\"true\"})) / clamp_min(max(arcada_business_subscribers_count{service=\"oqm-app\"}), 1)",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Subscrições por subscritor",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Subscrições activas repartidas pela tag `period` (cadência de envio).",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "continuous-GrYlRd"
+            },
+            "decimals": 0,
+            "min": 0,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 8,
+          "x": 8,
+          "y": 13
+        },
+        "id": 11,
+        "options": {
+          "displayMode": "gradient",
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showUnfilled": true
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum by (period) (max by (period, kind) (arcada_business_subscriptions_count{service=\"oqm-app\",active=\"true\"}))",
+            "instant": true,
+            "legendFormat": "{{period}}",
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Por periodicidade",
+        "type": "bargauge"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Subscrições activas repartidas pela tag `kind`: `tema` = alerta por consulta guardada, `digest` = resumo periódico.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "continuous-GrYlRd"
+            },
+            "decimals": 0,
+            "min": 0,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 8,
+          "x": 16,
+          "y": 13
+        },
+        "id": 12,
+        "options": {
+          "displayMode": "gradient",
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showUnfilled": true
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum by (kind) (max by (period, kind) (arcada_business_subscriptions_count{service=\"oqm-app\",active=\"true\"}))",
+            "instant": true,
+            "legendFormat": "{{kind}}",
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Por tipo (tema / digest)",
+        "type": "bargauge"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Subscrições activas por tipo. Empilhado: o topo é o total.",
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "line",
+              "fillOpacity": 40,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "normal"
+              }
+            },
+            "decimals": 0,
+            "min": 0,
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 7,
+          "w": 12,
+          "x": 0,
+          "y": 17
+        },
+        "id": 13,
+        "options": {
+          "legend": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum by (kind) (max by (period, kind) (arcada_business_subscriptions_count{service=\"oqm-app\",active=\"true\"}))",
+            "instant": false,
+            "legendFormat": "{{kind}}",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Subscrições activas ao longo do tempo",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Utilizadores distintos com subscrição. Ler ao lado do painel da esquerda: se divergirem, há gente com várias subscrições.",
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              }
+            },
+            "decimals": 0,
+            "min": 0,
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 7,
+          "w": 12,
+          "x": 12,
+          "y": 17
+        },
+        "id": 14,
+        "options": {
+          "legend": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "max(arcada_business_subscribers_count{service=\"oqm-app\"})",
+            "instant": false,
+            "legendFormat": "subscritores",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Subscritores ao longo do tempo",
+        "type": "timeseries"
+      },
+      {
+        "collapsed": false,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 24
+        },
+        "id": 15,
+        "title": "Registo (conteúdo)",
+        "type": "row"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Total de actos ingeridos do DRE, com e sem resumo.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 0,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 0,
+          "y": 25
+        },
+        "id": 16,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum(max by (summarized) (arcada_business_acts_count{service=\"oqm-app\"}))",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Actos",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Percentagem de actos que já têm resumo gerado. Deve subir e estabilizar; a cair = fila `summarize` atrasada.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 1,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "percent"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 4,
+          "y": 25
+        },
+        "id": 17,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "100 * max(arcada_business_acts_count{service=\"oqm-app\",summarized=\"true\"}) / clamp_min(sum(max by (summarized) (arcada_business_acts_count{service=\"oqm-app\"})), 1)",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Com resumo",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Dias desde o `published_at` do acto mais recente na BD. É o sinal de que o scraper parou. Verde < 2 dias, âmbar < 4, vermelho >= 4. Fins-de-semana e feriados sobem naturalmente para ~3.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 1,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                },
+                {
+                  "color": "yellow",
+                  "value": 2
+                },
+                {
+                  "color": "red",
+                  "value": 4
+                }
+              ]
+            },
+            "unit": "d"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 8,
+          "y": 25
+        },
+        "id": 18,
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "max(arcada_business_register_lag_days{service=\"oqm-app\"})",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Atraso do registo",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Edições do Diário da República já raspadas (uma por dia publicado).",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 0,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 12,
+          "y": 25
+        },
+        "id": 19,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "max(arcada_business_editions_count{service=\"oqm-app\"})",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Edições",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Resumos gerados no total. Cresce mais depressa que «Actos» se houver regeneração.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 0,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 16,
+          "y": 25
+        },
+        "id": 20,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "max(arcada_business_summaries_count{service=\"oqm-app\"})",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Resumos",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Actos acrescentados dentro do intervalo escolhido no topo. Zero em dia útil = ingestão parada.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 0,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 20,
+          "y": 25
+        },
+        "id": 21,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum(max by (summarized) (delta(arcada_business_acts_count{service=\"oqm-app\"}[$__range])))",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Novos actos (período)",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Contagem absoluta empilhada por `summarized`. A faixa `false` a engordar significa que a sumarização não acompanha a ingestão.",
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "line",
+              "fillOpacity": 40,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "normal"
+              }
+            },
+            "decimals": 0,
+            "min": 0,
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 7,
+          "w": 12,
+          "x": 0,
+          "y": 29
+        },
+        "id": 22,
+        "options": {
+          "legend": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "max by (summarized) (arcada_business_acts_count{service=\"oqm-app\"})",
+            "instant": false,
+            "legendFormat": "summarized={{summarized}}",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Actos ao longo do tempo",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "O mesmo sinal do painel de cima, em série temporal: um dente de serra diário é normal, um degrau que só sobe é o scraper em baixo.",
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              }
+            },
+            "decimals": 1,
+            "min": 0,
+            "unit": "d"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 7,
+          "w": 12,
+          "x": 12,
+          "y": 29
+        },
+        "id": 23,
+        "options": {
+          "legend": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "max(arcada_business_register_lag_days{service=\"oqm-app\"})",
+            "instant": false,
+            "legendFormat": "atraso",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Atraso do registo (dias)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Actos publicados por domínio de vida (10 domínios). Mostra onde o conteúdo se concentra.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "continuous-GrYlRd"
+            },
+            "decimals": 0,
+            "min": 0,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 12,
+          "x": 0,
+          "y": 36
+        },
+        "id": 24,
+        "options": {
+          "displayMode": "gradient",
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showUnfilled": true
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "max by (domain) (arcada_business_acts_by_domain_count{service=\"oqm-app\"})",
+            "instant": true,
+            "legendFormat": "{{domain}}",
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Actos por domínio de vida",
+        "type": "bargauge"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Actos por `tipo`, já agrupado contra uma lista conhecida no lado do servidor — tudo o que não consta cai em `outro`.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "continuous-GrYlRd"
+            },
+            "decimals": 0,
+            "min": 0,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 12,
+          "x": 12,
+          "y": 36
+        },
+        "id": 25,
+        "options": {
+          "displayMode": "gradient",
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showUnfilled": true
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "max by (tipo) (arcada_business_acts_by_tipo_count{service=\"oqm-app\"})",
+            "instant": true,
+            "legendFormat": "{{tipo}}",
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Actos por tipo de diploma",
+        "type": "bargauge"
+      },
+      {
+        "collapsed": false,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 45
+        },
+        "id": 26,
+        "title": "Custo LLM",
+        "type": "row"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Gasto acumulado em dólares desde sempre. Mistura `cost_source=api` (dinheiro real) com `subscription` (custo imputado de mensalidade) — ver «Custo acumulado por origem» para separar.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 2,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "currencyUSD"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 46
+        },
+        "id": 27,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum(max by (cost_source) (arcada_business_summaries_cost_usd{service=\"oqm-app\"}))",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Custo LLM acumulado",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Custo acumulado a dividir pelo número de resumos. Salto para cima = mudança de modelo ou actos maiores.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "decimals": 4,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "currencyUSD"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 6,
+          "y": 46
+        },
+        "id": 28,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum(max by (cost_source) (arcada_business_summaries_cost_usd{service=\"oqm-app\"})) / clamp_min(max(arcada_business_summaries_count{service=\"oqm-app\"}), 1)",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Custo por resumo",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Tokens acumulados de entrada (`input`, o texto do acto) e de saída (`output`, o resumo).",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "continuous-GrYlRd"
+            },
+            "decimals": 0,
+            "min": 0,
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 12,
+          "x": 12,
+          "y": 46
+        },
+        "id": 29,
+        "options": {
+          "displayMode": "gradient",
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showUnfilled": true
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "max by (direction) (arcada_business_summaries_tokens{service=\"oqm-app\"})",
+            "instant": true,
+            "legendFormat": "{{direction}}",
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Tokens por direcção",
+        "type": "bargauge"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "`delta` do custo acumulado numa janela de 24h. É a leitura de «quanto custa por dia», não um `rate` — a métrica é um gauge cumulativo.",
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "bars",
+              "fillOpacity": 40,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              }
+            },
+            "decimals": 2,
+            "min": 0,
+            "unit": "currencyUSD"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 7,
+          "w": 12,
+          "x": 0,
+          "y": 50
+        },
+        "id": 30,
+        "options": {
+          "legend": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum(max by (cost_source) (delta(arcada_business_summaries_cost_usd{service=\"oqm-app\"}[1d])))",
+            "instant": false,
+            "legendFormat": "USD/dia",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Ritmo de gasto (USD por dia)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Separa `api` (facturado ao uso) de `subscription` (mensalidade repartida) e `unknown`. Só a linha `api` é dinheiro que sai marginalmente.",
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              }
+            },
+            "decimals": 2,
+            "min": 0,
+            "unit": "currencyUSD"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 7,
+          "w": 12,
+          "x": 12,
+          "y": 50
+        },
+        "id": 31,
+        "options": {
+          "legend": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "max by (cost_source) (arcada_business_summaries_cost_usd{service=\"oqm-app\"})",
+            "instant": false,
+            "legendFormat": "{{cost_source}}",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Custo acumulado por origem",
+        "type": "timeseries"
       }
-    ]
+    ],
+    "refresh": "5m",
+    "schemaVersion": 42,
+    "tags": [
+      "arcada",
+      "negocio"
+    ],
+    "templating": {
+      "list": []
+    },
+    "time": {
+      "from": "now-30d",
+      "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "browser",
+    "title": "Arcada — Negócio",
+    "uid": "arcada-business",
+    "version": 1,
+    "weekStart": ""
   },
-  "editable": true,
-  "fiscalYearStartMonth": 0,
-  "graphTooltip": 1,
-  "links": [],
-  "panels": [
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 0
-      },
-      "id": 1,
-      "title": "Pessoas",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Contas registadas (confirmadas + por confirmar). `max by (state)` colapsa as réplicas — cada nó reporta a mesma contagem global da BD, `sum` multiplicaria pelo nº de nós.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 0,
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 0,
-        "y": 1
-      },
-      "id": 2,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "sum(max by (state) (arcada_business_users_count{service=\"oqm-app\"}))",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Utilizadores",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Utilizadores distintos com pelo menos uma subscrição. Compara com «Subscrições activas»: quanto mais perto, menos subscrições por pessoa.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 0,
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 4,
-        "y": 1
-      },
-      "id": 3,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "max(arcada_business_subscribers_count{service=\"oqm-app\"})",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Subscritores",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Variação da contagem de utilizadores dentro do intervalo de tempo escolhido no topo. Gauge, logo `delta` — nunca `rate`/`increase`.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 0,
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 8,
-        "y": 1
-      },
-      "id": 4,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "sum(max by (state) (delta(arcada_business_users_count{service=\"oqm-app\"}[$__range])))",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Novos utilizadores (período)",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Percentagem de contas com email confirmado. Queda persistente = email de confirmação a falhar.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 1,
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 12,
-        "y": 1
-      },
-      "id": 5,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "100 * max(arcada_business_users_count{service=\"oqm-app\",state=\"confirmed\"}) / clamp_min(sum(max by (state) (arcada_business_users_count{service=\"oqm-app\"})), 1)",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Taxa de confirmação",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Confirmados vs por confirmar, valor actual.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "continuous-GrYlRd"
-          },
-          "decimals": 0,
-          "min": 0,
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 8,
-        "x": 16,
-        "y": 1
-      },
-      "id": 6,
-      "options": {
-        "displayMode": "gradient",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showUnfilled": true
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "max by (state) (arcada_business_users_count{service=\"oqm-app\"})",
-          "instant": true,
-          "legendFormat": "{{state}}",
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Utilizadores por estado",
-      "type": "bargauge"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Contagem absoluta ao longo do tempo, empilhada por estado. Linha plana = sem registos novos.",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "axisCenteredZero": false,
-            "drawStyle": "line",
-            "fillOpacity": 40,
-            "gradientMode": "opacity",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "normal"
-            }
-          },
-          "decimals": 0,
-          "min": 0,
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 24,
-        "x": 0,
-        "y": 5
-      },
-      "id": 7,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "max by (state) (arcada_business_users_count{service=\"oqm-app\"})",
-          "instant": false,
-          "legendFormat": "{{state}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Crescimento de utilizadores",
-      "type": "timeseries"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 12
-      },
-      "id": 8,
-      "title": "Subscrições",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Total de subscrições activas. O `max by (period, kind)` interior colapsa réplicas; o `sum` exterior soma as combinações reais de periodicidade e tipo.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 0,
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 0,
-        "y": 13
-      },
-      "id": 9,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "sum(max by (period, kind) (arcada_business_subscriptions_count{service=\"oqm-app\",active=\"true\"}))",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Subscrições activas",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Subscrições activas a dividir por subscritores distintos. Com o limite de 1 por utilizador (#97) este valor converge para 1,00; acima disso há sobras por migrar.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 2,
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 4,
-        "y": 13
-      },
-      "id": 10,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "sum(max by (period, kind) (arcada_business_subscriptions_count{service=\"oqm-app\",active=\"true\"})) / clamp_min(max(arcada_business_subscribers_count{service=\"oqm-app\"}), 1)",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Subscrições por subscritor",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Subscrições activas repartidas pela tag `period` (cadência de envio).",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "continuous-GrYlRd"
-          },
-          "decimals": 0,
-          "min": 0,
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 8,
-        "x": 8,
-        "y": 13
-      },
-      "id": 11,
-      "options": {
-        "displayMode": "gradient",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showUnfilled": true
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "sum by (period) (max by (period, kind) (arcada_business_subscriptions_count{service=\"oqm-app\",active=\"true\"}))",
-          "instant": true,
-          "legendFormat": "{{period}}",
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Por periodicidade",
-      "type": "bargauge"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Subscrições activas repartidas pela tag `kind`: `tema` = alerta por consulta guardada, `digest` = resumo periódico.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "continuous-GrYlRd"
-          },
-          "decimals": 0,
-          "min": 0,
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 8,
-        "x": 16,
-        "y": 13
-      },
-      "id": 12,
-      "options": {
-        "displayMode": "gradient",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showUnfilled": true
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "sum by (kind) (max by (period, kind) (arcada_business_subscriptions_count{service=\"oqm-app\",active=\"true\"}))",
-          "instant": true,
-          "legendFormat": "{{kind}}",
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Por tipo (tema / digest)",
-      "type": "bargauge"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Subscrições activas por tipo. Empilhado: o topo é o total.",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "axisCenteredZero": false,
-            "drawStyle": "line",
-            "fillOpacity": 40,
-            "gradientMode": "opacity",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "normal"
-            }
-          },
-          "decimals": 0,
-          "min": 0,
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
-        "y": 17
-      },
-      "id": 13,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "sum by (kind) (max by (period, kind) (arcada_business_subscriptions_count{service=\"oqm-app\",active=\"true\"}))",
-          "instant": false,
-          "legendFormat": "{{kind}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Subscrições activas ao longo do tempo",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Utilizadores distintos com subscrição. Ler ao lado do painel da esquerda: se divergirem, há gente com várias subscrições.",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "axisCenteredZero": false,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "opacity",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            }
-          },
-          "decimals": 0,
-          "min": 0,
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 17
-      },
-      "id": 14,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "max(arcada_business_subscribers_count{service=\"oqm-app\"})",
-          "instant": false,
-          "legendFormat": "subscritores",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Subscritores ao longo do tempo",
-      "type": "timeseries"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 24
-      },
-      "id": 15,
-      "title": "Registo (conteúdo)",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Total de actos ingeridos do DRE, com e sem resumo.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 0,
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 0,
-        "y": 25
-      },
-      "id": 16,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "sum(max by (summarized) (arcada_business_acts_count{service=\"oqm-app\"}))",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Actos",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Percentagem de actos que já têm resumo gerado. Deve subir e estabilizar; a cair = fila `summarize` atrasada.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 1,
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 4,
-        "y": 25
-      },
-      "id": 17,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "100 * max(arcada_business_acts_count{service=\"oqm-app\",summarized=\"true\"}) / clamp_min(sum(max by (summarized) (arcada_business_acts_count{service=\"oqm-app\"})), 1)",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Com resumo",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Dias desde o `published_at` do acto mais recente na BD. É o sinal de que o scraper parou. Verde < 2 dias, âmbar < 4, vermelho >= 4. Fins-de-semana e feriados sobem naturalmente para ~3.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 1,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "yellow",
-                "value": 2
-              },
-              {
-                "color": "red",
-                "value": 4
-              }
-            ]
-          },
-          "unit": "d"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 8,
-        "y": 25
-      },
-      "id": 18,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "max(arcada_business_register_lag_days{service=\"oqm-app\"})",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Atraso do registo",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Edições do Diário da República já raspadas (uma por dia publicado).",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 0,
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 12,
-        "y": 25
-      },
-      "id": 19,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "max(arcada_business_editions_count{service=\"oqm-app\"})",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Edições",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Resumos gerados no total. Cresce mais depressa que «Actos» se houver regeneração.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 0,
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 16,
-        "y": 25
-      },
-      "id": 20,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "max(arcada_business_summaries_count{service=\"oqm-app\"})",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Resumos",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Actos acrescentados dentro do intervalo escolhido no topo. Zero em dia útil = ingestão parada.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 0,
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 20,
-        "y": 25
-      },
-      "id": 21,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "sum(max by (summarized) (delta(arcada_business_acts_count{service=\"oqm-app\"}[$__range])))",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Novos actos (período)",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Contagem absoluta empilhada por `summarized`. A faixa `false` a engordar significa que a sumarização não acompanha a ingestão.",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "axisCenteredZero": false,
-            "drawStyle": "line",
-            "fillOpacity": 40,
-            "gradientMode": "opacity",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "normal"
-            }
-          },
-          "decimals": 0,
-          "min": 0,
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
-        "y": 29
-      },
-      "id": 22,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "max by (summarized) (arcada_business_acts_count{service=\"oqm-app\"})",
-          "instant": false,
-          "legendFormat": "summarized={{summarized}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Actos ao longo do tempo",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "O mesmo sinal do painel de cima, em série temporal: um dente de serra diário é normal, um degrau que só sobe é o scraper em baixo.",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "axisCenteredZero": false,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "opacity",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            }
-          },
-          "decimals": 1,
-          "min": 0,
-          "unit": "d"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 29
-      },
-      "id": 23,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "max(arcada_business_register_lag_days{service=\"oqm-app\"})",
-          "instant": false,
-          "legendFormat": "atraso",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Atraso do registo (dias)",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Actos publicados por domínio de vida (10 domínios). Mostra onde o conteúdo se concentra.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "continuous-GrYlRd"
-          },
-          "decimals": 0,
-          "min": 0,
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 0,
-        "y": 36
-      },
-      "id": 24,
-      "options": {
-        "displayMode": "gradient",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showUnfilled": true
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "max by (domain) (arcada_business_acts_by_domain_count{service=\"oqm-app\"})",
-          "instant": true,
-          "legendFormat": "{{domain}}",
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Actos por domínio de vida",
-      "type": "bargauge"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Actos por `tipo`, já agrupado contra uma lista conhecida no lado do servidor — tudo o que não consta cai em `outro`.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "continuous-GrYlRd"
-          },
-          "decimals": 0,
-          "min": 0,
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 12,
-        "y": 36
-      },
-      "id": 25,
-      "options": {
-        "displayMode": "gradient",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showUnfilled": true
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "max by (tipo) (arcada_business_acts_by_tipo_count{service=\"oqm-app\"})",
-          "instant": true,
-          "legendFormat": "{{tipo}}",
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Actos por tipo de diploma",
-      "type": "bargauge"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 45
-      },
-      "id": 26,
-      "title": "Custo LLM",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Gasto acumulado em dólares desde sempre. Mistura `cost_source=api` (dinheiro real) com `subscription` (custo imputado de mensalidade) — ver «Custo acumulado por origem» para separar.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 2,
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          },
-          "unit": "currencyUSD"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 0,
-        "y": 46
-      },
-      "id": 27,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "sum(max by (cost_source) (arcada_business_summaries_cost_usd{service=\"oqm-app\"}))",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Custo LLM acumulado",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Custo acumulado a dividir pelo número de resumos. Salto para cima = mudança de modelo ou actos maiores.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 4,
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          },
-          "unit": "currencyUSD"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 6,
-        "y": 46
-      },
-      "id": 28,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "sum(max by (cost_source) (arcada_business_summaries_cost_usd{service=\"oqm-app\"})) / clamp_min(max(arcada_business_summaries_count{service=\"oqm-app\"}), 1)",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Custo por resumo",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Tokens acumulados de entrada (`input`, o texto do acto) e de saída (`output`, o resumo).",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "continuous-GrYlRd"
-          },
-          "decimals": 0,
-          "min": 0,
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 12,
-        "x": 12,
-        "y": 46
-      },
-      "id": 29,
-      "options": {
-        "displayMode": "gradient",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showUnfilled": true
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "max by (direction) (arcada_business_summaries_tokens{service=\"oqm-app\"})",
-          "instant": true,
-          "legendFormat": "{{direction}}",
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "Tokens por direcção",
-      "type": "bargauge"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "`delta` do custo acumulado numa janela de 24h. É a leitura de «quanto custa por dia», não um `rate` — a métrica é um gauge cumulativo.",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "axisCenteredZero": false,
-            "drawStyle": "bars",
-            "fillOpacity": 40,
-            "gradientMode": "opacity",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            }
-          },
-          "decimals": 2,
-          "min": 0,
-          "unit": "currencyUSD"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
-        "y": 50
-      },
-      "id": 30,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "sum(max by (cost_source) (delta(arcada_business_summaries_cost_usd{service=\"oqm-app\"}[1d])))",
-          "instant": false,
-          "legendFormat": "USD/dia",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Ritmo de gasto (USD por dia)",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "dfc1f2qerumf4f"
-      },
-      "description": "Separa `api` (facturado ao uso) de `subscription` (mensalidade repartida) e `unknown`. Só a linha `api` é dinheiro que sai marginalmente.",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "axisCenteredZero": false,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "opacity",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            }
-          },
-          "decimals": 2,
-          "min": 0,
-          "unit": "currencyUSD"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 50
-      },
-      "id": 31,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "dfc1f2qerumf4f"
-          },
-          "editorMode": "code",
-          "expr": "max by (cost_source) (arcada_business_summaries_cost_usd{service=\"oqm-app\"})",
-          "instant": false,
-          "legendFormat": "{{cost_source}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Custo acumulado por origem",
-      "type": "timeseries"
-    }
-  ],
-  "refresh": "5m",
-  "schemaVersion": 42,
-  "tags": [
-    "arcada",
-    "negocio"
-  ],
-  "templating": {
-    "list": []
-  },
-  "time": {
-    "from": "now-30d",
-    "to": "now"
-  },
-  "timepicker": {},
-  "timezone": "browser",
-  "title": "Arcada — Negócio",
-  "uid": "arcada-business",
-  "weekStart": ""
+  "folderUid": "o-que-mudou"
 }

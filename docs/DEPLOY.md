@@ -321,7 +321,9 @@ so pulling an unchanged dashboard produces no diff. `push` sends the stored `ver
 with `overwrite: false`, so a dashboard edited in the Grafana UI since the last pull
 rejects the push (HTTP 412) instead of losing that edit; `--force` overrides on
 purpose. Each file also stores its `folderUid`, so a push can't relocate a dashboard
-into General.
+into General. Files are produced by `pull`, never hand-written — a bare dashboard
+object (Grafana's "export JSON") has nowhere to carry the folder or the version, and
+is rejected.
 
 PromEx auto-upload stays off (`grafana: :disabled`) deliberately — it would overwrite
 `oqm-overview` (41 hand-tuned panels, including Loki and Traefik queries PromEx knows

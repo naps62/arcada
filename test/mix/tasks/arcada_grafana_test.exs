@@ -3,7 +3,10 @@ defmodule Mix.Tasks.Arcada.GrafanaTest do
 
   alias Mix.Tasks.Arcada.Grafana
 
-  @snapshot "priv/grafana/oqm-overview.json"
+  @snapshots %{
+    "oqm-overview" => 41,
+    "arcada-business" => 31
+  }
 
   describe "normalize/1" do
     test "strips per-instance noise and hoists the folder uid" do
@@ -59,23 +62,32 @@ defmodule Mix.Tasks.Arcada.GrafanaTest do
     end
   end
 
-  describe "the committed snapshot" do
-    @describetag :tmp_dir
-
-    test "is already canonical, so a re-pull is a no-op diff" do
-      raw = File.read!(@snapshot)
-      assert raw == Grafana.canonical_json(Jason.decode!(raw))
+  describe "committed snapshots" do
+    test "every file in priv/grafana is covered by these tests" do
+      on_disk = "priv/grafana/*.json" |> Path.wildcard() |> Enum.map(&Path.basename(&1, ".json"))
+      assert Enum.sort(on_disk) == Enum.sort(Map.keys(@snapshots))
     end
 
-    test "keeps the folder, the uid and the panels, and carries no per-instance noise" do
-      doc = Jason.decode!(File.read!(@snapshot))
+    for {uid, panel_count} <- @snapshots do
+      @uid uid
+      @panel_count panel_count
+      @path "priv/grafana/#{uid}.json"
 
-      assert doc["folderUid"] == "o-que-mudou"
-      refute Map.has_key?(doc, "meta")
-      refute Map.has_key?(doc["dashboard"], "id")
-      assert doc["dashboard"]["uid"] == "oqm-overview"
-      assert is_integer(doc["dashboard"]["version"])
-      assert length(doc["dashboard"]["panels"]) == 41
+      test "#{uid} is already canonical, so a re-pull is a no-op diff" do
+        raw = File.read!(@path)
+        assert raw == Grafana.canonical_json(Jason.decode!(raw))
+      end
+
+      test "#{uid} keeps folder, uid and panels, and carries no per-instance noise" do
+        doc = Grafana.read_doc!(@path)
+
+        assert doc["folderUid"] == "o-que-mudou"
+        refute Map.has_key?(doc, "meta")
+        refute Map.has_key?(doc["dashboard"], "id")
+        assert doc["dashboard"]["uid"] == @uid
+        assert is_integer(doc["dashboard"]["version"])
+        assert length(doc["dashboard"]["panels"]) == @panel_count
+      end
     end
   end
 
@@ -87,20 +99,25 @@ defmodule Mix.Tasks.Arcada.GrafanaTest do
     test "reads the wrapped form pull writes", %{dir: dir} do
       path = write(dir, "a.json", %{"folderUid" => "f", "dashboard" => %{"uid" => "a"}})
 
-      assert {:wrapped, %{"folderUid" => "f", "dashboard" => %{"uid" => "a"}}} =
-               Grafana.read_doc!(path)
+      assert %{"folderUid" => "f", "dashboard" => %{"uid" => "a"}} = Grafana.read_doc!(path)
     end
 
-    test "reads a bare, hand-authored dashboard and defaults its folder", %{dir: dir} do
-      path = write(dir, "b.json", %{"uid" => "b", "title" => "t"})
+    test "refuses a bare dashboard object and says how to get a good one", %{dir: dir} do
+      path = write(dir, "arcada-business.json", %{"uid" => "arcada-business", "panels" => []})
 
-      assert {:bare, %{"folderUid" => "o-que-mudou", "dashboard" => %{"uid" => "b"}}} =
-               Grafana.read_doc!(path)
+      assert_raise Mix.Error, ~r/mix arcada\.grafana pull arcada-business/, fn ->
+        Grafana.read_doc!(path)
+      end
+    end
+
+    test "refuses a wrapper with no folderUid", %{dir: dir} do
+      path = write(dir, "b.json", %{"dashboard" => %{"uid" => "b"}})
+      assert_raise Mix.Error, ~r/not in the expected shape/, fn -> Grafana.read_doc!(path) end
     end
 
     test "refuses JSON that is not a dashboard", %{dir: dir} do
       path = write(dir, "c.json", %{"nope" => true})
-      assert_raise Mix.Error, ~r/not a dashboard/, fn -> Grafana.read_doc!(path) end
+      assert_raise Mix.Error, ~r/not in the expected shape/, fn -> Grafana.read_doc!(path) end
     end
 
     test "refuses invalid JSON", %{dir: dir} do

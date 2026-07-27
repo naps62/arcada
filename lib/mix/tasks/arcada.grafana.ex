@@ -21,14 +21,19 @@ defmodule Mix.Tasks.Arcada.Grafana do
   without it relocates the dashboard to the General folder. To hand-import one into
   the Grafana UI, feed it `jq .dashboard`.
 
-  A bare dashboard object (no wrapper) is also accepted, since that is what a
-  hand-authored dashboard and Grafana's own JSON export look like. Those land in the
-  default folder and keep their bare shape on push; pull them once and they become
-  wrapped.
+  This wrapper is the only accepted shape. A bare dashboard object — what the Grafana
+  UI's "export JSON" gives you — has nowhere to carry `folderUid` or `version`, so
+  push could neither place it nor guard it. To start tracking a dashboard, create it
+  in the UI and `pull` it; don't hand-write the file.
 
   `pull` drops `id` (per-instance row id) and the whole `meta` block (timestamps,
   permissions, url) and re-encodes with sorted keys, so a pull with no human edit in
   between is a no-op diff. `version` is deliberately kept — see below.
+
+  Grafana rewrites `schemaVersion` and migrates panel internals across its own
+  upgrades, so the first pull after a Grafana upgrade produces a large but legitimate
+  diff. That is Grafana changing the dashboard, not this normalisation failing — do
+  not widen the strip list to silence it.
 
   ## Why push refuses by default
 
@@ -53,9 +58,6 @@ defmodule Mix.Tasks.Arcada.Grafana do
   # Per-instance, changes with no human edit. `version` is NOT dropped: push needs it
   # as the concurrency token.
   @drop_dashboard_keys ~w(id)
-
-  # Only for bare (unwrapped) files, which carry no folder. Wrapped files always say.
-  @default_folder_uid "o-que-mudou"
 
   @impl Mix.Task
   def run(argv) do
@@ -128,7 +130,7 @@ defmodule Mix.Tasks.Arcada.Grafana do
 
   defp push(uid, force?) do
     path = path_for(uid)
-    {form, doc} = read_doc!(path)
+    doc = read_doc!(path)
 
     payload =
       %{
@@ -141,7 +143,7 @@ defmodule Mix.Tasks.Arcada.Grafana do
     case request(:post, "/api/dashboards/db", json: payload) do
       {status, body} when status in 200..299 ->
         version = body["version"]
-        write_doc!(path, form, put_in(doc, ["dashboard", "version"], version))
+        File.write!(path, canonical_json(put_in(doc, ["dashboard", "version"], version)))
         Mix.shell().info("pushed #{uid} -> v#{version}")
 
       {412, body} ->
@@ -172,8 +174,7 @@ defmodule Mix.Tasks.Arcada.Grafana do
 
       uids ->
         Enum.each(uids, fn uid ->
-          {_form, doc} = read_doc!(path_for(uid))
-          d = doc["dashboard"]
+          d = read_doc!(path_for(uid))["dashboard"]
           suffix = if opts[:live], do: live_suffix(uid, d["version"]), else: ""
 
           Mix.shell().info(
@@ -205,28 +206,39 @@ defmodule Mix.Tasks.Arcada.Grafana do
     @dir |> Path.join("*.json") |> Path.wildcard() |> Enum.map(&Path.basename(&1, ".json"))
   end
 
-  # -> {:wrapped | :bare, %{"folderUid" => _, "dashboard" => _}}
   @doc false
   def read_doc!(path) do
     unless File.exists?(path), do: Mix.raise("no such dashboard file: #{path}")
 
     case path |> File.read!() |> Jason.decode() do
-      {:ok, %{"dashboard" => %{"uid" => _}} = doc} ->
-        {:wrapped, Map.put_new(doc, "folderUid", @default_folder_uid)}
-
-      {:ok, %{"uid" => _} = dashboard} ->
-        {:bare, %{"folderUid" => @default_folder_uid, "dashboard" => dashboard}}
+      {:ok, %{"folderUid" => _, "dashboard" => %{"uid" => _}} = doc} ->
+        doc
 
       {:ok, _} ->
-        Mix.raise("#{path}: not a dashboard — expected a Grafana dashboard object with a uid")
+        Mix.raise(wrong_shape(path))
 
       {:error, e} ->
         Mix.raise("#{path}: invalid JSON — #{Exception.message(e)}")
     end
   end
 
-  defp write_doc!(path, :wrapped, doc), do: File.write!(path, canonical_json(doc))
-  defp write_doc!(path, :bare, doc), do: File.write!(path, canonical_json(doc["dashboard"]))
+  defp wrong_shape(path) do
+    uid = Path.basename(path, ".json")
+
+    """
+    #{path}: not in the expected shape.
+
+    Every file in #{@dir}/ must look like:
+
+        {"folderUid": "<folder uid>", "dashboard": {"uid": "...", "title": ..., ...}}
+
+    A bare dashboard object (Grafana's "export JSON") is not enough — it carries no
+    folder and no version, so push could neither place the dashboard nor detect a
+    conflicting live edit. Create the dashboard in Grafana, then:
+
+        mix arcada.grafana pull #{uid}
+    """
+  end
 
   @doc false
   def canonical_json(data), do: Jason.encode!(sort_keys(data), pretty: true) <> "\n"
