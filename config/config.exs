@@ -131,6 +131,11 @@ config :arcada, Oban,
 # quota, so the digest must leave headroom rather than starve logins.
 config :arcada, Arcada.Subscriptions, max_sends_per_run: 80
 
+# Standing subscriptions per account — each is a recurring search + email against
+# the same 100/day quota above. Held at 1 while the feature beds in (issue #97).
+# Accounts already over the cap keep their rows; they just cannot add more.
+config :arcada, :max_subscriptions_per_user, 1
+
 # Admin area (/admin) has no in-app auth — gated at the edge (Authelia on the
 # public host, VPN on the private one). No host config: see issues #19, #37, #46.
 
