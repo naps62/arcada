@@ -1280,7 +1280,7 @@
         },
         "gridPos": {
           "h": 4,
-          "w": 6,
+          "w": 12,
           "x": 0,
           "y": 37
         },
@@ -1349,8 +1349,8 @@
         },
         "gridPos": {
           "h": 4,
-          "w": 6,
-          "x": 6,
+          "w": 12,
+          "x": 12,
           "y": 37
         },
         "id": 39,
@@ -1411,9 +1411,9 @@
         },
         "gridPos": {
           "h": 4,
-          "w": 3,
-          "x": 12,
-          "y": 37
+          "w": 8,
+          "x": 0,
+          "y": 41
         },
         "id": 16,
         "options": {
@@ -1472,9 +1472,9 @@
         },
         "gridPos": {
           "h": 4,
-          "w": 3,
-          "x": 15,
-          "y": 37
+          "w": 8,
+          "x": 8,
+          "y": 41
         },
         "id": 17,
         "options": {
@@ -1534,9 +1534,9 @@
         },
         "gridPos": {
           "h": 4,
-          "w": 3,
-          "x": 18,
-          "y": 37
+          "w": 8,
+          "x": 16,
+          "y": 41
         },
         "id": 21,
         "options": {
@@ -1574,68 +1574,6 @@
           "type": "prometheus",
           "uid": "dfc1f2qerumf4f"
         },
-        "description": "Edições do Diário da República já raspadas (uma por dia publicado).",
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "thresholds"
-            },
-            "decimals": 0,
-            "noValue": "0",
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green"
-                }
-              ]
-            },
-            "unit": "short"
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 4,
-          "w": 3,
-          "x": 21,
-          "y": 37
-        },
-        "id": 19,
-        "options": {
-          "colorMode": "value",
-          "graphMode": "none",
-          "justifyMode": "auto",
-          "orientation": "auto",
-          "reduceOptions": {
-            "calcs": [
-              "lastNotNull"
-            ],
-            "fields": "",
-            "values": false
-          },
-          "textMode": "auto"
-        },
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "dfc1f2qerumf4f"
-            },
-            "editorMode": "code",
-            "expr": "max(arcada_business_editions_count{service=\"oqm-app\"})",
-            "instant": true,
-            "range": false,
-            "refId": "A"
-          }
-        ],
-        "title": "Edições",
-        "type": "stat"
-      },
-      {
-        "datasource": {
-          "type": "prometheus",
-          "uid": "dfc1f2qerumf4f"
-        },
         "description": "Contagem absoluta empilhada por `summarized`. A faixa `false` a engordar significa que a sumarização não acompanha a ingestão.",
         "fieldConfig": {
           "defaults": {
@@ -1663,7 +1601,7 @@
           "h": 7,
           "w": 12,
           "x": 0,
-          "y": 41
+          "y": 45
         },
         "id": 22,
         "options": {
@@ -1728,7 +1666,7 @@
           "h": 7,
           "w": 12,
           "x": 12,
-          "y": 41
+          "y": 45
         },
         "id": 23,
         "options": {
@@ -1803,7 +1741,7 @@
           "h": 9,
           "w": 12,
           "x": 0,
-          "y": 48
+          "y": 52
         },
         "id": 24,
         "options": {
@@ -1865,7 +1803,7 @@
           "h": 9,
           "w": 12,
           "x": 12,
-          "y": 48
+          "y": 52
         },
         "id": 25,
         "options": {
@@ -1899,12 +1837,12 @@
       },
       {
         "collapsed": false,
-        "description": "Sem painéis de dinheiro por agora: `cost_usd` está NULL nas 2350 linhas de summaries em produção e nada na app o escreve, logo um tile de custo leria 0 para sempre e ensinaria a desconfiar do painel todo. Voltam quando a captura de custo aterrar (issue de seguimento). Até lá os tokens carregam o sinal.",
+        "description": "Sem painéis de dinheiro por agora: `cost_usd` está NULL nas 2350 linhas de summaries em produção e nada na app o escreve, logo um tile de custo leria 0 para sempre e ensinaria a desconfiar do painel todo. Voltam quando a captura de custo aterrar — https://git.naps.pt/yolo/arcada/issues/100. Até lá os tokens carregam o sinal.",
         "gridPos": {
           "h": 1,
           "w": 24,
           "x": 0,
-          "y": 57
+          "y": 61
         },
         "id": 26,
         "title": "Consumo LLM (tokens)",
@@ -1939,7 +1877,7 @@
           "h": 4,
           "w": 6,
           "x": 0,
-          "y": 58
+          "y": 62
         },
         "id": 20,
         "options": {
@@ -2001,7 +1939,7 @@
           "h": 4,
           "w": 6,
           "x": 6,
-          "y": 58
+          "y": 62
         },
         "id": 43,
         "options": {
@@ -2063,7 +2001,7 @@
           "h": 4,
           "w": 6,
           "x": 12,
-          "y": 58
+          "y": 62
         },
         "id": 41,
         "options": {
@@ -2101,7 +2039,7 @@
           "type": "prometheus",
           "uid": "dfc1f2qerumf4f"
         },
-        "description": "Tokens acumulados (entrada + saída) a dividir pelo número de resumos. É o indicador de custo enquanto `cost_usd` não for preenchido: um salto para cima significa modelo novo ou actos maiores.",
+        "description": "Tokens acumulados (entrada + saída) a dividir pelo número de resumos. É o indicador de custo enquanto `cost_usd` não for preenchido — está NULL em todas as linhas em produção, ver #100 (https://git.naps.pt/yolo/arcada/issues/100). Um salto para cima significa modelo novo ou actos maiores.",
         "fieldConfig": {
           "defaults": {
             "color": {
@@ -2125,7 +2063,7 @@
           "h": 4,
           "w": 6,
           "x": 18,
-          "y": 58
+          "y": 62
         },
         "id": 40,
         "options": {
@@ -2188,7 +2126,7 @@
           "h": 7,
           "w": 12,
           "x": 0,
-          "y": 62
+          "y": 66
         },
         "id": 29,
         "options": {
@@ -2252,7 +2190,7 @@
           "h": 7,
           "w": 12,
           "x": 12,
-          "y": 62
+          "y": 66
         },
         "id": 44,
         "options": {
@@ -2303,7 +2241,7 @@
     "timezone": "browser",
     "title": "Arcada — Negócio",
     "uid": "arcada-business",
-    "version": 3,
+    "version": 4,
     "weekStart": ""
   },
   "folderUid": "o-que-mudou"
