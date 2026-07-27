@@ -57,6 +57,12 @@ defmodule Arcada.Register do
   @doc "Example queries seeded into the search field's placeholder rotation."
   def search_examples, do: @search_examples
 
+  @months ~w(janeiro fevereiro março abril maio junho julho agosto setembro outubro novembro dezembro)
+
+  @doc "A date written out in Portuguese, e.g. `28 de junho de 2026`."
+  def long_date(%Date{} = date),
+    do: "#{date.day} de #{Enum.at(@months, date.month - 1)} de #{date.year}"
+
   @doc "Human (Portuguese) label for a period — shared by the filter chips and SEO titles."
   def period_label(:semana), do: "Esta semana"
   def period_label(:mes), do: "Este mês"
@@ -156,6 +162,34 @@ defmodule Arcada.Register do
     |> join_period(fetch_period(opts[:period]))
     |> maybe_limit(opts[:limit])
     |> Repo.all()
+  end
+
+  @doc """
+  Acts published in `[from, to]` (both inclusive), newest first — the "everything
+  that came out" listing behind digest emails (issue #95). `opts[:limit]` caps
+  the result.
+
+  Windows on `published_at`, the same field `Arcada.Search.window_matches/2`
+  bounds on, so a digest and a query subscription covering the same days see the
+  same set of acts. Acts with no `published_at` are in no window at all.
+  """
+  def list_acts_published_between(%Date{} = window_from, %Date{} = window_to, opts \\ []) do
+    from(a in Act,
+      where: a.published_at >= ^window_from and a.published_at <= ^window_to,
+      order_by: [desc: a.published_at, desc: a.id],
+      select: struct(a, ^act_listing_fields()),
+      preload: [:edition, summaries: ^summaries_listing_preload()]
+    )
+    |> maybe_limit(opts[:limit])
+    |> Repo.all()
+  end
+
+  @doc "How many acts were published in `[from, to]` — the unlisted remainder of a capped digest."
+  def count_acts_published_between(%Date{} = window_from, %Date{} = window_to) do
+    Repo.aggregate(
+      from(a in Act, where: a.published_at >= ^window_from and a.published_at <= ^window_to),
+      :count
+    )
   end
 
   @days_per_page 10

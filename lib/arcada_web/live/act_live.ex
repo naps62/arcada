@@ -177,6 +177,5 @@ defmodule ArcadaWeb.ActLive do
   defp strategy_meta(%{text_strategy: "truncate"}), do: "início do texto"
   defp strategy_meta(_), do: nil
 
-  @months ~w(janeiro fevereiro março abril maio junho julho agosto setembro outubro novembro dezembro)
-  defp format_date(%Date{} = d), do: "#{d.day} de #{Enum.at(@months, d.month - 1)} de #{d.year}"
+  defp format_date(%Date{} = d), do: format_pt_date(d)
 end
