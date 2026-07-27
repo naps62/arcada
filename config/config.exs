@@ -131,14 +131,9 @@ config :arcada, Oban,
 # quota, so the digest must leave headroom rather than starve logins.
 config :arcada, Arcada.Subscriptions, max_sends_per_run: 80
 
-# Ceiling on how many standing subscriptions one account can hold. Each one is a
-# recurring search + email, so this bounds both the GPU spend and the mail volume
-# a single signup can generate.
-#
-# Held at 1 while the feature beds in (issue #97) — the daily mail quota is 100
-# messages shared with account mail, so a handful of signups on the old cap of 10
-# could starve logins. Raise it here; no code change. Accounts that already hold
-# more keep them and simply cannot add any until they are back under the cap.
+# Standing subscriptions per account — each is a recurring search + email against
+# the same 100/day quota above. Held at 1 while the feature beds in (issue #97).
+# Accounts already over the cap keep their rows; they just cannot add more.
 config :arcada, :max_subscriptions_per_user, 1
 
 # Admin area (/admin) has no in-app auth — gated at the edge (Authelia on the
