@@ -54,6 +54,12 @@ defmodule ArcadaWeb.Router do
       live "/faq", FaqLive, :index
       live "/sobre", AboutLive, :index
       live "/acts/:dre_id/:slug", ActLive, :show
+
+      # Unsubscribe from a subscription email. Deliberately outside
+      # :require_authenticated_user — someone acting on a digest in their inbox
+      # must be able to stop it without first remembering a password. The signed
+      # token in the URL is the authorization (see Arcada.Subscriptions).
+      live "/subscricoes/cancelar/:token", UnsubscribeLive, :edit
     end
   end
 
@@ -128,6 +134,7 @@ defmodule ArcadaWeb.Router do
       on_mount: [{ArcadaWeb.UserAuth, :ensure_authenticated}] do
       live "/users/settings", UserSettingsLive, :edit
       live "/users/settings/confirm_email/:token", UserSettingsLive, :confirm_email
+      live "/users/subscriptions", UserSubscriptionsLive, :index
     end
   end
 
