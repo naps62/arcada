@@ -1,5 +1,6 @@
 defmodule Arcada.SubscriptionsTest do
-  use Arcada.DataCase, async: true
+  # async: false — `set_max_per_user/1` moves an application env, which is global.
+  use Arcada.DataCase, async: false
 
   import Arcada.AccountsFixtures
   import Arcada.SubscriptionsFixtures
@@ -58,6 +59,7 @@ defmodule Arcada.SubscriptionsTest do
     end
 
     test "rejects a duplicate query + period" do
+      set_max_per_user(2)
       user = user_fixture()
       subscription_fixture(user, %{query: "renda", period: :semanal})
 
@@ -68,6 +70,7 @@ defmodule Arcada.SubscriptionsTest do
     end
 
     test "rejects a second digest at the same period" do
+      set_max_per_user(2)
       user = user_fixture()
       subscription_fixture(user, %{query: nil, period: :semanal})
 
@@ -87,18 +90,48 @@ defmodule Arcada.SubscriptionsTest do
                })
     end
 
-    test "caps how many one account can hold" do
+    test "the shipped default allows exactly one per account" do
+      assert Subscriptions.max_per_user() == 1
+
+      user = user_fixture()
+      subscription_fixture(user, %{query: "renda", period: :semanal})
+
+      assert {:error, changeset} =
+               Subscriptions.create_subscription(user, %{query: "greve", period: :semanal})
+
+      assert ["atingiu o limite de 1 subscrição"] == errors_on(changeset).query
+    end
+
+    test "the cap follows the configured maximum" do
+      set_max_per_user(3)
       user = user_fixture()
 
-      for n <- 1..Subscriptions.max_per_user() do
+      for n <- 1..3 do
         subscription_fixture(user, %{query: "tema #{n}", period: :semanal})
       end
 
       assert {:error, changeset} =
                Subscriptions.create_subscription(user, %{query: "mais um", period: :semanal})
 
-      assert ["atingiu o limite de #{Subscriptions.max_per_user()} subscrições"] ==
-               errors_on(changeset).query
+      assert ["atingiu o limite de 3 subscrições"] == errors_on(changeset).query
+    end
+
+    # Lowering the cap (issue #97) must not retroactively invalidate rows an
+    # account already holds — they stay, only new ones are refused.
+    test "an account already over the cap keeps what it has" do
+      set_max_per_user(3)
+      user = user_fixture()
+
+      for n <- 1..3 do
+        subscription_fixture(user, %{query: "tema #{n}", period: :semanal})
+      end
+
+      set_max_per_user(1)
+
+      assert {:error, _changeset} =
+               Subscriptions.create_subscription(user, %{query: "mais um", period: :semanal})
+
+      assert length(Subscriptions.list_user_subscriptions(user)) == 3
     end
   end
 

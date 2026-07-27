@@ -1,5 +1,6 @@
 defmodule ArcadaWeb.UserSubscriptionsLiveTest do
-  use ArcadaWeb.ConnCase, async: true
+  # async: false — `set_max_per_user/1` moves an application env, which is global.
+  use ArcadaWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
   import Arcada.AccountsFixtures
@@ -65,6 +66,7 @@ defmodule ArcadaWeb.UserSubscriptionsLiveTest do
   end
 
   test "shows the error when the same subscription already exists", %{conn: conn, user: user} do
+    set_max_per_user(2)
     subscription_fixture(user, %{query: "renda", period: :semanal})
     {:ok, lv, _html} = live(conn, ~p"/users/subscriptions")
 
@@ -107,6 +109,42 @@ defmodule ArcadaWeb.UserSubscriptionsLiveTest do
     lv |> element("#subscription-#{subscription.id} button", "Apagar") |> render_click()
 
     assert Subscriptions.list_user_subscriptions(user) == []
+  end
+
+  test "hides the form once the account is at the limit", %{conn: conn, user: user} do
+    subscription = subscription_fixture(user, %{query: "renda", period: :semanal})
+
+    {:ok, lv, html} = live(conn, ~p"/users/subscriptions")
+
+    refute html =~ ~s(id="subscription_form")
+    assert html =~ "Atingiu o limite de 1 subscrição."
+
+    html = lv |> element("#subscription-#{subscription.id} button", "Apagar") |> render_click()
+
+    assert html =~ ~s(id="subscription_form")
+    assert html =~ "Pode ter até 1 subscrição."
+  end
+
+  # Accounts predating the lower cap (issue #97) keep their rows; the page must
+  # still render and let them delete their way back under it.
+  test "an account over the limit still renders and can delete", %{conn: conn, user: user} do
+    set_max_per_user(3)
+
+    subscriptions =
+      for n <- 1..3, do: subscription_fixture(user, %{query: "tema #{n}", period: :semanal})
+
+    set_max_per_user(1)
+
+    {:ok, lv, html} = live(conn, ~p"/users/subscriptions")
+
+    refute html =~ ~s(id="subscription_form")
+    assert html =~ "Atingiu o limite de 1 subscrição."
+
+    [first | _rest] = subscriptions
+    lv |> element("#subscription-#{first.id} button", "Apagar") |> render_click()
+
+    assert length(Subscriptions.list_user_subscriptions(user)) == 2
+    refute render(lv) =~ ~s(id="subscription_form")
   end
 
   # The id comes from the client, so a hand-crafted event must not reach someone
