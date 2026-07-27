@@ -29,13 +29,14 @@ both.
 | Telemetry metric | Prometheus | Tags | Meaning |
 |---|---|---|---|
 | `[:arcada, :business, :users, :count]` | `arcada_business_users_count` | `state` = `confirmed` \| `unconfirmed` | registered users |
-| `[:arcada, :business, :subscribers, :count]` | `arcada_business_subscribers_count` | — | distinct users with >=1 subscription |
+| `[:arcada, :business, :subscribers, :count]` | `arcada_business_subscribers_count` | `active` = `true` \| `false` | distinct users with >=1 subscription in that state |
 | `[:arcada, :business, :subscriptions, :count]` | `arcada_business_subscriptions_count` | `period`, `kind` = `tema` \| `digest`, `active` = `true` \| `false` | subscriptions |
 | `[:arcada, :business, :acts, :count]` | `arcada_business_acts_count` | `summarized` = `true` \| `false` | acts ingested |
 | `[:arcada, :business, :acts, :by_tipo, :count]` | `arcada_business_acts_by_tipo_count` | `tipo` (bucketed, see §4) | acts by diploma type |
 | `[:arcada, :business, :acts, :by_domain, :count]` | `arcada_business_acts_by_domain_count` | `domain` (10 life domains) | **acts that have a published summary**, per domain — see §4 |
 | `[:arcada, :business, :editions, :count]` | `arcada_business_editions_count` | — | editions scraped |
-| `[:arcada, :business, :register, :lag_days]` | `arcada_business_register_lag_days` | — | days since newest act's `published_at` |
+| `[:arcada, :business, :register, :lag_days]` | `arcada_business_register_lag_days` | — | days since newest act's `published_at` — is **scraping** alive |
+| `[:arcada, :business, :summaries, :lag_days]` | `arcada_business_summaries_lag_days` | — | days since the newest summarized act's `published_at` — is **summarizing** alive |
 | `[:arcada, :business, :summaries, :count]` | `arcada_business_summaries_count` | — | summaries generated |
 | `[:arcada, :business, :summaries, :cost_usd]` | `arcada_business_summaries_cost_usd` | `cost_source` = `api` \| `subscription` \| `unknown` | cumulative LLM spend |
 | `[:arcada, :business, :summaries, :tokens]` | `arcada_business_summaries_tokens` | `direction` = `input` \| `output` | cumulative tokens |
@@ -94,15 +95,30 @@ query text, or anything a stranger can create.
 same number. Dashboard queries MUST use `max by (...)` and never `sum by (...)` — with N
 replicas `sum` reports N times the truth. Single node today; the query survives scaling.
 
-**Poller must not crash.** A raising poll function takes the PromEx poller down and ALL
-metrics with it, infra included. Wrap DB access and emit nothing on failure.
+**A raising poll function is dropped forever, silently.** `telemetry_poller` catches the
+exception and permanently removes that MFA for the life of the node
+(`make_measurements_and_filter_misbehaving/1`) — it never retries, and PromEx groups
+pollers by `poll_rate` so nothing else is affected. So the blast radius is one metric
+family, not the whole exporter, but the failure is worse than a crash: the series just
+stops with no restart and no alert. Rescue inside the poll function and emit nothing, so
+the next tick still runs.
 
 **`cost_usd` is `Decimal` and often nil.** Convert to float, treat nil as 0.
 
-**`cost_source=api` is cash; `subscription` is imputed.** `api` is money that left the
-account. `subscription` is a flat fee apportioned per call — it does not change if you
-summarize twice as much. Summing them yields a number that is neither, so the headline
-cost panel charts `api` only and the total is broken out by source beside it.
+**`cost_usd` is NULL on every row in prod today** (2,350 summaries, all null — measured,
+not assumed). Nothing in the summarizer writes it. The metric is implemented and correct,
+but it will read `0` until cost capture lands, so the dashboard does NOT give it a money
+panel — a permanently-zero cost tile teaches people to ignore the whole dashboard. Tokens
+ARE populated (11.8M in / 282k out) and carry the "what is this costing" signal for now.
+
+When cost capture does land: `cost_source=api` is cash that left the account;
+`subscription` is a flat fee apportioned per call and does not change if you summarize
+twice as much. Summing them gives a number that is neither — chart `api` alone.
+
+**Two lag metrics, because one hides the other.** `register_lag_days` catches a dead
+scraper. It cannot catch a dead summarizer: acts keep landing, so register lag stays at 0
+while the unsummarized backlog grows slowly enough to go unnoticed for a week.
+`summaries_lag_days` is the pairing metric. Watch both or neither.
 
 **`acts_count` and `acts_by_domain_count` do not reconcile, by design.** `acts_count` is
 everything ingested; domains only exist on a summary, so `acts_by_domain_count` covers
