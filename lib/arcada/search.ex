@@ -27,6 +27,9 @@ defmodule Arcada.Search do
   # (Cormack et al.); it damps the top ranks so a strong hit in one list can't
   # wholly dominate a solid pair of mid hits in both.
   @rrf_k 60
+  # Default absolute cosine floor for a standing (subscription) match; see
+  # `min_match_score/0`.
+  @default_min_score 0.5
 
   @doc "The page size used by paginated callers (see `ranked_ids/1` + `load_page/3`)."
   def page_size, do: @default_limit
@@ -89,6 +92,93 @@ defmodule Arcada.Search do
     )
 
     {results, ids, degraded?}
+  end
+
+  @doc """
+  Acts published in `[from, to]` that are a *meaningful* match for `query` —
+  the standing-search entry point behind email subscriptions (issue #95).
+
+  Interactive search always shows its best guesses; a subscription must be able
+  to say "nothing this period" or it becomes spam. So the two halves are
+  thresholded absolutely rather than relative to the window's top hit:
+
+    * **semantic** — cosine must clear `:min_score` (default
+      #{@default_min_score}). The interactive `relevance_ratio` floor is no use
+      here: relative to the best hit *inside a one-week window*, something
+      always clears it.
+    * **FTS** — self-thresholding. `websearch_to_tsquery` either matches the
+      text or it doesn't, so every FTS hit counts.
+
+  Survivors of either half fuse with the same RRF as interactive search, so an
+  act matching both still ranks first. Returns loaded acts, best match first,
+  capped at `:limit` (default #{@default_limit}) — `[]` means "nothing to mail".
+
+  `opts`: `:from` and `:to` (`Date`, required, inclusive), `:min_score`, `:limit`.
+  """
+  def window_matches(query, opts)
+  def window_matches(query, _opts) when not is_binary(query), do: []
+
+  def window_matches(query, opts) do
+    window_from = Keyword.fetch!(opts, :from)
+    window_to = Keyword.fetch!(opts, :to)
+    min_score = Keyword.get(opts, :min_score, min_match_score())
+
+    case String.trim(query) do
+      "" ->
+        []
+
+      q ->
+        fts = FTS.ranked_ids(q, from: window_from, to: window_to)
+        semantic = semantic_window_ids(q, window_from, window_to, min_score)
+
+        [semantic, fts]
+        |> rrf()
+        |> Enum.take(Keyword.get(opts, :limit, @default_limit))
+        |> load_acts()
+    end
+  end
+
+  # Semantic half of `window_matches/2`: rank everything, drop anything under the
+  # absolute floor, then keep what falls in the window. Runs inline (no task) —
+  # the caller is a background job, so a slow embed costs latency, not a request.
+  defp semantic_window_ids(query, window_from, window_to, min_score) do
+    cfg = Admin.embeddings_config()
+
+    with true <- Embeddings.enabled?(cfg),
+         {:ok, query_vec} <- Index.embed_query(query, cfg) do
+      Index.scores(query_vec)
+      |> Enum.filter(fn {_act_id, score} -> score >= min_score end)
+      |> Enum.sort_by(fn {_act_id, score} -> score end, :desc)
+      |> Enum.uniq_by(fn {act_id, _score} -> act_id end)
+      |> Enum.map(fn {act_id, _score} -> act_id end)
+      |> restrict_to_window(window_from, window_to)
+    else
+      _ -> []
+    end
+  end
+
+  # Keep only the ids published inside the window, in their incoming rank order.
+  defp restrict_to_window([], _window_from, _window_to), do: []
+
+  defp restrict_to_window(ids, window_from, window_to) do
+    in_window =
+      from(a in Act,
+        where: a.id in ^ids and a.published_at >= ^window_from and a.published_at <= ^window_to,
+        select: a.id
+      )
+      |> Repo.all()
+      |> MapSet.new()
+
+    Enum.filter(ids, &MapSet.member?(in_window, &1))
+  end
+
+  # Absolute cosine a standing match must clear. Distinct from
+  # `min_relevance_score` (the interactive nonsense backstop, which sits well
+  # below this): that one only has to reject gibberish, this one has to decide
+  # whether an email is worth sending. Tunable live via
+  # `config :arcada, #{inspect(__MODULE__)}`.
+  defp min_match_score do
+    Application.get_env(:arcada, __MODULE__, [])[:min_match_score] || @default_min_score
   end
 
   @doc """

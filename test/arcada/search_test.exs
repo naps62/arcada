@@ -474,4 +474,54 @@ defmodule Arcada.SearchTest do
 
     assert_received {:telemetry, ^ref, %{count: 1}, %{tier: :anon, degraded: true}}
   end
+
+  describe "window_matches/2" do
+    test "keeps a semantic hit that clears the absolute floor" do
+      set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+
+      hit = act_fixture(%{published_at: ~D[2026-07-24]})
+      indexed_summary(hit, [1.0, 0.0])
+
+      assert [%Act{id: id}] =
+               Search.window_matches(unique_query(), from: ~D[2026-07-20], to: ~D[2026-07-27])
+
+      assert id == hit.id
+    end
+
+    test "drops a semantic hit below the floor, however good it is for its window" do
+      set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+
+      weak = act_fixture(%{published_at: ~D[2026-07-24]})
+      indexed_summary(weak, [0.2, 0.98])
+
+      assert Search.window_matches(unique_query(), from: ~D[2026-07-20], to: ~D[2026-07-27]) == []
+    end
+
+    # FTS is self-thresholding: it either matches the text or it doesn't, so an
+    # exact-term hit is meaningful even when its embedding is nowhere near.
+    test "keeps an exact-term FTS hit whose embedding is far from the query" do
+      set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+
+      hit = act_fixture(%{title: "Decreto-Lei n.º 10-A/2022", published_at: ~D[2026-07-24]})
+      indexed_summary(hit, "corpo do resumo", [0.0, 1.0])
+
+      assert [%Act{id: id}] =
+               Search.window_matches("10-A/2022", from: ~D[2026-07-20], to: ~D[2026-07-27])
+
+      assert id == hit.id
+    end
+
+    test "excludes matches published outside the window" do
+      set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+
+      old = act_fixture(%{title: "Decreto-Lei n.º 11-B/2022", published_at: ~D[2026-01-05]})
+      indexed_summary(old, "corpo do resumo", [1.0, 0.0])
+
+      assert Search.window_matches("11-B/2022", from: ~D[2026-07-20], to: ~D[2026-07-27]) == []
+    end
+
+    test "a blank query matches nothing rather than everything" do
+      assert Search.window_matches("  ", from: ~D[2026-07-20], to: ~D[2026-07-27]) == []
+    end
+  end
 end

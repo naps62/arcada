@@ -232,7 +232,13 @@ config :arcada, Arcada.Search,
   # (nothing clears it → no results). FTS/exact-term matches are never dropped (they
   # re-enter via the FTS list). `relevance_ratio: 0.0` disables the floor.
   relevance_ratio: 0.90,
-  min_relevance_score: 0.33
+  min_relevance_score: 0.33,
+  # Absolute cosine a *standing* match must clear (`window_matches/2`, issue #95).
+  # Nothing relative works for a subscription: ranked inside one week's acts,
+  # something always clears a ratio-of-top floor, so every subscription would mail
+  # every week. This is the "worth an email" line, well above the nonsense-query
+  # backstop above. Raise it if subscriptions feel noisy, lower it if they go quiet.
+  min_match_score: 0.5
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
