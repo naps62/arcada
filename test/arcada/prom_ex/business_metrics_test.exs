@@ -115,6 +115,63 @@ defmodule Arcada.PromEx.BusinessMetricsTest do
     end
   end
 
+  describe "Prometheus exposition" do
+    # The strings above are what PromEx *should* produce; this scrapes a real
+    # exporter to prove it does, labels included. docs/OBSERVABILITY.md §2 pins
+    # `active`/`summarized` to "true"/"false" — booleans render that way, but
+    # only the exporter can confirm it.
+    setup do
+      metrics =
+        BusinessMetrics.polling_metrics([])
+        |> Enum.flat_map(& &1.metrics)
+
+      name = :"business_metrics_test_#{System.unique_integer([:positive])}"
+
+      start_supervised!(
+        {TelemetryMetricsPrometheus.Core, metrics: metrics, name: name, start_async: false}
+      )
+
+      %{scrape: fn -> TelemetryMetricsPrometheus.Core.scrape(name) end}
+    end
+
+    test "renders the contract metric names and tag values", %{scrape: scrape} do
+      user_fixture()
+      act = act_fixture(tipo: "Decreto-Lei", published_at: Date.utc_today())
+      summary = summary_fixture(act, domains: [:fiscal], input_tokens: 7, output_tokens: 3)
+      Repo.update!(Ecto.Changeset.change(act, published_summary_id: summary.id))
+      subscription_fixture(user_fixture(), query: "IRS", period: :semanal)
+
+      assert :ok = BusinessMetrics.execute_fast_metrics()
+      assert :ok = BusinessMetrics.execute_slow_metrics()
+
+      scraped = scrape.()
+
+      assert scraped =~ ~s(arcada_business_users_count{state="confirmed"} 2)
+      assert scraped =~ ~s(arcada_business_subscribers_count 1)
+
+      assert scraped =~
+               ~s(arcada_business_subscriptions_count{active="true",kind="tema",period="semanal"} 1)
+
+      assert scraped =~ ~s(arcada_business_acts_count{summarized="true"} 1)
+      assert scraped =~ ~s(arcada_business_acts_by_tipo_count{tipo="Decreto-Lei"} 1)
+      assert scraped =~ ~s(arcada_business_acts_by_domain_count{domain="fiscal"} 1)
+      assert scraped =~ ~s(arcada_business_editions_count 1)
+      assert scraped =~ ~s(arcada_business_register_lag_days 0)
+      assert scraped =~ ~s(arcada_business_summaries_count 1)
+      assert scraped =~ ~s(arcada_business_summaries_tokens{direction="input"} 7)
+      assert scraped =~ ~s(arcada_business_summaries_cost_usd{cost_source="unknown"} 0.0)
+    end
+
+    test "an empty database exports no register lag sample", %{scrape: scrape} do
+      assert :ok = BusinessMetrics.execute_slow_metrics()
+
+      scraped = scrape.()
+
+      assert scraped =~ "arcada_business_editions_count 0"
+      refute scraped =~ ~r/^arcada_business_register_lag_days /m
+    end
+  end
+
   describe "execute_fast_metrics/0" do
     test "counts users by confirmation state" do
       user_fixture()
