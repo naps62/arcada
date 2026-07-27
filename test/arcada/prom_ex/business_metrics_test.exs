@@ -8,6 +8,7 @@ defmodule Arcada.PromEx.BusinessMetricsTest do
   import Arcada.SubscriptionsFixtures
 
   alias Arcada.PromEx.BusinessMetrics
+  alias Arcada.Subscriptions
 
   @fast_events [
     [:arcada, :business, :users, :count],
@@ -21,6 +22,7 @@ defmodule Arcada.PromEx.BusinessMetricsTest do
     [:arcada, :business, :acts, :by_domain, :count],
     [:arcada, :business, :editions, :count],
     [:arcada, :business, :register, :lag_days],
+    [:arcada, :business, :summaries, :lag_days],
     [:arcada, :business, :summaries, :count],
     [:arcada, :business, :summaries, :cost_usd],
     [:arcada, :business, :summaries, :tokens]
@@ -86,10 +88,20 @@ defmodule Arcada.PromEx.BusinessMetricsTest do
                "arcada_business_acts_by_domain_count",
                "arcada_business_editions_count",
                "arcada_business_register_lag_days",
+               "arcada_business_summaries_lag_days",
                "arcada_business_summaries_count",
                "arcada_business_summaries_cost_usd",
                "arcada_business_summaries_tokens"
              ]
+    end
+
+    test "exports the emails counter frozen in docs/OBSERVABILITY.md" do
+      assert %{metrics: [emails]} = BusinessMetrics.event_metrics([])
+
+      assert Enum.join(emails.name, "_") == "arcada_business_emails_total"
+      assert emails.event_name == [:arcada, :business, :emails]
+      assert emails.tags == [:kind, :result]
+      assert %Telemetry.Metrics.Counter{} = emails
     end
 
     test "tags stay within the documented bounded domains" do
@@ -99,12 +111,13 @@ defmodule Arcada.PromEx.BusinessMetricsTest do
         |> Map.new(&{Enum.join(&1.name, "_"), &1.tags})
 
       assert tags["arcada_business_users_count"] == [:state]
-      assert tags["arcada_business_subscribers_count"] == []
+      assert tags["arcada_business_subscribers_count"] == [:active]
       assert tags["arcada_business_subscriptions_count"] == [:period, :kind, :active]
       assert tags["arcada_business_acts_count"] == [:summarized]
       assert tags["arcada_business_acts_by_tipo_count"] == [:tipo]
       assert tags["arcada_business_acts_by_domain_count"] == [:domain]
       assert tags["arcada_business_register_lag_days"] == []
+      assert tags["arcada_business_summaries_lag_days"] == []
       assert tags["arcada_business_summaries_cost_usd"] == [:cost_source]
       assert tags["arcada_business_summaries_tokens"] == [:direction]
     end
@@ -122,8 +135,8 @@ defmodule Arcada.PromEx.BusinessMetricsTest do
     # only the exporter can confirm it.
     setup do
       metrics =
-        BusinessMetrics.polling_metrics([])
-        |> Enum.flat_map(& &1.metrics)
+        Enum.flat_map(BusinessMetrics.polling_metrics([]), & &1.metrics) ++
+          BusinessMetrics.event_metrics([]).metrics
 
       name = :"business_metrics_test_#{System.unique_integer([:positive])}"
 
@@ -147,7 +160,8 @@ defmodule Arcada.PromEx.BusinessMetricsTest do
       scraped = scrape.()
 
       assert scraped =~ ~s(arcada_business_users_count{state="confirmed"} 2)
-      assert scraped =~ ~s(arcada_business_subscribers_count 1)
+      assert scraped =~ ~s(arcada_business_subscribers_count{active="true"} 1)
+      assert scraped =~ ~s(arcada_business_subscribers_count{active="false"} 0)
 
       assert scraped =~
                ~s(arcada_business_subscriptions_count{active="true",kind="tema",period="semanal"} 1)
@@ -157,18 +171,33 @@ defmodule Arcada.PromEx.BusinessMetricsTest do
       assert scraped =~ ~s(arcada_business_acts_by_domain_count{domain="fiscal"} 1)
       assert scraped =~ ~s(arcada_business_editions_count 1)
       assert scraped =~ ~s(arcada_business_register_lag_days 0)
+      assert scraped =~ ~s(arcada_business_summaries_lag_days 0)
       assert scraped =~ ~s(arcada_business_summaries_count 1)
       assert scraped =~ ~s(arcada_business_summaries_tokens{direction="input"} 7)
       assert scraped =~ ~s(arcada_business_summaries_cost_usd{cost_source="unknown"} 0.0)
     end
 
-    test "an empty database exports no register lag sample", %{scrape: scrape} do
+    test "renders the emails counter, failures included", %{scrape: scrape} do
+      emails = [:arcada, :business, :emails]
+
+      :telemetry.execute(emails, %{count: 1}, %{kind: :digest, result: :sent})
+      :telemetry.execute(emails, %{count: 1}, %{kind: :digest, result: :sent})
+      :telemetry.execute(emails, %{count: 1}, %{kind: :tema, result: :failed})
+
+      scraped = scrape.()
+
+      assert scraped =~ ~s(arcada_business_emails_total{kind="digest",result="sent"} 2)
+      assert scraped =~ ~s(arcada_business_emails_total{kind="tema",result="failed"} 1)
+    end
+
+    test "an empty database exports neither lag sample", %{scrape: scrape} do
       assert :ok = BusinessMetrics.execute_slow_metrics()
 
       scraped = scrape.()
 
       assert scraped =~ "arcada_business_editions_count 0"
       refute scraped =~ ~r/^arcada_business_register_lag_days /m
+      refute scraped =~ ~r/^arcada_business_summaries_lag_days /m
     end
   end
 
@@ -196,7 +225,23 @@ defmodule Arcada.PromEx.BusinessMetricsTest do
       assert :ok = BusinessMetrics.execute_fast_metrics()
 
       assert %{count: 1} =
-               measurement_for(drain(), [:arcada, :business, :subscribers, :count], [])
+               measurement_for(drain(), [:arcada, :business, :subscribers, :count], active: true)
+    end
+
+    # The point of the tag: without it a user who paused everything stayed a
+    # subscriber forever and the gauge could only go up.
+    test "a user who paused everything leaves the active subscriber count" do
+      user = user_fixture()
+      subscription = subscription_fixture(user, query: "arrendamento", period: :semanal)
+      {:ok, _subscription} = Subscriptions.set_active(subscription, false)
+
+      attach(@fast_events)
+      assert :ok = BusinessMetrics.execute_fast_metrics()
+      emitted = drain()
+
+      event = [:arcada, :business, :subscribers, :count]
+      assert %{count: 0} = measurement_for(emitted, event, active: true)
+      assert %{count: 1} = measurement_for(emitted, event, active: false)
     end
 
     test "groups subscriptions by period, kind and active" do
@@ -319,6 +364,37 @@ defmodule Arcada.PromEx.BusinessMetricsTest do
                measurement_for(drain(), [:arcada, :business, :register, :lag_days], [])
     end
 
+    # register_lag_days structurally cannot see a dead summarizer: acts keep
+    # landing, so it stays at 0 while the unsummarized backlog grows.
+    test "summary lag tracks the newest summarized act, not the newest act" do
+      act_fixture(published_at: Date.utc_today())
+
+      stale = act_fixture(published_at: Date.add(Date.utc_today(), -9))
+      summary = summary_fixture(stale)
+      Repo.update!(Ecto.Changeset.change(stale, published_summary_id: summary.id))
+
+      attach(@slow_events)
+      assert :ok = BusinessMetrics.execute_slow_metrics()
+      emitted = drain()
+
+      assert %{lag_days: 0} =
+               measurement_for(emitted, [:arcada, :business, :register, :lag_days], [])
+
+      assert %{lag_days: 9} =
+               measurement_for(emitted, [:arcada, :business, :summaries, :lag_days], [])
+    end
+
+    test "summary lag is absent when nothing has been summarized" do
+      act_fixture(published_at: Date.utc_today())
+
+      attach(@slow_events)
+      assert :ok = BusinessMetrics.execute_slow_metrics()
+      emitted = drain()
+
+      assert measurement_for(emitted, [:arcada, :business, :register, :lag_days], [])
+      refute measurement_for(emitted, [:arcada, :business, :summaries, :lag_days], [])
+    end
+
     test "sums cost by source, folding nil into unknown and nil Decimals into 0.0" do
       act = act_fixture()
       summary_fixture(act, cost_usd: Decimal.new("0.25"), cost_source: "api")
@@ -375,8 +451,12 @@ defmodule Arcada.PromEx.BusinessMetricsTest do
 
       assert %{count: 0} = measurement_for(emitted, [:arcada, :business, :editions, :count], [])
 
+      assert %{count: 0} =
+               measurement_for(emitted, [:arcada, :business, :subscribers, :count], active: true)
+
       # 0 would read as "the register is perfectly fresh".
       refute measurement_for(emitted, [:arcada, :business, :register, :lag_days], [])
+      refute measurement_for(emitted, [:arcada, :business, :summaries, :lag_days], [])
     end
   end
 

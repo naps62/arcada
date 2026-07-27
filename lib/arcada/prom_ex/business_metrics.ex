@@ -4,9 +4,11 @@ defmodule Arcada.PromEx.BusinessMetrics do
   subscriptions, how much of the register we have ingested and summarized, and
   how stale the newest act is. Drives the `arcada-business` dashboard.
 
-  Polling, not events, because these are stock levels — how many rows exist right
-  now — not flows. `SearchMetrics` is the event counterpart; keep the two
-  patterns unmixed.
+  Mostly polling, because these are stock levels — how many rows exist right now.
+  The one exception is `emails`, a flow: a send either happened or it did not,
+  and no row count can show a daily digest truncating at the Scaleway TEM cap.
+  It is emitted from `Arcada.Subscriptions.DeliverWorker`, like `SearchMetrics`
+  is emitted from `Arcada.Search`.
 
   The metric names, tags and poll groups are frozen in `docs/OBSERVABILITY.md` §2.
   Dashboards query those strings; `business_metrics_test.exs` asserts them.
@@ -35,9 +37,12 @@ defmodule Arcada.PromEx.BusinessMetrics do
   @acts_by_domain_event [:arcada, :business, :acts, :by_domain, :count]
   @editions_event [:arcada, :business, :editions, :count]
   @register_lag_event [:arcada, :business, :register, :lag_days]
+  @summaries_lag_event [:arcada, :business, :summaries, :lag_days]
   @summaries_event [:arcada, :business, :summaries, :count]
   @summaries_cost_event [:arcada, :business, :summaries, :cost_usd]
   @summaries_tokens_event [:arcada, :business, :summaries, :tokens]
+
+  @emails_event [:arcada, :business, :emails]
 
   # `tipo` is free text scraped from DRE, so it is an UNBOUNDED Prometheus tag —
   # anything off this list MUST fold into "outro" or the series count grows
@@ -74,6 +79,20 @@ defmodule Arcada.PromEx.BusinessMetrics do
   def tipos, do: @tipos ++ [@other_tipo]
 
   @impl true
+  def event_metrics(_opts) do
+    Event.build(
+      :arcada_business_event_metrics,
+      [
+        counter([:arcada, :business, :emails, :total],
+          event_name: @emails_event,
+          description: "Subscription emails attempted, by kind and outcome.",
+          tags: [:kind, :result]
+        )
+      ]
+    )
+  end
+
+  @impl true
   def polling_metrics(opts) do
     [
       fast_metrics(Keyword.get(opts, :fast_poll_rate, @fast_poll_rate)),
@@ -96,7 +115,8 @@ defmodule Arcada.PromEx.BusinessMetrics do
         last_value(@subscribers_event,
           event_name: @subscribers_event,
           measurement: :count,
-          description: "Distinct users holding at least one subscription."
+          description: "Distinct users holding at least one subscription in that state.",
+          tags: [:active]
         ),
         last_value(@subscriptions_event,
           event_name: @subscriptions_event,
@@ -142,6 +162,11 @@ defmodule Arcada.PromEx.BusinessMetrics do
           measurement: :lag_days,
           description: "Days between today and the newest act's published_at."
         ),
+        last_value(@summaries_lag_event,
+          event_name: @summaries_lag_event,
+          measurement: :lag_days,
+          description: "Days between today and the newest summarized act's published_at."
+        ),
         last_value(@summaries_event,
           event_name: @summaries_event,
           measurement: :count,
@@ -182,6 +207,7 @@ defmodule Arcada.PromEx.BusinessMetrics do
       safely(:acts_by_domain, &emit_acts_by_domain/0)
       safely(:editions, &emit_editions/0)
       safely(:register_lag, &emit_register_lag/0)
+      safely(:summaries_lag, &emit_summaries_lag/0)
       safely(:summaries, &emit_summaries/0)
       safely(:summaries_cost, &emit_summaries_cost/0)
     end
@@ -193,10 +219,10 @@ defmodule Arcada.PromEx.BusinessMetrics do
   # with no Repo. Without this the boot log carries a warning per metric family.
   defp repo_running?, do: Repo in Ecto.Repo.all_running()
 
-  # A measurement MFA that raises is filtered out of the telemetry_poller's
-  # measurement list permanently (see telemetry_poller's
-  # make_measurements_and_filter_misbehaving/1) — the metric never returns until
-  # the node restarts. Nothing emitted beats a zero, which reads as real data.
+  # telemetry_poller catches a raising MFA and permanently drops it
+  # (make_measurements_and_filter_misbehaving/1) — no crash, no retry, the series
+  # just stops for the life of the node. Rescue so the next tick still runs, and
+  # emit nothing: a zero reads as real data.
   defp safely(family, fun) do
     fun.()
   rescue
@@ -227,10 +253,25 @@ defmodule Arcada.PromEx.BusinessMetrics do
     end
   end
 
+  # A user holding one active and one paused subscription counts under both
+  # tags. Deliberate: the tag is "has a subscription in this state", so the two
+  # series do not sum to a user count and must never be added together.
   defp emit_subscribers do
-    count = Repo.one(from s in Subscription, select: count(s.user_id, :distinct))
+    counts =
+      Repo.all(
+        from s in Subscription,
+          group_by: s.active,
+          select: {s.active, count(s.user_id, :distinct)}
+      )
+      |> Map.new()
 
-    :telemetry.execute(@subscribers_event, %{count: count || 0}, %{})
+    for active <- [true, false] do
+      :telemetry.execute(
+        @subscribers_event,
+        %{count: Map.get(counts, active, 0)},
+        %{active: active}
+      )
+    end
   end
 
   defp emit_subscriptions do
@@ -317,17 +358,28 @@ defmodule Arcada.PromEx.BusinessMetrics do
   end
 
   defp emit_register_lag do
-    case Repo.one(from a in Act, select: max(a.published_at)) do
+    emit_lag(@register_lag_event, from(a in Act, select: max(a.published_at)))
+  end
+
+  defp emit_summaries_lag do
+    emit_lag(
+      @summaries_lag_event,
+      from(a in Act,
+        where: not is_nil(a.published_summary_id),
+        select: max(a.published_at)
+      )
+    )
+  end
+
+  # No rows: emit nothing. A 0 reads as "perfectly fresh", which is the opposite
+  # of what an empty table means.
+  defp emit_lag(event, query) do
+    case Repo.one(query) do
       nil ->
-        # No acts at all: emitting 0 would read as "perfectly fresh".
         :ok
 
       %Date{} = newest ->
-        :telemetry.execute(
-          @register_lag_event,
-          %{lag_days: Date.diff(Date.utc_today(), newest)},
-          %{}
-        )
+        :telemetry.execute(event, %{lag_days: Date.diff(Date.utc_today(), newest)}, %{})
     end
   end
 
