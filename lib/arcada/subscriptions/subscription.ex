@@ -63,6 +63,10 @@ defmodule Arcada.Subscriptions.Subscription do
     |> update_change(:query, &normalize_query/1)
     |> validate_required([:period])
     |> validate_length(:query, min: 2, max: 120)
+    # The query is interpolated into an email subject. Today's mailer posts JSON
+    # to an API, where a newline is just a character — but an adapter that ever
+    # speaks SMTP would turn one into a header break.
+    |> validate_format(:query, ~r/^[^\p{Cc}]*$/u, message: "não pode conter quebras de linha")
     |> validate_no_daily_digest()
     |> assoc_constraint(:user)
     # Both indexes are on `(user_id, …)`, but the error belongs on the field the

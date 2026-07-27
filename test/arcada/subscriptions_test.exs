@@ -45,6 +45,18 @@ defmodule Arcada.SubscriptionsTest do
                Subscriptions.create_subscription(user, %{query: "greve", period: :diaria})
     end
 
+    test "rejects a query carrying control characters" do
+      user = user_fixture()
+
+      assert {:error, changeset} =
+               Subscriptions.create_subscription(user, %{
+                 query: "renda\r\nBcc: alguem@exemplo.pt",
+                 period: :semanal
+               })
+
+      assert "não pode conter quebras de linha" in errors_on(changeset).query
+    end
+
     test "rejects a duplicate query + period" do
       user = user_fixture()
       subscription_fixture(user, %{query: "renda", period: :semanal})

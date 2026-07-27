@@ -79,6 +79,16 @@ defmodule ArcadaWeb.UserSubscriptionsLiveTest do
     assert html =~ "já tem uma subscrição igual"
   end
 
+  test "shows when a subscription last went out", %{conn: conn, user: user} do
+    user
+    |> subscription_fixture(%{query: "renda", period: :semanal})
+    |> with_last_sent(~D[2026-07-20])
+
+    {:ok, _lv, html} = live(conn, ~p"/users/subscriptions")
+
+    assert html =~ "20 de julho de 2026"
+  end
+
   test "pauses and resumes a subscription", %{conn: conn, user: user} do
     subscription = subscription_fixture(user, %{query: "renda", period: :semanal})
     {:ok, lv, _html} = live(conn, ~p"/users/subscriptions")
