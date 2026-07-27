@@ -23,7 +23,14 @@ defmodule ArcadaWeb.UserSubscriptionsLive do
     </.header>
 
     <div class="mt-10 space-y-12 divide-y">
-      <div>
+      <div :if={at_limit?(@subscriptions)}>
+        <p class="text-sm text-muted">
+          Atingiu o limite de {Subscriptions.subscription_count_label(Subscriptions.max_per_user())}.
+          Apague uma abaixo para poder criar outra.
+        </p>
+      </div>
+
+      <div :if={not at_limit?(@subscriptions)}>
         <h2 class="text-sm font-semibold uppercase tracking-[0.1em] text-muted">
           Nova subscrição
         </h2>
@@ -131,8 +138,8 @@ defmodule ArcadaWeb.UserSubscriptionsLive do
           </li>
         </ul>
 
-        <p class="mt-4 text-xs text-muted">
-          Pode ter até {Subscriptions.max_per_user()} subscrições.
+        <p :if={not at_limit?(@subscriptions)} class="mt-4 text-xs text-muted">
+          Pode ter até {Subscriptions.subscription_count_label(Subscriptions.max_per_user())}.
         </p>
       </div>
     </div>
@@ -229,6 +236,10 @@ defmodule ArcadaWeb.UserSubscriptionsLive do
 
     Enum.map(periods, &{Subscriptions.period_label(&1), &1})
   end
+
+  # `>=`, not `==`: accounts created before the cap was lowered (issue #97) keep
+  # the rows they have.
+  defp at_limit?(subscriptions), do: length(subscriptions) >= Subscriptions.max_per_user()
 
   defp describe(%{query: nil}), do: "Tudo o que sai"
   defp describe(%{query: query}), do: "«#{query}»"
