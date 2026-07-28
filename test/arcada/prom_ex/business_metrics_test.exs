@@ -219,7 +219,7 @@ defmodule Arcada.PromEx.BusinessMetricsTest do
     test "counts distinct subscribers, not subscriptions" do
       user = user_fixture()
       subscription_fixture(user, query: "arrendamento", period: :semanal)
-      subscription_fixture(user, query: "IRS", period: :mensal)
+      over_cap_subscription_fixture(user, query: "IRS", period: :mensal)
 
       attach(@fast_events)
       assert :ok = BusinessMetrics.execute_fast_metrics()
@@ -245,9 +245,8 @@ defmodule Arcada.PromEx.BusinessMetricsTest do
     end
 
     test "groups subscriptions by period, kind and active" do
-      user = user_fixture()
-      subscription_fixture(user, query: "arrendamento", period: :semanal)
-      subscription_fixture(user, query: nil, period: :mensal)
+      subscription_fixture(user_fixture(), query: "arrendamento", period: :semanal)
+      subscription_fixture(user_fixture(), query: nil, period: :mensal)
 
       attach(@fast_events)
       assert :ok = BusinessMetrics.execute_fast_metrics()
