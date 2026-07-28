@@ -1,0 +1,2175 @@
+{
+  "dashboard": {
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": {
+            "type": "grafana",
+            "uid": "-- Grafana --"
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 1,
+    "links": [],
+    "panels": [
+      {
+        "collapsed": false,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 0
+        },
+        "id": 1,
+        "title": "Overview",
+        "type": "row"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "color": "red",
+                    "text": "DOWN"
+                  },
+                  "1": {
+                    "color": "green",
+                    "text": "UP"
+                  }
+                },
+                "type": "value"
+              }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "red"
+                },
+                {
+                  "color": "green",
+                  "value": 1
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 0,
+          "y": 1
+        },
+        "id": 2,
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "up{service=\"oqm-app\"}",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Status",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "ms"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 4,
+          "y": 1
+        },
+        "id": 3,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "arcada_prom_ex_application_uptime_milliseconds_count{service=\"oqm-app\"}",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Uptime",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 8,
+          "y": 1
+        },
+        "id": 4,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum(arcada_prom_ex_oban_queue_length_count{service=\"oqm-app\",state=\"executing\"})",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Executing now",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                },
+                {
+                  "color": "yellow",
+                  "value": 20
+                },
+                {
+                  "color": "red",
+                  "value": 100
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 12,
+          "y": 1
+        },
+        "id": 5,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum(arcada_prom_ex_oban_queue_length_count{service=\"oqm-app\",state=~\"available|scheduled|retryable\"})",
+            "instant": true,
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "Backlog (waiting)",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "reqps"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 16,
+          "y": 1
+        },
+        "id": 6,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum(rate(arcada_prom_ex_phoenix_http_requests_total{service=\"oqm-app\"}[$__rate_interval]))",
+            "instant": false,
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "HTTP req/s",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "loki",
+          "uid": "efc192vdjbgn4d"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                },
+                {
+                  "color": "red",
+                  "value": 1
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 4,
+          "x": 20,
+          "y": 1
+        },
+        "id": 7,
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "loki",
+              "uid": "efc192vdjbgn4d"
+            },
+            "editorMode": "code",
+            "expr": "sum(count_over_time({service_name=\"oqm-app\"} | json | __error__=\"\" | severity=`error` [$__range]))",
+            "queryType": "range",
+            "refId": "A"
+          }
+        ],
+        "title": "Errors (range)",
+        "type": "stat"
+      },
+      {
+        "collapsed": false,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 5
+        },
+        "id": 8,
+        "title": "Processing — Oban jobs",
+        "type": "row"
+      },
+      {
+        "datasource": {
+          "type": "loki",
+          "uid": "efc192vdjbgn4d"
+        },
+        "description": "Completed (job:stop) vs failed/discarded (job:exception) jobs, from Oban telemetry logs.",
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "bars",
+              "fillOpacity": 60,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              }
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 6
+        },
+        "id": 9,
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "loki",
+              "uid": "efc192vdjbgn4d"
+            },
+            "editorMode": "code",
+            "expr": "sum by (event) (count_over_time({service_name=\"oqm-app\"} | json | line_format `{{.message}}` | json | __error__=\"\" | event=~`job:(stop|exception)` [$__auto]))",
+            "legendFormat": "{{event}}",
+            "queryType": "range",
+            "refId": "A"
+          }
+        ],
+        "title": "Job outcomes (per interval)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "loki",
+          "uid": "efc192vdjbgn4d"
+        },
+        "description": "95th percentile execution time per queue (Oban duration is microseconds).",
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              }
+            },
+            "unit": "µs"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 6
+        },
+        "id": 10,
+        "options": {
+          "legend": {
+            "calcs": [
+              "mean",
+              "max",
+              "lastNotNull"
+            ],
+            "displayMode": "table",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "loki",
+              "uid": "efc192vdjbgn4d"
+            },
+            "editorMode": "code",
+            "expr": "quantile_over_time(0.95, {service_name=\"oqm-app\"} | json | line_format `{{.message}}` | json | __error__=\"\" | event=`job:stop` | unwrap duration [$__auto]) by (queue)",
+            "legendFormat": "{{queue}}",
+            "queryType": "range",
+            "refId": "A"
+          }
+        ],
+        "title": "Job duration p95 by queue",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Live Oban job counts per state (polled gauge).",
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "line",
+              "fillOpacity": 40,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "normal"
+              }
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 7,
+          "w": 12,
+          "x": 0,
+          "y": 14
+        },
+        "id": 11,
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum by (state) (arcada_prom_ex_oban_queue_length_count{service=\"oqm-app\",state=~\"available|executing|retryable|scheduled\"})",
+            "instant": false,
+            "legendFormat": "{{state}}",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Queue depth by state",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "continuous-GrYlRd"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 7,
+          "w": 12,
+          "x": 12,
+          "y": 14
+        },
+        "id": 12,
+        "options": {
+          "displayMode": "gradient",
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showUnfilled": true
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum by (queue) (arcada_prom_ex_oban_queue_length_count{service=\"oqm-app\",state=~\"available|scheduled|retryable|executing\"})",
+            "instant": false,
+            "legendFormat": "{{queue}}",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Backlog by queue",
+        "type": "bargauge"
+      },
+      {
+        "collapsed": false,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 21
+        },
+        "id": 13,
+        "title": "Pipeline — ingest & summaries",
+        "type": "row"
+      },
+      {
+        "datasource": {
+          "type": "loki",
+          "uid": "efc192vdjbgn4d"
+        },
+        "description": "Each line: acts ingested for a date + how many were queued to summarize.",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 22
+        },
+        "id": 14,
+        "options": {
+          "dedupStrategy": "none",
+          "enableLogDetails": true,
+          "prettifyLogMessage": false,
+          "showTime": true,
+          "sortOrder": "Descending",
+          "wrapLogMessage": true
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "loki",
+              "uid": "efc192vdjbgn4d"
+            },
+            "editorMode": "code",
+            "expr": "{service_name=\"oqm-app\"} |= `Ingested`",
+            "queryType": "range",
+            "refId": "A"
+          }
+        ],
+        "title": "Ingest activity (daily scrape results)",
+        "type": "logs"
+      },
+      {
+        "datasource": {
+          "type": "loki",
+          "uid": "efc192vdjbgn4d"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "bars",
+              "fillOpacity": 60,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              }
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 12,
+          "y": 22
+        },
+        "id": 15,
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "loki",
+              "uid": "efc192vdjbgn4d"
+            },
+            "editorMode": "code",
+            "expr": "sum(count_over_time({service_name=\"oqm-app\"} | json | line_format `{{.message}}` | json | __error__=\"\" | event=`job:stop` | queue=`summarize` [$__auto]))",
+            "legendFormat": "completed",
+            "queryType": "range",
+            "refId": "A"
+          }
+        ],
+        "title": "Summaries completed (per interval)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "loki",
+          "uid": "efc192vdjbgn4d"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "bars",
+              "fillOpacity": 60,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              }
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 18,
+          "y": 22
+        },
+        "id": 16,
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "loki",
+              "uid": "efc192vdjbgn4d"
+            },
+            "editorMode": "code",
+            "expr": "sum(count_over_time({service_name=\"oqm-app\"} | json | line_format `{{.message}}` | json | __error__=\"\" | event=`job:exception` | queue=`summarize` [$__auto]))",
+            "legendFormat": "failures",
+            "queryType": "range",
+            "refId": "A"
+          }
+        ],
+        "title": "Summarize failures (per interval)",
+        "type": "timeseries"
+      },
+      {
+        "collapsed": false,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 30
+        },
+        "id": 17,
+        "title": "Web — Phoenix & LiveView",
+        "type": "row"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "line",
+              "fillOpacity": 40,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "normal"
+              }
+            },
+            "unit": "reqps"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 0,
+          "y": 31
+        },
+        "id": 18,
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum by (status) (rate(arcada_prom_ex_phoenix_http_requests_total{service=\"oqm-app\"}[$__rate_interval]))",
+            "instant": false,
+            "legendFormat": "{{status}}",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "HTTP request rate by status",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "line",
+              "fillOpacity": 0,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              }
+            },
+            "unit": "ms"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 8,
+          "y": 31
+        },
+        "id": 19,
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.50, sum by (le) (rate(arcada_prom_ex_phoenix_http_request_duration_milliseconds_bucket{service=\"oqm-app\"}[$__rate_interval])))",
+            "instant": false,
+            "legendFormat": "p50",
+            "range": true,
+            "refId": "A"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.95, sum by (le) (rate(arcada_prom_ex_phoenix_http_request_duration_milliseconds_bucket{service=\"oqm-app\"}[$__rate_interval])))",
+            "instant": false,
+            "legendFormat": "p95",
+            "range": true,
+            "refId": "B"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.99, sum by (le) (rate(arcada_prom_ex_phoenix_http_request_duration_milliseconds_bucket{service=\"oqm-app\"}[$__rate_interval])))",
+            "instant": false,
+            "legendFormat": "p99",
+            "range": true,
+            "refId": "C"
+          }
+        ],
+        "title": "HTTP request latency",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              }
+            },
+            "unit": "ms"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 16,
+          "y": 31
+        },
+        "id": 20,
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.95, sum by (le) (rate(arcada_prom_ex_phoenix_live_view_mount_duration_milliseconds_bucket{service=\"oqm-app\"}[$__rate_interval])))",
+            "instant": false,
+            "legendFormat": "mount p95",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "LiveView mount p95",
+        "type": "timeseries"
+      },
+      {
+        "collapsed": false,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 39
+        },
+        "id": 21,
+        "title": "Database — Ecto",
+        "type": "row"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "line",
+              "fillOpacity": 20,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              }
+            },
+            "unit": "qps"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 7,
+          "w": 12,
+          "x": 0,
+          "y": 40
+        },
+        "id": 22,
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum(rate(arcada_prom_ex_ecto_repo_query_total_time_milliseconds_count{service=\"oqm-app\"}[$__rate_interval]))",
+            "instant": false,
+            "legendFormat": "queries/s",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Query throughput",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "line",
+              "fillOpacity": 0,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              }
+            },
+            "unit": "ms"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 7,
+          "w": 12,
+          "x": 12,
+          "y": 40
+        },
+        "id": 23,
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.95, sum by (le) (rate(arcada_prom_ex_ecto_repo_query_execution_time_milliseconds_bucket{service=\"oqm-app\"}[$__rate_interval])))",
+            "instant": false,
+            "legendFormat": "exec p95",
+            "range": true,
+            "refId": "A"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.95, sum by (le) (rate(arcada_prom_ex_ecto_repo_query_queue_time_milliseconds_bucket{service=\"oqm-app\"}[$__rate_interval])))",
+            "instant": false,
+            "legendFormat": "queue p95",
+            "range": true,
+            "refId": "B"
+          }
+        ],
+        "title": "Query latency p95",
+        "type": "timeseries"
+      },
+      {
+        "collapsed": false,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 47
+        },
+        "id": 24,
+        "title": "Runtime — BEAM VM",
+        "type": "row"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "line",
+              "fillOpacity": 30,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "normal"
+              }
+            },
+            "unit": "bytes"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 7,
+          "w": 12,
+          "x": 0,
+          "y": 48
+        },
+        "id": 25,
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "arcada_prom_ex_beam_memory_processes_total_bytes{service=\"oqm-app\"}",
+            "instant": false,
+            "legendFormat": "processes",
+            "range": true,
+            "refId": "A"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "arcada_prom_ex_beam_memory_binary_total_bytes{service=\"oqm-app\"}",
+            "instant": false,
+            "legendFormat": "binary",
+            "range": true,
+            "refId": "B"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "arcada_prom_ex_beam_memory_ets_total_bytes{service=\"oqm-app\"}",
+            "instant": false,
+            "legendFormat": "ets",
+            "range": true,
+            "refId": "C"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "arcada_prom_ex_beam_memory_code_total_bytes{service=\"oqm-app\"}",
+            "instant": false,
+            "legendFormat": "code",
+            "range": true,
+            "refId": "D"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "arcada_prom_ex_beam_memory_atom_total_bytes{service=\"oqm-app\"}",
+            "instant": false,
+            "legendFormat": "atom",
+            "range": true,
+            "refId": "E"
+          }
+        ],
+        "title": "Memory by type",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              }
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 7,
+          "w": 6,
+          "x": 12,
+          "y": 48
+        },
+        "id": 26,
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "arcada_prom_ex_beam_stats_process_count{service=\"oqm-app\"}",
+            "instant": false,
+            "legendFormat": "processes",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Process count",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              }
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 7,
+          "w": 6,
+          "x": 18,
+          "y": 48
+        },
+        "id": 27,
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "arcada_prom_ex_beam_stats_run_queue_count{service=\"oqm-app\"}",
+            "instant": false,
+            "legendFormat": "run queue",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Run queue",
+        "type": "timeseries"
+      },
+      {
+        "collapsed": false,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 55
+        },
+        "id": 28,
+        "title": "Logs",
+        "type": "row"
+      },
+      {
+        "datasource": {
+          "type": "loki",
+          "uid": "efc192vdjbgn4d"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "bars",
+              "fillOpacity": 70,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "normal"
+              }
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 0,
+          "y": 56
+        },
+        "id": 29,
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "loki",
+              "uid": "efc192vdjbgn4d"
+            },
+            "editorMode": "code",
+            "expr": "sum by (severity) (count_over_time({service_name=\"oqm-app\"} | json | __error__=\"\" [$__auto]))",
+            "legendFormat": "{{severity}}",
+            "queryType": "range",
+            "refId": "A"
+          }
+        ],
+        "title": "Log volume by severity",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "loki",
+          "uid": "efc192vdjbgn4d"
+        },
+        "description": "Live tail of warning/error severity log lines.",
+        "gridPos": {
+          "h": 8,
+          "w": 16,
+          "x": 8,
+          "y": 56
+        },
+        "id": 30,
+        "options": {
+          "dedupStrategy": "none",
+          "enableLogDetails": true,
+          "prettifyLogMessage": false,
+          "showTime": true,
+          "sortOrder": "Descending",
+          "wrapLogMessage": true
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "loki",
+              "uid": "efc192vdjbgn4d"
+            },
+            "editorMode": "code",
+            "expr": "{service_name=\"oqm-app\"} | json | __error__=\"\" | severity=~`warning|error`",
+            "queryType": "range",
+            "refId": "A"
+          }
+        ],
+        "title": "Warnings & errors",
+        "type": "logs"
+      },
+      {
+        "collapsed": false,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 64
+        },
+        "id": 31,
+        "title": "Edge — Traefik / Cloudflare",
+        "type": "row"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Requests/s reaching the public host router (arcada.naps.pt on the :8443 websecure-public entrypoint, via Cloudflare).",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "reqps"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 65
+        },
+        "id": 32,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum(rate(traefik_router_requests_total{router=\"oqm-app-byl8ru-router-57@file\"}[$__rate_interval]))",
+            "instant": false,
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Public req/s (arcada.naps.pt)",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "4xx responses on the public host over the dashboard range — mostly bots/scanners hitting unknown paths.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                },
+                {
+                  "color": "yellow",
+                  "value": 200
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 6,
+          "y": 65
+        },
+        "id": 33,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum(increase(traefik_router_requests_total{router=\"oqm-app-byl8ru-router-57@file\",code=~\"4..\"}[$__range]))",
+            "instant": false,
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Public 4xx (range)",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "5xx error rate on the public host — origin errors visitors actually see. Should stay at zero.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                },
+                {
+                  "color": "red",
+                  "value": 0.001
+                }
+              ]
+            },
+            "unit": "reqps"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 65
+        },
+        "id": 34,
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum(rate(traefik_router_requests_total{router=\"oqm-app-byl8ru-router-57@file\",code=~\"5..\"}[$__rate_interval]))",
+            "instant": false,
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Public 5xx/s",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Requests to the public host BLOCKED by the cloudflare-only allowlist over the range — i.e. direct-to-origin bypass attempts (non-Cloudflare source IPs). Legit visitors arrive via Cloudflare and are allowed, so this should be ~0.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                },
+                {
+                  "color": "yellow",
+                  "value": 1
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 18,
+          "y": 65
+        },
+        "id": 35,
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum(increase(traefik_router_requests_total{router=\"oqm-app-byl8ru-router-57@file\",code=\"403\"}[$__range]))",
+            "instant": false,
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Origin-lock 403s (non-CF, range)",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Edge request rate per Traefik entrypoint. websecure-public = arcada.naps.pt (public, via Cloudflare, :8443); websecure = arcada.n62.casa (VPN, :443).",
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "line",
+              "fillOpacity": 30,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              }
+            },
+            "unit": "reqps"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 69
+        },
+        "id": 36,
+        "options": {
+          "legend": {
+            "calcs": [
+              "mean",
+              "max",
+              "lastNotNull"
+            ],
+            "displayMode": "table",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum by (entrypoint) (rate(traefik_entrypoint_requests_total{entrypoint=~\"websecure|websecure-public\"}[$__rate_interval]))",
+            "instant": false,
+            "legendFormat": "{{entrypoint}}",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Edge traffic by entrypoint (public vs VPN)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Public host (arcada.naps.pt) responses broken down by HTTP status code.",
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "line",
+              "fillOpacity": 30,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "normal"
+              }
+            },
+            "unit": "reqps"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 69
+        },
+        "id": 37,
+        "options": {
+          "legend": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "displayMode": "table",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum by (code) (rate(traefik_router_requests_total{router=\"oqm-app-byl8ru-router-57@file\",code!=\"0\"}[$__rate_interval]))",
+            "instant": false,
+            "legendFormat": "{{code}}",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Public responses by status code",
+        "type": "timeseries"
+      },
+      {
+        "collapsed": false,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 77
+        },
+        "id": 38,
+        "title": "Search — usage & funnel",
+        "type": "row"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Search query rate split by caller tier (issue #32). anon vs user volume is the signup-funnel signal accounts are meant to drive.",
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "line",
+              "fillOpacity": 30,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "normal"
+              }
+            },
+            "unit": "reqps"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 78
+        },
+        "id": 39,
+        "options": {
+          "legend": {
+            "calcs": [
+              "mean",
+              "lastNotNull"
+            ],
+            "displayMode": "table",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum by (tier) (rate(arcada_search_query_total[$__rate_interval]))",
+            "instant": false,
+            "legendFormat": "{{tier}}",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Search rate by tier (anon vs user)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Search query rate split by whether the caller was degraded to FTS-only (over the rate limit). This is how often the signup nudge fires.",
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "axisCenteredZero": false,
+              "drawStyle": "line",
+              "fillOpacity": 30,
+              "gradientMode": "opacity",
+              "lineInterpolation": "smooth",
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "normal"
+              }
+            },
+            "unit": "reqps"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 12,
+          "y": 78
+        },
+        "id": 40,
+        "options": {
+          "legend": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "desc"
+          }
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "sum by (degraded) (rate(arcada_search_query_total[$__rate_interval]))",
+            "instant": false,
+            "legendFormat": "degraded={{degraded}}",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Search by degraded (rate-limited)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "dfc1f2qerumf4f"
+        },
+        "description": "Share of searches over the range that were degraded to FTS-only (over the rate limit). High = the rate limit is biting / signup nudge firing often.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "noValue": "0",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                },
+                {
+                  "color": "yellow",
+                  "value": 20
+                },
+                {
+                  "color": "red",
+                  "value": 50
+                }
+              ]
+            },
+            "unit": "percent"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 18,
+          "y": 78
+        },
+        "id": 41,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "dfc1f2qerumf4f"
+            },
+            "editorMode": "code",
+            "expr": "100 * sum(increase(arcada_search_query_total{degraded=\"true\"}[$__range])) / clamp_min(sum(increase(arcada_search_query_total[$__range])), 1)",
+            "instant": false,
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Degraded share (range)",
+        "type": "stat"
+      }
+    ],
+    "refresh": "30s",
+    "schemaVersion": 42,
+    "tags": [
+      "arcada",
+      "elixir",
+      "oban"
+    ],
+    "templating": {
+      "list": []
+    },
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "browser",
+    "title": "Arcada — App & Processing",
+    "uid": "oqm-overview",
+    "version": 5,
+    "weekStart": ""
+  },
+  "folderUid": "o-que-mudou"
+}

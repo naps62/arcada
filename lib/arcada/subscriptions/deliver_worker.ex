@@ -45,13 +45,7 @@ defmodule Arcada.Subscriptions.DeliverWorker do
         advance(subscription)
 
       acts ->
-        case Notifier.deliver(
-               subscription,
-               subscription.user,
-               acts,
-               window,
-               total(subscription, window)
-             ) do
+        case mail(subscription, acts, window) do
           {:ok, _email} ->
             advance(subscription)
 
@@ -60,6 +54,38 @@ defmodule Arcada.Subscriptions.DeliverWorker do
             {:error, reason}
         end
     end
+  end
+
+  # Counted here rather than in Notifier because this is where the mailer's
+  # verdict is known. A raising adapter is still a failed attempt, so it is
+  # counted before the exception is re-raised for Oban to retry.
+  # Metric definition: Arcada.PromEx.BusinessMetrics.
+  defp mail(subscription, acts, window) do
+    result =
+      try do
+        Notifier.deliver(
+          subscription,
+          subscription.user,
+          acts,
+          window,
+          total(subscription, window)
+        )
+      rescue
+        error ->
+          count_email(subscription, :failed)
+          reraise error, __STACKTRACE__
+      end
+
+    count_email(subscription, if(match?({:ok, _email}, result), do: :sent, else: :failed))
+    result
+  end
+
+  defp count_email(%Subscription{query: query}, result) do
+    :telemetry.execute(
+      [:arcada, :business, :emails],
+      %{count: 1},
+      %{kind: if(is_nil(query), do: :digest, else: :tema), result: result}
+    )
   end
 
   # Only the digest is capped, so only the digest needs the window's true size.

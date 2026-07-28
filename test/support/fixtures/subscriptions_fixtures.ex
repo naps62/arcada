@@ -3,6 +3,7 @@ defmodule Arcada.SubscriptionsFixtures do
   Test helpers for `Arcada.Subscriptions`.
   """
   alias Arcada.Subscriptions
+  alias Arcada.Subscriptions.Subscription
 
   @doc "A query subscription (weekly by default). Pass `query: nil` for the digest."
   def subscription_fixture(user, attrs \\ %{}) do
@@ -13,6 +14,20 @@ defmodule Arcada.SubscriptionsFixtures do
       )
 
     subscription
+  end
+
+  @doc """
+  Insert a subscription straight to the DB, ignoring `max_per_user/0`.
+
+  Models the accounts that already held several rows when the cap dropped to 1
+  (issue #97) — they keep them. Use only where the point of the test is an
+  account over the cap; anything else must go through `subscription_fixture/2`
+  so the cap is exercised.
+  """
+  def over_cap_subscription_fixture(user, attrs \\ %{}) do
+    %Subscription{user_id: user.id}
+    |> Subscription.changeset(Enum.into(attrs, %{query: "arrendamento", period: :semanal}))
+    |> Arcada.Repo.insert!()
   end
 
   @doc """

@@ -30,7 +30,9 @@ defmodule Arcada.PromEx do
       # LiveView mount/handle_event/handle_params timings
       Plugins.PhoenixLiveView,
       # Search volume by tier + rate-limit degradation (issue #32)
-      Arcada.PromEx.SearchMetrics
+      Arcada.PromEx.SearchMetrics,
+      # Product gauges: users, subscriptions, register coverage (issue #98)
+      Arcada.PromEx.BusinessMetrics
     ]
   end
 
