@@ -104,6 +104,10 @@ config :arcada, Oban,
   queues: [default: 10, scrape: 1, summarize: 5],
   plugins: [
     {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
+    # An orphaned `executing` row (job process dies without the row updating)
+    # counts toward Concurrency's per-provider gate forever, wedging the whole
+    # summarize queue behind it — Lifeline rescues those rows.
+    {Oban.Plugins.Lifeline, rescue_after: :timer.minutes(30)},
     # Série I publishes on business days only (no weekends) — mostly the morning,
     # but same-day Suplementos land through the day. Poll every 2 hours across the
     # working day so supplements/late editions are picked up the same day.
