@@ -6,16 +6,20 @@ defmodule Arcada.Subscriptions.Notifier do
   bulk mail that attracts spam complaints, and it must not be able to poison the
   reputation of verification and password-reset mail.
 
-  Plain text only, like the account mail. A digest that renders as text in every
-  client, is legible in a screen reader, and carries no tracking pixel is both
-  the accessible choice and the deliverable one.
+  Multipart: a branded HTML part (`Arcada.EmailHTML`, the site's broadsheet in
+  email-safe markup) over the plain-text body, which stays the baseline for
+  text-only clients and screen readers. No tracking pixel in either part.
   """
   import Swoosh.Email
 
-  alias Arcada.{DigestMailer, Register, Subscriptions}
+  alias Arcada.{DigestMailer, EmailHTML, Register, Subscriptions}
   alias Arcada.Register.Act
   alias Arcada.Subscriptions.Subscription
   alias ArcadaWeb.SEO
+
+  # Longest standfirst shown per story in the HTML digest; the full summary
+  # lives behind the headline link.
+  @standfirst_max 240
 
   @doc """
   Mail `acts` to the subscription's owner. `window` is the `{from, to}` the acts
@@ -34,6 +38,7 @@ defmodule Arcada.Subscriptions.Notifier do
       |> from(sender())
       |> subject(subject_line(subscription, acts))
       |> text_body(body(subscription, acts, window, total, unsubscribe_url))
+      |> html_body(html(subscription, acts, window, total, unsubscribe_url))
       # Lets a mail client offer its own unsubscribe control, which people reach
       # for instead of the spam button. Bulk mail without it gets filtered.
       |> header("List-Unsubscribe", "<#{unsubscribe_url}>")
@@ -131,5 +136,80 @@ defmodule Arcada.Subscriptions.Notifier do
       1 -> "1 #{singular}"
       n -> "#{n} #{plural}"
     end
+  end
+
+  # -- HTML part --------------------------------------------------------------
+
+  defp html(subscription, acts, {window_from, window_to}, total, unsubscribe_url) do
+    intro = intro(subscription, acts, window_from, window_to)
+
+    content =
+      EmailHTML.paragraph(EmailHTML.escape(intro)) <>
+        Enum.map_join(acts, &entry_html/1) <>
+        remainder_html(subscription, acts, total)
+
+    EmailHTML.layout(intro, content, digest_footer(subscription, unsubscribe_url))
+  end
+
+  # Kicker (date · issuing body) → plain-language headline → standfirst,
+  # mirroring the site's story entry.
+  defp entry_html(%Act{} = act) do
+    EmailHTML.entry(entry_kicker(act), headline(act), SEO.act_url(act), standfirst(act))
+  end
+
+  defp entry_kicker(%Act{} = act) do
+    [date_kicker(act), act.emitter || act.tipo]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join(" · ")
+  end
+
+  defp date_kicker(%Act{published_at: %Date{} = date}), do: Register.long_date(date)
+  defp date_kicker(_act), do: nil
+
+  # The opening of the plain-language summary, capped on a word boundary; the
+  # act without a summary gets none (the site's quiet "brief" row).
+  defp standfirst(%Act{} = act) do
+    case Register.published_summary(act) do
+      %{plain_text: text} when is_binary(text) and text != "" -> excerpt(text)
+      _ -> nil
+    end
+  end
+
+  defp excerpt(text) do
+    first = text |> String.split("\n", parts: 2) |> hd() |> String.trim()
+
+    if String.length(first) <= @standfirst_max do
+      first
+    else
+      first
+      |> String.slice(0, @standfirst_max)
+      |> String.replace(~r/\s+\S*$/u, "")
+      |> Kernel.<>("…")
+    end
+  end
+
+  defp remainder_html(%Subscription{query: nil}, acts, total)
+       when is_integer(total) and total > length(acts) do
+    EmailHTML.paragraph(
+      "E mais #{total - length(acts)}. " <>
+        EmailHTML.link("Veja tudo na Arcada", SEO.home_url()) <> "."
+    )
+  end
+
+  defp remainder_html(_subscription, _acts, _total), do: ""
+
+  defp digest_footer(subscription, unsubscribe_url) do
+    EmailHTML.footer_line(EmailHTML.escape(reason(subscription))) <>
+      EmailHTML.footer_line(
+        EmailHTML.link("Cancelar esta subscrição", unsubscribe_url) <>
+          " · " <>
+          EmailHTML.link("Gerir as suas subscrições", SEO.subscriptions_url())
+      ) <>
+      EmailHTML.footer_line(
+        EmailHTML.escape(
+          "A Arcada resume em linguagem simples; a versão oficial de cada diploma " <>
+            "está ligada acima, no Diário da República. Isto não é aconselhamento jurídico."
+        )
+      )
   end
 end

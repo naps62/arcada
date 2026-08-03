@@ -70,6 +70,10 @@ defmodule Arcada.Subscriptions.DeliverWorkerTest do
       assert address == user.email
       assert email.subject =~ "resumo semanal"
       assert email.text_body =~ "Portaria n.º 1/2026"
+      # Multipart: the branded HTML part carries the same story and the same
+      # way out as the plain-text baseline.
+      assert email.html_body =~ "Portaria n.º 1/2026"
+      assert email.html_body =~ "/subscricoes/cancelar/"
       # Every bulk email carries a way out, in the body and in the headers.
       assert email.text_body =~ "/subscricoes/cancelar/"
       assert Map.has_key?(email.headers, "List-Unsubscribe")
@@ -94,6 +98,7 @@ defmodule Arcada.Subscriptions.DeliverWorkerTest do
       assert email.subject =~ "«arrendamento»"
       refute email.text_body =~ "Outra coisa qualquer"
       assert email.text_body =~ "Novas regras para o arrendamento"
+      assert email.html_body =~ "Novas regras para o arrendamento"
     end)
   end
 
