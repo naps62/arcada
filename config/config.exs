@@ -244,7 +244,9 @@ config :arcada, Arcada.RateLimit,
 # rank near the top, so beta 0.15 lets recency swing ~9 ranks; drop it for a gentler
 # nudge. Tunable here without a code change.
 config :arcada, Arcada.Search,
-  recency_beta: 0.15,
+  # 0.0 since #104: "Mais recentes" makes freshness an explicit mode, so the
+  # relevance ranking went back to pure relevance. Raise to re-enable the nudge.
+  recency_beta: 0.0,
   recency_half_life_days: 180,
   # Relevance floor on the semantic leg (see `Arcada.Search.above_relevance_floor/1`):
   # drop acts whose cosine is below `max(min_relevance_score, relevance_ratio × top)`.

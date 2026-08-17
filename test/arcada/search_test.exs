@@ -472,7 +472,86 @@ defmodule Arcada.SearchTest do
 
     Search.for_visitor("qualquer coisa", unique_identity(:anon))
 
-    assert_received {:telemetry, ^ref, %{count: 1}, %{tier: :anon, degraded: true}}
+    assert_received {:telemetry, ^ref, %{count: 1},
+                     %{tier: :anon, degraded: true, sort: :relevance}}
+  end
+
+  # --- Chronological order (issue #104) --------------------------------------
+
+  defp dated_act(date, title, plain_text) do
+    n = System.unique_integer([:positive])
+
+    edition =
+      %Edition{}
+      |> Edition.changeset(%{serie: "I", number: "d-#{n}/2026", date: date})
+      |> Repo.insert!()
+
+    act =
+      %Act{}
+      |> Act.changeset(%{edition_id: edition.id, dre_id: "d-#{n}", title: title})
+      |> Repo.insert!()
+
+    %Summary{}
+    |> Summary.changeset(%{act_id: act.id, plain_text: plain_text})
+    |> Repo.insert!()
+
+    act
+  end
+
+  test "chronological returns matches newest first, with more? and a pageable cursor" do
+    # Deny everything: chronological must not care.
+    set_rate_limits(anon: [per_minute: 0, per_day: 0])
+    set_embeddings(embed_fn: fn _ -> raise "chronological must never embed" end)
+
+    old = dated_act(~D[2026-01-10], "Lei do arrendamento", "corpo")
+    new = dated_act(~D[2026-08-10], "Portaria do arrendamento", "corpo")
+
+    {results, more?} = Search.chronological("arrendamento", unique_identity(:anon))
+
+    assert Enum.map(results, & &1.id) == [new.id, old.id]
+    assert more? == false
+
+    # A cursor at the newest act excludes it and everything above it.
+    {next, false} = Search.chronological_page("arrendamento", {~D[2026-08-10], new.id})
+    assert Enum.map(next, & &1.id) == [old.id]
+  end
+
+  test "chronological spends no semantic budget, so relevance search still has its" do
+    # Exactly one semantic query allowed for this visitor.
+    set_rate_limits(anon: [per_minute: 1, per_day: 1])
+    set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+
+    identity = unique_identity(:anon)
+    act = dated_act(~D[2026-08-10], "Lei do arrendamento", "corpo")
+
+    # Three chronological searches...
+    for _ <- 1..3, do: Search.chronological("arrendamento", identity)
+
+    # ...and the single semantic query is still available.
+    {_results, ids, degraded?} = Search.for_visitor("arrendamento", identity)
+
+    assert degraded? == false
+    assert act.id in ids
+  end
+
+  test "chronological emits the search telemetry tagged sort: :date" do
+    ref = make_ref()
+    parent = self()
+
+    :telemetry.attach(
+      "test-chrono-#{inspect(ref)}",
+      [:arcada, :search, :query],
+      fn _event, measurements, metadata, _ ->
+        send(parent, {:telemetry, ref, measurements, metadata})
+      end,
+      nil
+    )
+
+    on_exit(fn -> :telemetry.detach("test-chrono-#{inspect(ref)}") end)
+
+    Search.chronological("qualquer coisa", unique_identity(:anon))
+
+    assert_received {:telemetry, ^ref, %{count: 1}, %{tier: :anon, degraded: false, sort: :date}}
   end
 
   describe "window_matches/2" do

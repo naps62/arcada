@@ -159,4 +159,88 @@ defmodule Arcada.Search.FTSTest do
 
     assert Enum.sort(FTS.ranked_ids("arrendamento")) == Enum.sort([a.id, b.id])
   end
+
+  # --- chronological order (#104) ---
+
+  # An act on a specific edition date. Titles carry the search term so ts_rank
+  # can be varied independently of the date.
+  defp dated_act(date, title, plain_text \\ "corpo neutro") do
+    n = System.unique_integer([:positive])
+
+    edition =
+      %Edition{}
+      |> Edition.changeset(%{serie: "I", number: "c-#{n}/2026", date: date})
+      |> Repo.insert!()
+
+    act =
+      %Act{}
+      |> Act.changeset(%{edition_id: edition.id, dre_id: "c-#{n}", title: title})
+      |> Repo.insert!()
+
+    insert_summary(act, %{plain_text: plain_text})
+    act
+  end
+
+  test "orders by edition date, newest first, whatever the rank says" do
+    strong_but_old = dated_act(~D[2026-01-10], "arrendamento arrendamento arrendamento")
+    weak_but_new = dated_act(~D[2026-08-10], "diploma sobre arrendamento")
+
+    # Ranking puts the term-dense act first; chronological puts the fresh one first.
+    assert FTS.ranked_ids("arrendamento") == [strong_but_old.id, weak_but_new.id]
+
+    assert FTS.chronological_ids("arrendamento", limit: 10) ==
+             [weak_but_new.id, strong_but_old.id]
+  end
+
+  test "reaches matches the ranked top-N cap would have cut" do
+    set_fts_cfg(limit: 1)
+
+    old = dated_act(~D[2026-01-10], "arrendamento arrendamento arrendamento")
+    new = dated_act(~D[2026-08-10], "diploma sobre arrendamento")
+
+    # The cap keeps only the top-ranked act...
+    assert FTS.ranked_ids("arrendamento") == [old.id]
+    # ...but chronological is uncapped, so the recent weak match is still reachable.
+    assert FTS.chronological_ids("arrendamento", limit: 10) == [new.id, old.id]
+  end
+
+  test "keyset pages through a single busy day without repeating or skipping" do
+    # Same date for all three: only the id tiebreak separates them, which is
+    # exactly the case a date-only cursor would get wrong.
+    a = dated_act(~D[2026-08-10], "arrendamento a")
+    b = dated_act(~D[2026-08-10], "arrendamento b")
+    c = dated_act(~D[2026-08-10], "arrendamento c")
+
+    assert a.id < b.id and b.id < c.id
+
+    page1 = FTS.chronological_ids("arrendamento", limit: 2)
+    assert page1 == [c.id, b.id]
+
+    page2 = FTS.chronological_ids("arrendamento", limit: 2, before: {~D[2026-08-10], b.id})
+    assert page2 == [a.id]
+  end
+
+  test "keyset pages across a date boundary" do
+    newer = dated_act(~D[2026-08-10], "arrendamento novo")
+    older = dated_act(~D[2026-07-01], "arrendamento velho")
+
+    assert FTS.chronological_ids("arrendamento", limit: 1) == [newer.id]
+
+    assert FTS.chronological_ids("arrendamento", limit: 5, before: {~D[2026-08-10], newer.id}) ==
+             [older.id]
+  end
+
+  test "a summary-less act stays invisible, as in ranked search" do
+    _no_summary = insert_act(%{title: "Xyzzytoken decreto"})
+
+    assert FTS.chronological_ids("Xyzzytoken", limit: 10) == []
+  end
+
+  test "returns [] for a blank or non-binary query" do
+    dated_act(~D[2026-08-10], "arrendamento")
+
+    assert FTS.chronological_ids("", limit: 10) == []
+    assert FTS.chronological_ids("   ", limit: 10) == []
+    assert FTS.chronological_ids(nil, limit: 10) == []
+  end
 end

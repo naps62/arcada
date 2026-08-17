@@ -49,6 +49,65 @@ defmodule Arcada.Search.FTS do
 
   def ranked_ids(_query, _opts), do: []
 
+  @doc """
+  One keyset page of matching act ids, newest `editions.date` first (issue #104).
+
+  The chronological half of search deliberately skips ranking altogether: no
+  `ts_rank`, no `@default_limit` top-N, no semantic leg. A date-ordered list must
+  be able to reach every match, so capping it by relevance first would silently
+  hide recent weak matches with no visible reason.
+
+  Ordered and keyset-paged on `editions.date` — the date the UI prints beside each
+  result — not `acts.published_at`, so a strictly-ordered list never looks
+  unsorted. `opts[:before]` is a `{Date, act_id}` cursor from the last row of the
+  previous page (exclusive); omit it for the first page. `opts[:limit]` caps the
+  page.
+
+  Matching is `candidate_ids/1`, same as `ranked_ids/2`, and the `exists` on
+  summaries keeps the "summary-less acts are invisible" semantics the ranking
+  query gets from its inner join.
+  """
+  def chronological_ids(query, opts \\ [])
+
+  def chronological_ids(query, opts) when is_binary(query) do
+    case String.trim(query) do
+      "" ->
+        []
+
+      q ->
+        q
+        |> chronological_query(Keyword.fetch!(opts, :limit))
+        |> filter_before(opts[:before])
+        |> Repo.all()
+    end
+  end
+
+  def chronological_ids(_query, _opts), do: []
+
+  defp chronological_query(q, limit) do
+    has_summary = from(s in Summary, where: s.act_id == parent_as(:act).id, select: 1)
+
+    from a in Act,
+      as: :act,
+      join: e in assoc(a, :edition),
+      as: :ed,
+      where: a.id in subquery(candidate_ids(q)) and exists(has_summary),
+      # `id` is the tiebreak *and* the second keyset key: `date` alone is
+      # day-granular, so without it a page boundary inside a busy day would
+      # repeat or skip acts.
+      order_by: [desc: e.date, desc: a.id],
+      limit: ^limit,
+      select: a.id
+  end
+
+  defp filter_before(query, nil), do: query
+
+  defp filter_before(query, {%Date{} = date, id}) do
+    from([act: a, ed: e] in query,
+      where: e.date < ^date or (e.date == ^date and a.id < ^id)
+    )
+  end
+
   # Applied to the outer ranking query, not to `candidate_ids/1`: the candidate
   # halves must each stay a single-table tsvector scan so their GIN indexes are
   # usable. Narrowing here also keeps the LIMIT a true top-N *within* the window.

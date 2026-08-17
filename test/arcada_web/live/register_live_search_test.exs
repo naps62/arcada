@@ -290,4 +290,118 @@ defmodule ArcadaWeb.RegisterLiveSearchTest do
     refute html =~ "cria conta"
     assert html =~ "Lei do arrendamento"
   end
+
+  # --- Chronological order (issue #104) -----------------------------------------
+
+  # An FTS-matchable act on a given edition date, titled so pages are identifiable.
+  defp seed_dated_act(date, title) do
+    n = System.unique_integer([:positive])
+
+    ed =
+      %Edition{}
+      |> Edition.changeset(%{serie: "I", number: "o-#{n}/2026", date: date})
+      |> Repo.insert!()
+
+    act =
+      %Act{}
+      |> Act.changeset(%{edition_id: ed.id, dre_id: "o-#{n}", title: title})
+      |> Repo.insert!()
+
+    %Summary{}
+    |> Summary.changeset(%{act_id: act.id, plain_text: "resumo sobre arrendamento"})
+    |> Repo.insert!()
+
+    act
+  end
+
+  test "the sort chips only appear once there is a query", %{conn: conn} do
+    {:ok, _lv, browse} = live(conn, ~p"/")
+    refute browse =~ "Mais recentes"
+
+    seed_dated_act(~D[2026-08-10], "Lei do arrendamento")
+    set_embeddings([])
+
+    {:ok, _lv, search} = live(conn, ~p"/?#{[q: "arrendamento"]}")
+    assert search =~ "Mais recentes"
+    assert search =~ "Relevância"
+  end
+
+  test "?sort=data orders results newest first and marks the chip active", %{conn: conn} do
+    # No embedder at all: chronological must not need one.
+    set_embeddings([])
+    seed_dated_act(~D[2026-01-10], "Diploma antigo do arrendamento")
+    seed_dated_act(~D[2026-08-10], "Diploma recente do arrendamento")
+
+    {:ok, _lv, html} = live(conn, ~p"/?#{[q: "arrendamento", sort: "data"]}")
+
+    recent = index_of(html, "Diploma recente")
+    old = index_of(html, "Diploma antigo")
+    assert recent < old
+
+    # The active chip carries aria-current; the URL round-trips the choice.
+    assert html =~ ~s(aria-current="true")
+    assert html =~ "10 de agosto de 2026"
+  end
+
+  defp index_of(html, needle) do
+    [{at, _len}] = :binary.matches(html, needle) |> Enum.take(1)
+    at
+  end
+
+  test "typing a new query keeps the chronological sort in the URL", %{conn: conn} do
+    set_embeddings([])
+    seed_dated_act(~D[2026-08-10], "Lei do arrendamento")
+
+    {:ok, lv, _html} = live(conn, ~p"/?#{[q: "arrendamento", sort: "data"]}")
+    lv |> form("#search-form", %{"q" => "habitação"}) |> render_change()
+
+    assert_patched(lv, ~p"/?#{[q: "habitação", sort: "data"]}")
+  end
+
+  test "chronological load-more appends the next keyset page", %{conn: conn} do
+    set_embeddings([])
+    # 25 acts on distinct days, newest first, so paging crosses date boundaries.
+    for n <- 1..25 do
+      seed_dated_act(Date.add(~D[2026-08-25], -n), "Diploma número #{n} do arrendamento")
+    end
+
+    {:ok, lv, _html} = live(conn, ~p"/?#{[q: "arrendamento", sort: "data"]}")
+    first = render(lv)
+
+    assert results_count(first) == 20
+    assert first =~ ~s(phx-viewport-bottom="load-more")
+
+    html = render_hook(lv, "load-more", %{})
+
+    # All 25 loaded, with no repeats — the keyset cursor advanced correctly.
+    assert results_count(html) == 25
+    refute html =~ ~s(phx-viewport-bottom="load-more")
+  end
+
+  test "a semantic-only query comes up empty by date and says why", %{conn: conn} do
+    # Matches by meaning (the stubbed vector) but shares no word with the text.
+    seed_indexed_act([1.0, 0.0])
+    set_embeddings(embed_fn: fn texts -> {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)} end)
+
+    {:ok, _lv, by_relevance} = live(conn, ~p"/?#{[q: "xilofone-improvavel"]}")
+    assert by_relevance =~ "Muda o escalão do IRS."
+
+    {:ok, _lv, by_date} = live(conn, ~p"/?#{[q: "xilofone-improvavel", sort: "data"]}")
+
+    refute by_date =~ "Muda o escalão do IRS."
+    assert by_date =~ "Nada encontrado"
+    assert by_date =~ "palavras exatas"
+    assert by_date =~ "Ver por relevância"
+  end
+
+  test "chronological never shows the rate-limit degraded banner", %{conn: conn} do
+    set_rate_limits(anon: [per_minute: 0, per_day: 0])
+    set_embeddings(embed_fn: fn _ -> raise "chronological must never embed" end)
+    seed_dated_act(~D[2026-08-10], "Lei do arrendamento")
+
+    {:ok, _lv, html} = live(conn, ~p"/?#{[q: "arrendamento", sort: "data"]}")
+
+    assert html =~ "Lei do arrendamento"
+    refute html =~ "resultados por texto"
+  end
 end

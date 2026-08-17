@@ -24,6 +24,11 @@ defmodule ArcadaWeb.RegisterLive do
        search_results: nil,
        search_ids: nil,
        search_more?: false,
+       # `:relevance` (fused ranking, offset-paged over `search_ids`) or `:date`
+       # (FTS-only, newest first, keyset-paged over `search_cursor`). Exactly one
+       # of those two pagination handles is set at a time.
+       sort: :relevance,
+       search_cursor: nil,
        # Rate-limit identity for the semantic-search leg (#32): a verified
        # account gets the generous `:user` tier; everyone else (anonymous, or
        # signed-in-but-unverified per #31) shares the loose `:anon` tier keyed
@@ -43,12 +48,13 @@ defmodule ArcadaWeb.RegisterLive do
 
   # Live search pushes the query into the URL (`?q=…`) so results are shareable
   # and deep-linkable; `handle_params` runs the actual search. `replace: true`
-  # keeps the debounced keystrokes from flooding browser history.
+  # keeps the debounced keystrokes from flooding browser history. The current
+  # sort rides along, so it survives typing a new query.
   @impl true
   def handle_event("search", %{"q" => query}, socket) do
     case String.trim(query) do
       "" -> {:noreply, push_patch(socket, to: ~p"/", replace: true)}
-      q -> {:noreply, push_patch(socket, to: ~p"/?#{[q: q]}", replace: true)}
+      q -> {:noreply, push_patch(socket, to: search_path(q, socket.assigns.sort), replace: true)}
     end
   end
 
@@ -67,6 +73,24 @@ defmodule ArcadaWeb.RegisterLive do
 
     {:noreply,
      assign(socket, search_results: results, search_more?: length(ids) > length(results))}
+  end
+
+  # Chronological search: there is no cached id list to slice, so each page is a
+  # fresh keyset query from the last loaded act's `{date, id}`.
+  def handle_event(
+        "load-more",
+        _params,
+        %{assigns: %{search_cursor: {%Date{}, _id} = cursor, search_results: loaded} = a} = socket
+      ) do
+    {page, more?} = Search.chronological_page(a.query, cursor)
+    results = loaded ++ page
+
+    {:noreply,
+     assign(socket,
+       search_results: results,
+       search_more?: more?,
+       search_cursor: search_cursor(results)
+     )}
   end
 
   # Browse mode: append the next page of days. Days are date-disjoint and older
@@ -92,29 +116,59 @@ defmodule ArcadaWeb.RegisterLive do
   def handle_event("load-more", _params, socket), do: {:noreply, socket}
 
   # The URL is the source of truth: `?q=…` is search mode (deep-linkable),
-  # anything else is the filtered browse listing.
+  # anything else is the filtered browse listing. `?sort=data` without a `q`
+  # falls through to browse, which is already newest-first.
   @impl true
   def handle_params(params, _uri, socket) do
     case String.trim(params["q"] || "") do
       "" -> {:noreply, assign_browse(socket, params)}
-      query -> {:noreply, assign_search(socket, query)}
+      query -> {:noreply, assign_search(socket, query, sort_param(params["sort"]))}
     end
   end
 
-  # Search is paginated (infinite scroll): `Search.for_visitor/2` charges the
-  # rate limit, degrades to FTS-only when over budget (#32), fuses the ranking,
-  # and emits telemetry — the whole policy lives in the context. We cache the
-  # full ranked id list and load only the first window; the "load-more" handler
+  defp sort_param("data"), do: :date
+  defp sort_param(_), do: :relevance
+
+  # Relevance search is paginated (infinite scroll) by offset: `Search.for_visitor/2`
+  # charges the rate limit, degrades to FTS-only when over budget (#32), fuses the
+  # ranking, and emits telemetry — the whole policy lives in the context. We cache
+  # the full ranked id list and load only the first window; the "load-more" handler
   # pages through the cached ids — no re-charging or re-embedding per page.
-  defp assign_search(socket, query) do
+  defp assign_search(socket, query, :relevance) do
     {results, ids, degraded?} = Search.for_visitor(query, socket.assigns.search_identity)
 
-    assign(socket,
-      query: query,
+    socket
+    |> assign_search_common(query, :relevance)
+    |> assign(
       search_ids: ids,
+      search_cursor: nil,
       search_results: results,
       search_more?: length(ids) > length(results),
-      search_degraded: degraded?,
+      search_degraded: degraded?
+    )
+  end
+
+  # Chronological search pages by keyset instead, so there is no id list to cache
+  # — `search_ids` stays nil, which is also what routes "load-more" to the right
+  # clause. Nothing is rate-limited here, so the degraded nudge never applies.
+  defp assign_search(socket, query, :date) do
+    {results, more?} = Search.chronological(query, socket.assigns.search_identity)
+
+    socket
+    |> assign_search_common(query, :date)
+    |> assign(
+      search_ids: nil,
+      search_cursor: search_cursor(results),
+      search_results: results,
+      search_more?: more?,
+      search_degraded: false
+    )
+  end
+
+  defp assign_search_common(socket, query, sort) do
+    assign(socket,
+      query: query,
+      sort: sort,
       browse_cursor: nil,
       browse_more?: false,
       # Search results aren't a section — clear any heading left by a prior browse.
@@ -125,6 +179,15 @@ defmodule ArcadaWeb.RegisterLive do
       search_token: socket.assigns.search_token + 1
     )
     |> assign(SEO.metadata_for({:search, query}))
+  end
+
+  # Keyset cursor for the next chronological page: the last loaded act's
+  # `{edition date, id}`, matching the query's `ORDER BY e.date DESC, a.id DESC`.
+  defp search_cursor([]), do: nil
+
+  defp search_cursor(results) do
+    act = List.last(results)
+    {act.edition.date, act.id}
   end
 
   # The rate-limit bucket key for this session (#32). A *verified* account earns
@@ -159,6 +222,8 @@ defmodule ArcadaWeb.RegisterLive do
       search_ids: nil,
       search_more?: false,
       search_degraded: false,
+      sort: :relevance,
+      search_cursor: nil,
       active_domain: domain,
       active_period: period,
       # Scoped <h1> for the section (nil when unfiltered → the slogan shows).
@@ -277,11 +342,41 @@ defmodule ArcadaWeb.RegisterLive do
           Dá uns segundos e a pesquisa inteligente volta.
         </p>
       </div>
+      <nav aria-label="Ordenar resultados" class="border-b border-border">
+        <ul class="flex flex-wrap items-baseline gap-x-5">
+          <li>
+            <.section_link
+              label="Relevância"
+              patch={search_path(@query, :relevance)}
+              active={@sort == :relevance}
+            />
+          </li>
+          <li>
+            <.section_link
+              label="Mais recentes"
+              patch={search_path(@query, :date)}
+              active={@sort == :date}
+            />
+          </li>
+        </ul>
+      </nav>
       <p :if={@search_results == []} class="border-b border-border py-16 text-center">
         <.icon name="hero-document-magnifying-glass" class="mx-auto size-8 text-muted" />
         <span class="mt-3 block font-display text-lg text-ink">
           Nada encontrado para "{@query}".
         </span>
+        <%!-- Chronological is text-match only, so it can come up empty on a query
+             that relevance answers by meaning. Say why, and offer the way back. --%>
+        <span :if={@sort == :date} class="mt-1 block text-sm text-muted">
+          Por data procuramos as palavras exatas. Por relevância procuramos pelo significado.
+        </span>
+        <.link
+          :if={@sort == :date}
+          patch={search_path(@query, :relevance)}
+          class="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+        >
+          Ver por relevância
+        </.link>
       </p>
       <ul
         :if={@search_results != []}
@@ -490,4 +585,8 @@ defmodule ArcadaWeb.RegisterLive do
 
   defp put_param(params, _key, nil), do: params
   defp put_param(params, key, value), do: params ++ [{key, value}]
+
+  # Relevance is the default, so it stays out of the URL entirely.
+  defp search_path(query, :date), do: ~p"/?#{[q: query, sort: "data"]}"
+  defp search_path(query, _relevance), do: ~p"/?#{[q: query]}"
 end

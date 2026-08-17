@@ -88,10 +88,54 @@ defmodule Arcada.Search do
     :telemetry.execute(
       [:arcada, :search, :query],
       %{count: 1},
-      %{tier: tier, degraded: degraded?}
+      %{tier: tier, degraded: degraded?, sort: :relevance}
     )
 
     {results, ids, degraded?}
+  end
+
+  @doc """
+  First page of `query`'s matches in date order, newest first (issue #104) — the
+  visitor-facing entry point for `?sort=data`.
+
+  Unlike `for_visitor/2` this charges *nothing*: chronological search never calls
+  the semantic leg, so there is no GPU spend to meter, and no `degraded?` to
+  report — FTS-only here is the mode the visitor picked, not a limit they hit.
+  The trade-off is recall: a query that only matches semantically (no shared
+  words with the act header or the summary body) finds nothing in this mode, and
+  the caller is expected to say so rather than render a bare "no results".
+
+  Returns `{results, more?}`. Page further with `chronological_page/2`, passing
+  the cursor from the last loaded act (`{act.edition.date, act.id}`).
+  """
+  @spec chronological(term(), RateLimit.identity()) :: {[Act.t()], boolean()}
+  def chronological(query, {tier, _key}) do
+    page = chronological_page(query, nil)
+
+    :telemetry.execute(
+      [:arcada, :search, :query],
+      %{count: 1},
+      %{tier: tier, degraded: false, sort: :date}
+    )
+
+    page
+  end
+
+  @doc """
+  One keyset page of date-ordered matches. `cursor` is `{Date, act_id}` from the
+  last act of the previous page, or `nil` for the first page. Returns
+  `{results, more?}`.
+
+  Keyset rather than offset because there is no cached id list to slice: the date
+  ordering lives in Postgres, so each page is its own query.
+  """
+  @spec chronological_page(term(), {Date.t(), term()} | nil) :: {[Act.t()], boolean()}
+  def chronological_page(query, cursor) do
+    # One extra row tells us whether more remain without a second count query.
+    ids = FTS.chronological_ids(query, before: cursor, limit: page_size() + 1)
+    {page_ids, rest} = Enum.split(ids, page_size())
+
+    {load_acts(page_ids), rest != []}
   end
 
   @doc """
