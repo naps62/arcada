@@ -36,7 +36,7 @@ defmodule Arcada.Scraper.IngestWorkerTest do
     Req.Test.stub(Arcada.IngestStub, fn conn ->
       if String.contains?(conn.request_path, "WB_Serie1_List"),
         do: Req.Test.json(conn, fixture),
-        else: Req.Test.json(conn, %{})
+        else: Req.Test.json(conn, %{"data" => %{"Detalhe" => %{"Texto" => "Texto do ato."}}})
     end)
 
     client = %{
@@ -47,8 +47,8 @@ defmodule Arcada.Scraper.IngestWorkerTest do
     }
 
     prev_client = Application.get_env(:arcada, :ingest_client)
-    # enrich: false — the stub only serves the list call; skip per-act detail.
-    Application.put_env(:arcada, :ingest_client, %{client | detail_api_version: nil})
+    # The stub's detail answer gives every act text, so each one can be summarized.
+    Application.put_env(:arcada, :ingest_client, client)
 
     on_exit(fn ->
       if prev_client,

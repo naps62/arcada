@@ -61,5 +61,7 @@ defmodule Arcada.Summarizer.SummarizeWorker do
 
   defp handle({:ok, _summary}), do: :ok
   defp handle({:async, _ref}), do: :ok
+  # Retrying can't help until a re-ingest fills the act's text.
+  defp handle({:error, :no_full_text}), do: {:cancel, :no_full_text}
   defp handle({:error, reason}), do: {:error, reason}
 end

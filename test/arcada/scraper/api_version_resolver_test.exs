@@ -52,6 +52,21 @@ defmodule Arcada.Scraper.ApiVersionResolverTest do
     assert {:ok, %{detail: "DET-42"}} = ApiVersionResolver.resolve(client(), [:detail])
   end
 
+  test "reads the apiVersion after the path when a GUID precedes it" do
+    # DRE's late-September 2026 bundles: callDataAction(name, guid, path, apiVersion, cb).
+    js =
+      ~s|callDataAction("DataActionGetAllConteudoDetalheData", "0f36ef54-97a2-4b72-a7b7-7d5b0a5401cb", "screenservices/dr/Legislacao_Conteudos/Conteudo_Detalhe/DataActionGetAllConteudoDetalheData", "B3l5BYZxaLmWUxGR3tmKGw", function (b) {})|
+
+    Req.Test.stub(__MODULE__, fn conn ->
+      if String.contains?(conn.request_path, "moduleservices/moduleinfo"),
+        do: Req.Test.json(conn, manifest()),
+        else: Plug.Conn.send_resp(conn, 200, js)
+    end)
+
+    assert {:ok, %{detail: "B3l5BYZxaLmWUxGR3tmKGw"}} =
+             ApiVersionResolver.resolve(client(), [:detail])
+  end
+
   test "returns nil for an action whose script is missing from the manifest" do
     Req.Test.stub(__MODULE__, fn conn ->
       # Manifest present but with no urlVersions entries → script path unresolved.

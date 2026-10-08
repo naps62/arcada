@@ -11,8 +11,11 @@ defmodule Arcada.Scraper.ApiVersionResolver do
     1. `GET /dr/moduleservices/moduleinfo` → `manifest.urlVersions`, a map of
        every asset path (incl. each screen's `*.mvc.js`) to its `?<hash>` suffix.
     2. `GET /dr/scripts/<Module>.<Screen>.mvc.js?<hash>` → the screen bundle.
-    3. Extract the 3rd `callDataAction("<Action>", "<path>", "<apiVersion>", …)`
-       argument for the action we care about.
+    3. Extract the `apiVersion` argument of `callDataAction(...)` for the
+       action we care about: the string right after the `screenservices/...`
+       path. Its position isn't fixed — DRE's late-September 2026 deploy added
+       a GUID before the path (`callDataAction("<Action>", "<guid>",
+       "<path>", "<apiVersion>", …)`), so anchor on the path, not the index.
 
   Used by `Arcada.Scraper.Client` to self-heal: when a data-action reports
   `versionInfo.hasApiVersionChanged: true`, we re-resolve, swap in the fresh
@@ -67,8 +70,8 @@ defmodule Arcada.Scraper.ApiVersionResolver do
     end
   end
 
-  # callDataAction("<Action>", "<screenservices path>", "<apiVersion>", …)
+  # callDataAction("<Action>", [other string args,] "screenservices/…", "<apiVersion>", …)
   defp version_regex(action) do
-    ~r/callDataAction\(\s*"#{Regex.escape(action)}"\s*,\s*"[^"]*"\s*,\s*"([^"]+)"/
+    ~r/callDataAction\(\s*"#{Regex.escape(action)}"\s*,(?:\s*"[^"]*"\s*,)*?\s*"screenservices\/[^"]*"\s*,\s*"([^"]+)"/
   end
 end
