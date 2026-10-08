@@ -148,9 +148,22 @@ defmodule Arcada.Summarizer do
   only talks to its backend — the cap/ranking decision lives in one place.
   """
   def summarize(%Act{} = act, %Provider{} = provider, model, opts \\ []) do
+    case PlainText.from_html(act.full_text) do
+      clean when is_binary(clean) and clean != "" ->
+        summarize_text(act, provider, model, clean, opts)
+
+      _ ->
+        # Without the act's text the model only sees its title ("Decreto-Lei
+        # n.º 200/2026") and invents a plausible summary. Refuse instead; the act
+        # stays unsummarized until a re-ingest fills `full_text`.
+        Logger.warning("summarizer: act #{act.id} has no full_text, not summarizing")
+        {:error, :no_full_text}
+    end
+  end
+
+  defp summarize_text(act, provider, model, clean, opts) do
     model = model || List.first(provider.models)
     requested = opts |> Keyword.get(:text_strategy, :auto) |> normalize_strategy()
-    clean = PlainText.from_html(act.full_text) || act.title
 
     if requested == :auto and oversized?(clean, model) and extractor_configured?() do
       # Omnibus act + an extractor configured: the strong model lists the concrete

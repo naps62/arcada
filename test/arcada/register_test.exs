@@ -150,7 +150,7 @@ defmodule Arcada.RegisterTest do
     end
 
     defp bare_act(edition, n) do
-      insert_act(edition, %{dre_id: "sweep-#{n}", title: "Act #{n}"})
+      insert_act(edition, %{dre_id: "sweep-#{n}", title: "Act #{n}", full_text: "Texto."})
     end
 
     defp summarized_act(edition, n) do
@@ -172,6 +172,13 @@ defmodule Arcada.RegisterTest do
       c = bare_act(edition, 3)
 
       assert Enum.map(Arcada.Register.acts_without_summary(2), & &1.id) == [c.id, b.id]
+    end
+
+    test "skips acts with no full_text", %{edition: edition} do
+      with_text = bare_act(edition, 1)
+      _no_text = insert_act(edition, %{dre_id: "sweep-2", title: "Act 2"})
+
+      assert Enum.map(Arcada.Register.acts_without_summary(100), & &1.id) == [with_text.id]
     end
 
     test "empty when every act is summarized", %{edition: edition} do

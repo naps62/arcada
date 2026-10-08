@@ -361,12 +361,15 @@ defmodule Arcada.Register do
       newest first, what `Arcada.Summarizer.SummarySweeper` drains each tick.
       Backlog acts and any act whose summary never landed (a failed daily job)
       both surface here, so the sweeper keeps retrying until all are summarized.
+
+  Acts without `full_text` are left out of both: the summarizer refuses them
+  (it would only see the title), so they wait until a re-ingest enriches them.
   """
   def acts_without_summary(%Date{} = date) do
     from(a in Act,
       join: e in assoc(a, :edition),
       left_join: s in assoc(a, :summaries),
-      where: e.date == ^date and is_nil(s.id)
+      where: e.date == ^date and is_nil(s.id) and not is_nil(a.full_text)
     )
     |> Repo.all()
   end
@@ -374,7 +377,7 @@ defmodule Arcada.Register do
   def acts_without_summary(limit) when is_integer(limit) do
     from(a in Act,
       left_join: s in assoc(a, :summaries),
-      where: is_nil(s.id),
+      where: is_nil(s.id) and not is_nil(a.full_text),
       order_by: [desc: a.id],
       limit: ^limit
     )

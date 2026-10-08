@@ -31,7 +31,12 @@ defmodule Arcada.Summarizer.SummarySweeperTest do
 
   defp bare_act(edition, n) do
     %Act{}
-    |> Act.changeset(%{edition_id: edition.id, dre_id: "sw-#{n}", title: "Act #{n}"})
+    |> Act.changeset(%{
+      edition_id: edition.id,
+      dre_id: "sw-#{n}",
+      title: "Act #{n}",
+      full_text: "Texto."
+    })
     |> Repo.insert!()
   end
 

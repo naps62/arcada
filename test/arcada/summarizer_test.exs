@@ -25,7 +25,8 @@ defmodule Arcada.SummarizerTest do
     |> Act.changeset(%{
       edition_id: edition.id,
       dre_id: "1138160247",
-      title: "Decreto-Lei n.º 1/2026"
+      title: "Decreto-Lei n.º 1/2026",
+      full_text: "O presente decreto-lei altera o Código do IRS."
     })
     |> Repo.insert!()
   end
@@ -49,6 +50,15 @@ defmodule Arcada.SummarizerTest do
   end
 
   describe "summarize/3 (explicit provider+model)" do
+    test "refuses an act with no full_text instead of summarizing its title" do
+      stub_ssh_runner(fn _ -> flunk("the model must not be called") end)
+
+      act = act_fixture() |> Act.changeset(%{full_text: nil}) |> Repo.update!()
+
+      assert {:error, :no_full_text} = Summarizer.summarize(act, ssh_provider(), "claude-cli")
+      assert Repo.aggregate(Summary, :count) == 0
+    end
+
     test "persists the result linked to the provider" do
       stub_ssh_runner(fn _ ->
         {:ok,
