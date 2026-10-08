@@ -84,7 +84,7 @@ Wiring steps:
 
 1. **Project + Postgres**: create a Dokploy project; add a Postgres service;
    create database `arcada_prod`. Copy its connection string into `DATABASE_URL`.
-2. **Application**: source = this Gitea repo (`yolo/arcada`), build type =
+2. **Application**: source = the GitHub repo (`naps62/arcada`), build type =
    **Dockerfile**. Set the env vars above (mark `ANTHROPIC_API_KEY` / `SECRET_KEY_BASE` as secrets).
 3. **Migrations on deploy**: set the pre-deploy/start command to run
    `/app/bin/migrate` before `/app/bin/server` (or run `bin/migrate` once via a

@@ -16,16 +16,14 @@ jobs:
 
     env:
       MIX_ENV: test
-      # The runner uses host networking, so localhost:5432 collides with the
-      # gitea host's own Postgres. Run our throwaway CI DB on 5433 instead.
+      # Throwaway CI DB runs on 5433, off the default Postgres port.
       DATABASE_PORT: "5433"
 
     steps:
       # Everything below runs *inside* the elixir container:
       #  - JS-based actions (checkout, cache) need Node.js, which the image lacks.
       #  - git is needed for the heroicons GitHub dep.
-      #  - Postgres runs locally on localhost to avoid Gitea service-container DNS
-      #    (a service named `postgres` doesn't resolve from this job container).
+      #  - Postgres runs locally on localhost rather than as a service container.
       - name: Install system deps (Node.js, git, PostgreSQL)
         run: |
           apt-get update
@@ -47,8 +45,7 @@ jobs:
         run: |
           PGVER=$(ls /etc/postgresql)
           CONF=/etc/postgresql/$PGVER/main
-          # Trust local connections (throwaway CI DB) and move off 5432, which
-          # the gitea host already occupies under the runner's host networking.
+          # Trust local connections (throwaway CI DB) and move off 5432.
           printf 'local all all trust\nhost all all 127.0.0.1/32 trust\nhost all all ::1/128 trust\n' > "$CONF/pg_hba.conf"
           printf "\nport = 5433\nlisten_addresses = 'localhost'\n" >> "$CONF/postgresql.conf"
           pg_ctlcluster "$PGVER" main restart
