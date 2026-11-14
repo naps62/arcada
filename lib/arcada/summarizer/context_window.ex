@@ -36,12 +36,17 @@ defmodule Arcada.Summarizer.ContextWindow do
   # have small windows (8k–128k), so anything not known to be large stays here.
   @default_window 200_000
 
-  # Known windows by model-id prefix (tokens), longest match wins. Claude 4.x and
-  # the SSH `claude -p` CLI expose ~1M tokens in this deployment — acts up to ~1M
-  # tokens summarised whole in prod; only the ~1.7M-token giants overflowed.
+  # Known windows by model-id prefix (tokens), longest match wins. Claude 4.x/5.x
+  # and the SSH `claude -p` CLI expose ~1M tokens in this deployment — acts up to
+  # ~1M tokens summarised whole in prod; only the ~1.7M-token giants overflowed.
+  # Haiku 4.5 is 200K, which the default already covers.
   @default_windows %{
     "claude-sonnet-4" => 1_000_000,
     "claude-opus-4" => 1_000_000,
+    "claude-fable-5" => 1_000_000,
+    "claude-opus-5" => 1_000_000,
+    "claude-sonnet-5" => 1_000_000,
+    "claude-haiku-5" => 1_000_000,
     "claude-cli" => 1_000_000
   }
 

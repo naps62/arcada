@@ -9,7 +9,7 @@ Private, VPN-only deployment via **Dokploy** on `example.internal`, per `docs/PL
   builder → `debian:bookworm-slim` runtime). Runs `mix assets.deploy` + `mix release`.
 - **`rel/overlays/bin/{server,migrate}`**, **`lib/arcada/release.ex`** — release entrypoints.
 - **`config/runtime.exs`** — reads `DATABASE_URL`, `SECRET_KEY_BASE`, `PHX_HOST`,
-  `PORT`, `ANTHROPIC_API_KEY`, `SUMMARIZER_ADAPTER` at boot.
+  `PORT` at boot.
 
 The image is verified end-to-end locally: builds, `bin/migrate` applies all
 migrations, the server boots and serves the register, and Oban runs the daily
@@ -26,8 +26,7 @@ cron `{"0 9 * * 1-5", Arcada.Scraper.IngestWorker}` with queues
 | `ADMIN_HOST` | private VPN host still served (e.g. `arcada.example.internal`); now only seeds `CHECK_ORIGIN_HOSTS` for LiveView. Optional — gates nothing (`/admin` is Authelia-edge-gated, `/metrics` is on its own un-routed port; #46). Drop it once `n62.casa` is retired. |
 | `PHX_SERVER` | `true` |
 | `PORT` | `4000` |
-| `ANTHROPIC_API_KEY` | Claude API key — **secret**; enables the `:api` summarizer adapter |
-| `SUMMARIZER_ADAPTER` | optional; `manual` (default) · `api` · `ssh` · `local`. With an API key present, defaults to `api`. |
+| `ANTHROPIC_API_KEY` | optional, **secret**; fallback key for `anthropic` providers whose API key field is left blank in /admin |
 | `SCALEWAY_PROJECT_ID` | Scaleway project holding the TEM domain; enables real mail delivery. Without it both mailers no-op. |
 | `SCALEWAY_SECRET_KEY` | **secret**; Scaleway API secret key. Required whenever `SCALEWAY_PROJECT_ID` is set — boot fails loudly if missing. |
 | `SCALEWAY_REGION` | optional; TEM region (defaults to `fr-par`). |
@@ -55,7 +54,7 @@ cron `{"0 9 * * 1-5", Arcada.Scraper.IngestWorker}` with queues
 | Adapter | How it summarizes | Needs |
 |---|---|---|
 | `manual` (default) | nothing automatic — human backfill via console | — |
-| `api` | Claude API (Sonnet 4.6), structured output | `ANTHROPIC_API_KEY` |
+| `anthropic` provider | Claude Messages API, structured output. Usable as the summarizer or the omnibus extractor. Create it in /admin → Providers. | API key on the provider, or `ANTHROPIC_API_KEY` |
 | `ssh` | SSHes to a host with the `claude` CLI and runs `claude -p` | SSH key + `SUMMARIZER_SSH_HOST` |
 | `local` | placeholder (not implemented) | — |
 

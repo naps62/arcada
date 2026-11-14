@@ -11,8 +11,9 @@ defmodule Arcada.Summarizer.Extractor do
   model reading the whole thing catches it. Keeping the renderer local preserves
   the tuned voice and keeps output tokens off the paid model.
 
-  OpenAI-compatible transport only (`provider.kind == :openai`) — that's what the
-  configured extractor (synthetic/GLM) is. Any other kind returns
+  Supports OpenAI-compatible providers (`:openai`, e.g. synthetic/GLM) and the
+  Claude Messages API (`:anthropic`, structured output against
+  `Prompt.extraction_schema/0`). Any other kind returns
   `{:error, :unsupported_extractor}` so the caller falls back to the umbrella
   summary. All failures are non-fatal to the caller by design.
   """
@@ -22,6 +23,7 @@ defmodule Arcada.Summarizer.Extractor do
   alias Arcada.Register.Act
   alias Arcada.Providers.Provider
   alias Arcada.Summarizer.Prompt
+  alias Arcada.Summarizer.Adapters.Api
 
   @doc """
   Extract `%{headline, changes}` from `text` (the coarse-trimmed act) using
@@ -63,6 +65,20 @@ defmodule Arcada.Summarizer.Extractor do
       {:error, reason} ->
         {:error, reason}
     end
+  end
+
+  defp default_fetch(%Provider{kind: :anthropic} = provider, model, act, text) do
+    body = %{
+      "model" => model,
+      "max_tokens" => 16_000,
+      "system" => Prompt.extraction_system(),
+      "messages" => [%{"role" => "user", "content" => Prompt.extraction_prompt(act, text)}],
+      "output_config" => %{
+        "format" => %{"type" => "json_schema", "schema" => Prompt.extraction_schema()}
+      }
+    }
+
+    with {:ok, resp} <- Api.request(provider, body), do: Api.text_block(resp)
   end
 
   defp default_fetch(%Provider{}, _model, _act, _text), do: {:error, :unsupported_extractor}

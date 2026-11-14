@@ -69,18 +69,6 @@ config :arcada, :umami,
   script_url: System.get_env("UMAMI_SCRIPT_URL"),
   website_id: System.get_env("UMAMI_WEBSITE_ID")
 
-# Summarizer (Claude API). Set ANTHROPIC_API_KEY to use the `:api` adapter;
-# without it the adapter returns {:error, :missing_api_key} and the manual
-# default applies. Read at runtime in every env so it works for releases + dev.
-if api_key = System.get_env("ANTHROPIC_API_KEY") do
-  config :arcada, Arcada.Summarizer.Adapters.Api, api_key: api_key
-
-  # If a key is present, default to the api adapter unless overridden.
-  if System.get_env("SUMMARIZER_ADAPTER") in [nil, "api"] do
-    config :arcada, Arcada.Summarizer, adapter: :api
-  end
-end
-
 # SSH adapter — runs `claude -p` on a remote host that already has the CLI
 # authenticated (no ANTHROPIC_API_KEY in the app). Set SUMMARIZER_SSH_HOST (and
 # SUMMARIZER_ADAPTER=ssh) to use it.
