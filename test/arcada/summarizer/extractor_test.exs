@@ -33,4 +33,19 @@ defmodule Arcada.Summarizer.ExtractorTest do
   test "a non-openai provider is unsupported (no runner stub)" do
     assert {:error, :unsupported_extractor} = Extractor.extract(act(), "t", ssh_provider(), "m")
   end
+
+  test "an anthropic provider extracts via the Messages API with the extraction schema" do
+    stub_claude_api(fn conn ->
+      {:ok, raw, conn} = Plug.Conn.read_body(conn)
+      body = Jason.decode!(raw)
+      assert body["model"] == "claude-opus-5-5"
+      assert body["output_config"]["format"]["schema"]["required"] == ["headline", "changes"]
+
+      reply = Jason.encode!(%{"headline" => "Título", "changes" => ["muda A"]})
+      Req.Test.json(conn, claude_response(reply))
+    end)
+
+    assert {:ok, %{headline: "Título", changes: ["muda A"]}} =
+             Extractor.extract(act(), "texto", anthropic_provider(), "claude-opus-5-5")
+  end
 end

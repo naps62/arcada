@@ -2,7 +2,7 @@ defmodule Arcada.SummarizerHelpers do
   @moduledoc "Test helpers: create providers and stub the SSH adapter offline."
 
   alias Arcada.Providers
-  alias Arcada.Summarizer.Adapters.Ssh
+  alias Arcada.Summarizer.Adapters.{Api, Ssh}
   alias Arcada.Summarizer.Extractor
 
   @doc """
@@ -62,5 +62,47 @@ defmodule Arcada.SummarizerHelpers do
     prev = Application.get_env(:arcada, Extractor, [])
     Application.put_env(:arcada, Extractor, Keyword.put(prev, :runner, fun))
     ExUnit.Callbacks.on_exit(fn -> Application.put_env(:arcada, Extractor, prev) end)
+  end
+
+  @doc "Create an `:anthropic` provider with a dummy key."
+  def anthropic_provider(attrs \\ %{}) do
+    base = %{
+      "name" => "claude-#{System.unique_integer([:positive])}",
+      "kind" => "anthropic",
+      "api_key" => "test-key",
+      "models" => "claude-opus-5-5"
+    }
+
+    {:ok, provider} = Providers.create_provider(Map.merge(base, attrs))
+    provider
+  end
+
+  @doc """
+  Route the Claude adapter's HTTP calls to `fun` (a `Plug.Conn -> Plug.Conn`
+  function) via `Req.Test`.
+  """
+  def stub_claude_api(fun) do
+    prev = Application.get_env(:arcada, Api, [])
+
+    Application.put_env(
+      :arcada,
+      Api,
+      Keyword.put(prev, :req_options, plug: {Req.Test, Api}, retry: false)
+    )
+
+    Req.Test.stub(Api, fun)
+    ExUnit.Callbacks.on_exit(fn -> Application.put_env(:arcada, Api, prev) end)
+  end
+
+  @doc "A Messages API response body whose text block is `text`."
+  def claude_response(text, extra \\ %{}) do
+    Map.merge(
+      %{
+        "content" => [%{"type" => "text", "text" => text}],
+        "stop_reason" => "end_turn",
+        "usage" => %{"input_tokens" => 1_000, "output_tokens" => 200}
+      },
+      extra
+    )
   end
 end

@@ -229,6 +229,19 @@ defmodule Arcada.Summarizer.Prompt do
     }
   end
 
+  @doc "Structured-output schema for the extractor reply (`parse_extraction/1`'s shape)."
+  def extraction_schema do
+    %{
+      "type" => "object",
+      "additionalProperties" => false,
+      "required" => ["headline", "changes"],
+      "properties" => %{
+        "headline" => %{"type" => "string"},
+        "changes" => %{"type" => "array", "items" => %{"type" => "string"}}
+      }
+    }
+  end
+
   @doc """
   The act-specific prompt body: metadata plus the already-prepared act text. Fed
   as the user message by structured-output backends (which carry the format in
